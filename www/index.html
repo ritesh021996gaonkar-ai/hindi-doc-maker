@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.5</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.6</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -375,7 +375,7 @@ async function applyScript(d,topic){
 function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
   try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error("Script was not valid JSON — tap again."); } }
 async function cfScript(prompt){
-  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings.");
+  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings."); cfCheck(acct);
   const models=[...new Set([$("cfTxtModel").value.trim(),"@cf/meta/llama-3.3-70b-instruct-fp8-fast","@cf/meta/llama-4-scout-17b-16e-instruct"].filter(Boolean))];
   let last;
   for(const m of models) for(const json of [true,false]){
@@ -520,8 +520,9 @@ async function cropTo(blob,ar){ const bm=await createImageBitmap(blob); const [r
   let w=bm.width,h=Math.round(bm.width*rh/rw); if(h>bm.height){ h=bm.height; w=Math.round(h*rw/rh); }
   const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bm,(bm.width-w)/2,(bm.height-h)/2,w,h,0,0,w,h);
   return new Promise(r=>c.toBlob(r,"image/jpeg",0.93)); }
+function cfCheck(acct){ if(!/^[0-9a-f]{32}$/i.test(acct)) throw new Error("Cloudflare Account ID looks wrong. It must be 32 letters/numbers (0-9, a-f) — you may have pasted the API token (cfut_…) there. Copy the Account ID from dash.cloudflare.com → Workers AI → Use REST API."); }
 async function makeImageCF(s){
-  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings.");
+  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings."); cfCheck(acct);
   const body={prompt:`${s.prompt}. ${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,2000),steps:4};
   let r;
   for(let t=0;t<4;t++){ r=await http("POST",`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/@cf/black-forest-labs/flux-1-schnell`,{headers:{Authorization:"Bearer "+tok},json:body});
