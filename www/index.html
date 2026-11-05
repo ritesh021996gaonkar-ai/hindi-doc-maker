@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.4</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.5</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -522,9 +522,10 @@ async function cropTo(blob,ar){ const bm=await createImageBitmap(blob); const [r
   return new Promise(r=>c.toBlob(r,"image/jpeg",0.93)); }
 async function makeImageCF(s){
   const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings.");
-  const body={prompt:`${s.prompt}. ${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,2000),steps:4,seed:Math.floor(Math.random()*1e9)};
+  const body={prompt:`${s.prompt}. ${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,2000),steps:4};
   let r;
   for(let t=0;t<4;t++){ r=await http("POST",`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/@cf/black-forest-labs/flux-1-schnell`,{headers:{Authorization:"Bearer "+tok},json:body});
+    if(r.status===400&&/not allowed|Bad input/i.test(JSON.stringify(r.data||""))&&body.steps){ delete body.steps; continue; }
     if(r.ok||![429,500,502,503,504].includes(r.status)) break; await sleep(4000*(t+1)); }
   const d=r.data||{}, img=d.result&&d.result.image;
   if(!r.ok||!img){ const m=(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d); throw new Error(`Cloudflare ${r.status}: ${m}${/neuron|limit|quota/i.test(m)?" (free daily limit reached — resets 5:30 AM IST)":""}`); }
