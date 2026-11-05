@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.1</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -54,6 +54,8 @@ details summary{cursor:pointer;font-weight:700}
 <h3>🧠 Google Gemini (script + pictures + Omni video)</h3>
 <label>Gemini API key — aistudio.google.com/apikey (billing on)</label>
 <input id="key" type="password" placeholder="AIza...">
+<label>YouTube Data API key (optional — adds YouTube trending to 🔥 ideas)</label>
+<input id="ytKey" type="password" placeholder="AIza... (Google Cloud → enable YouTube Data API v3)">
 
 <h3>✍️ Script writer</h3>
 <label>Script engine</label>
@@ -143,6 +145,16 @@ details summary{cursor:pointer;font-weight:700}
 </details>
 <button onclick="saveSettings()">💾 Save settings</button>
 </details>
+
+<section class="card" id="trendCard">
+<h2>🔥 Trending now — video ideas</h2>
+<label>Your channel niche</label>
+<select id="niche"><option value="any">Anything trending</option><option value="history">History, mystery &amp; facts</option><option value="movies">Movies, OTT &amp; celebrities</option><option value="science">Science, tech &amp; space</option><option value="news">News explainers</option><option value="sports">Cricket &amp; sports</option></select>
+<button id="btnTrend" onclick="findTrends()">🔄 Get today's trending ideas</button>
+<p class="muted" id="trendInfo">Checks Google Trends India, Google News (top, movies &amp; OTT, sports, tech), Wikipedia most-read, "On this day" and YouTube trending — then AI picks the best video ideas for your niche.</p>
+<div id="ideasBox"></div>
+<details><summary class="muted">📋 All trending items</summary><div id="rawTrends"></div></details>
+</section>
 
 <section class="card">
 <h2>1. Topic</h2>
@@ -253,7 +265,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -288,17 +300,18 @@ function refreshUI(){
 })();
 
 /* ---------- HTTP (native on phone = no CORS problems) ---------- */
-async function http(method,url,{headers={},json,blob=false,timeout=600000}={}){
+async function http(method,url,{headers={},json,blob=false,text=false,timeout=600000}={}){
   const h={...headers}; if(json!==undefined) h["Content-Type"]="application/json";
   if(CH){
-    const r=await CH.request({method,url,headers:h,data:json,responseType:blob?"blob":"json",connectTimeout:30000,readTimeout:timeout});
+    const r=await CH.request({method,url,headers:h,data:json,responseType:blob?"blob":text?"text":"json",connectTimeout:30000,readTimeout:timeout});
     let d=r.data;
     if(blob){ d=(typeof d==="string")?new Blob([b64ToBytes(d)]):(d instanceof Blob?d:new Blob([d])); }
+    else if(text){ if(typeof d!=="string") d=JSON.stringify(d); }
     else if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(e){} }
     return {ok:r.status>=200&&r.status<300,status:r.status,data:d};
   }
   const r=await fetch(url,{method,headers:h,body:json!==undefined?JSON.stringify(json):undefined});
-  let d; if(blob&&r.ok) d=await r.blob(); else { const t=await r.text(); try{ d=JSON.parse(t);}catch(e){ d=t; } }
+  let d; if(blob&&r.ok) d=await r.blob(); else { const t=await r.text(); if(text) d=t; else { try{ d=JSON.parse(t);}catch(e){ d=t; } } }
   return {ok:r.ok,status:r.status,data:d};
 }
 
@@ -411,7 +424,7 @@ async function applyScript(d,topic){
 }
 function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
   try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error("Script was not valid JSON — tap again."); } }
-async function cfScript(prompt){
+async function cfScript(prompt,need="scenes"){
   const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings."); cfCheck(acct);
   const models=[...new Set([$("cfTxtModel").value.trim(),"@cf/meta/llama-3.3-70b-instruct-fp8-fast","@cf/meta/llama-4-scout-17b-16e-instruct"].filter(Boolean))];
   let last;
@@ -423,7 +436,7 @@ async function cfScript(prompt){
       const d=r.data||{};
       if(!r.ok||!d.result){ throw new Error(`Cloudflare ${r.status}: ${(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d)}`); }
       const out=parseJSON(d.result.response!==undefined?d.result.response:(d.result.choices&&d.result.choices[0].message.content));
-      if(!out.scenes||!out.scenes.length) throw new Error("Script came back without scenes");
+      if(need&&(!out[need]||!out[need].length)) throw new Error(`Reply came back without ${need}`);
       if(m!==models[0]) log("Used script model "+m);
       return out;
     }catch(e){ last=e; log(`${m.split("/").pop()}${json?"":" (plain)"}: ${e.message.slice(0,120)}`); if(/401|403|Authentication/i.test(e.message)) throw e; }
@@ -995,6 +1008,83 @@ async function renderVideo(auto,PV){
   }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
   finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
+/* ---------- 🔥 trending ideas ---------- */
+let TRENDS={items:[],ideas:[]};
+async function getText(url,headers={}){ const r=await http("GET",url,{headers,text:true,timeout:30000}); if(!r.ok) throw new Error(`${url.split("/")[2]} ${r.status}`); return String(r.data||""); }
+function xmlItems(xml){ const x=new DOMParser().parseFromString(xml,"text/xml"); return [...x.getElementsByTagName("item")]; }
+function tagText(el,name){ let a=el.getElementsByTagName(name); if(!a.length&&name.includes(":")) a=el.getElementsByTagNameNS("*",name.split(":")[1]); return a[0]?a[0].textContent.trim():""; }
+function fmtNum(n){ n=+n; return n>=1e7?(n/1e7).toFixed(1)+" Cr":n>=1e5?(n/1e5).toFixed(1)+" L":n>=1e3?Math.round(n/1e3)+"K":String(n); }
+async function srcGoogleTrends(){ return xmlItems(await getText("https://trends.google.com/trending/rss?geo=IN")).slice(0,25).map(it=>({src:"Google Trends",title:tagText(it,"title"),traffic:tagText(it,"ht:approx_traffic")?tagText(it,"ht:approx_traffic")+" searches":"",news:tagText(it,"ht:news_item_title")})); }
+async function srcNews(url,label,n=12){ return xmlItems(await getText(url)).slice(0,n).map(it=>({src:label,title:tagText(it,"title").replace(/\s+-\s+[^-]+$/,""),traffic:"",news:""})); }
+async function srcWiki(){ const d=new Date(), p=x=>String(x).padStart(2,"0");
+  const j=JSON.parse(await getText(`https://en.wikipedia.org/api/rest_v1/feed/featured/${d.getUTCFullYear()}/${p(d.getUTCMonth()+1)}/${p(d.getUTCDate())}`,{"Api-User-Agent":"HindiDocMaker/3.1 (Android documentary app)"}));
+  const most=((j.mostread&&j.mostread.articles)||[]).filter(a=>!/^(Main_Page|Special:)/.test(a.title||"")).slice(0,20).map(a=>({src:"Wikipedia most-read",title:(a.titles&&a.titles.normalized)||a.normalizedtitle||a.title,traffic:a.views?fmtNum(a.views)+" reads":"",news:a.description||""}));
+  const otd=(j.onthisday||[]).slice(0,10).map(e=>({src:"On this day",title:`${e.year}: ${e.text}`,traffic:"",news:""}));
+  return most.concat(otd); }
+async function srcYouTube(){ const k=$("ytKey").value.trim(); if(!k) return [];
+  const j=JSON.parse(await getText(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=IN&maxResults=30&key=${encodeURIComponent(k)}`));
+  return (j.items||[]).map(v=>({src:"YouTube trending",title:v.snippet.title,traffic:v.statistics&&v.statistics.viewCount?fmtNum(v.statistics.viewCount)+" views":"",news:v.snippet.channelTitle})); }
+const GN="hl=en-IN&gl=IN&ceid=IN:en";
+const NICHE={any:"कुछ भी जो ट्रेंड में है (सबसे ज़्यादा views वाले)",history:"इतिहास, रहस्य, अजब-गजब facts",movies:"फ़िल्में, OTT, सेलेब्रिटी, बॉक्स ऑफ़िस",science:"साइंस, टेक्नोलॉजी, स्पेस, AI",news:"खबरों के explainers (आसान भाषा में)",sports:"क्रिकेट और खेल"};
+function ideaEngine(){ const te=$("txtEngine").value; if(te!=="paste") return te;
+  if($("cfAcct").value.trim()&&$("cfToken").value.trim()) return "cloudflare"; if($("key").value.trim()) return "gemini"; if($("claudeKey").value.trim()) return "claude"; if($("oaKey").value.trim()) return "openai"; return null; }
+async function llmJSON(prompt,engine){
+  if(engine==="cloudflare") return cfScript(prompt,"ideas"); if(engine==="claude") return claudeScript(prompt); if(engine==="openai") return openaiScript(prompt);
+  const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.8}});
+  return parseJSON(parts(j).map(p=>p.text||"").join("")); }
+function ideasPrompt(items){
+  const today=new Date().toLocaleDateString("hi-IN",{day:"numeric",month:"long",year:"numeric"});
+  return `आप एक सफल हिंदी YouTube चैनल के content strategist हैं। आज की तारीख: ${today}।
+चैनल का niche: ${NICHE[$("niche").value]}। स्टाइल: हिंदी डॉक्यूमेंट्री/explainer — AI पिक्चर्स/क्लिप्स और वॉइसओवर (असली फ़ुटेज नहीं)।
+नीचे भारत में अभी ट्रेंड हो रही चीज़ें हैं। इनमें से 10 सबसे अच्छे video ideas चुनें जिन पर आज/इस हफ़्ते वीडियो बनाने से सबसे ज़्यादा views मिलें। niche से मेल खाने वाले ideas को प्राथमिकता दें; किसी ट्रेंड को niche के angle से भी जोड़ सकते हैं (जैसे किसी फ़िल्म से जुड़ा असली इतिहास)।
+नियम: असली लोगों के बारे में अफ़वाह, आरोप या निजी बातें नहीं; हादसों/मौतों को sensational न बनाएँ; सिर्फ़ ऐसे ideas जिनकी कहानी 2-8 मिनट में दिलचस्प तरीके से बताई जा सके।
+केवल JSON: {"ideas":[{"topic":"वीडियो का विषय (हिंदी, साफ़)","title":"clickable हिंदी YouTube title","why":"यह अभी क्यों ट्रेंड में है (1 लाइन)","hook":"वीडियो की पहली चौंकाने वाली लाइन","source":"किस ट्रेंड से","format":"long या short","when":"आज / इस हफ़्ते / evergreen","score":8}]}
+ट्रेंड्स:
+${items.map(x=>`- [${x.src}] ${x.title}${x.traffic?` (${x.traffic})`:""}${x.news?` — ${x.news}`:""}`).join("\n").slice(0,14000)}`; }
+async function findTrends(){
+  const btn=$("btnTrend"); btn.disabled=true; btn.textContent="🔍 Checking what's trending…"; $("ideasBox").innerHTML="";
+  const jobs=[["Google Trends",srcGoogleTrends()],["Top news",srcNews(`https://news.google.com/rss?${GN}`,"Top news")],
+    ["Movies & OTT",srcNews(`https://news.google.com/rss/search?q=${encodeURIComponent("(box office OR OTT release OR trailer OR Bollywood) when:2d")}&${GN}`,"Movies & OTT")],
+    ["Entertainment",srcNews(`https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT?${GN}`,"Entertainment",10)],
+    ["Sports",srcNews(`https://news.google.com/rss/headlines/section/topic/SPORTS?${GN}`,"Sports",10)],
+    ["Science & tech",srcNews(`https://news.google.com/rss/headlines/section/topic/SCIENCE?${GN}`,"Science",8)],
+    ["Tech",srcNews(`https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?${GN}`,"Tech",8)],
+    ["Wikipedia",srcWiki()],["YouTube",srcYouTube()]];
+  const res=await Promise.allSettled(jobs.map(j=>j[1]));
+  const items=[], failed=[];
+  res.forEach((r,i)=>{ if(r.status==="fulfilled") items.push(...r.value.filter(x=>x.title)); else { failed.push(jobs[i][0]); log(`Trends ${jobs[i][0]}: ${r.reason&&r.reason.message}`); } });
+  TRENDS.items=items; drawRaw();
+  $("trendInfo").textContent=`Found ${items.length} trending items${failed.length?` (couldn't reach: ${failed.join(", ")})`:""}${$("ytKey").value.trim()?"":" · add a YouTube key in Settings for YouTube trending"}.`;
+  const eng=ideaEngine();
+  if(!items.length){ btn.disabled=false; btn.textContent="🔄 Get today's trending ideas"; return; }
+  if(!eng){ $("ideasBox").innerHTML=`<div class="cost">To get AI-picked ideas, add a Cloudflare, Gemini, Claude or ChatGPT key in Settings — or <button class="small" onclick="copyIdeasPrompt()">📋 Copy ideas prompt</button> and paste it into ChatGPT/Claude.</div>`; btn.disabled=false; btn.textContent="🔄 Get today's trending ideas"; return; }
+  btn.textContent="🧠 Picking the best ideas…";
+  try{ const d=await llmJSON(ideasPrompt(items),eng); TRENDS.ideas=(d.ideas||[]).filter(x=>x&&x.topic).sort((a,b)=>(+b.score||0)-(+a.score||0)); TRENDS.at=Date.now();
+    try{ localStorage.setItem("hdm_trends",JSON.stringify(TRENDS)); }catch(e){}
+    drawIdeas(); }
+  catch(e){ log("❌ Ideas: "+e.message); $("ideasBox").innerHTML=`<div class="err">Couldn't get AI ideas: ${esc(e.message)}</div><button class="small" onclick="copyIdeasPrompt()">📋 Copy ideas prompt for ChatGPT/Claude</button>`; }
+  btn.disabled=false; btn.textContent="🔄 Get today's trending ideas";
+}
+function copyIdeasPrompt(){ const t=ideasPrompt(TRENDS.items); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>status("✅ Ideas prompt copied — paste in ChatGPT or Claude."),()=>prompt("Copy:",t)); }
+function drawIdeas(){
+  const when=w=>/आज|today/i.test(w||"")?"bad":/हफ़्ते|हफ्ते|week/i.test(w||"")?"run":"ok";
+  $("ideasBox").innerHTML=(TRENDS.at?`<p class="muted">Updated ${new Date(TRENDS.at).toLocaleString("en-IN",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}</p>`:"")+TRENDS.ideas.map((x,i)=>`<div class="scene">
+    <div class="hd" style="font-weight:700">${esc(x.title||x.topic)}</div>
+    <div class="chips" style="margin-top:6px"><span class="st ${when(x.when)}">⏰ ${esc(x.when||"")}</span><span class="st">${/short/i.test(x.format||"")?"📱 Short":"🎬 Long video"}</span>${x.score?`<span class="st">⭐ ${esc(x.score)}/10</span>`:""}<span class="st">${esc(x.source||"")}</span></div>
+    <div class="muted" style="margin-top:6px">📈 ${esc(x.why||"")}</div>
+    ${x.hook?`<div style="margin-top:4px">🎣 “${esc(x.hook)}”</div>`:""}
+    <button class="small" onclick="useIdea(${i})">✅ Make this video</button></div>`).join("");
+}
+function drawRaw(){
+  const groups={}; TRENDS.items.forEach((x,i)=>{ (groups[x.src]=groups[x.src]||[]).push([x,i]); });
+  $("rawTrends").innerHTML=Object.entries(groups).map(([k,arr])=>`<h3>${esc(k)}</h3>`+arr.map(([x,i])=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><a href="#" style="color:var(--text)" onclick="useRaw(${i});return false">➕ ${esc(x.title)}</a> <span class="muted">${esc(x.traffic||"")}</span></div>`).join("")).join("");
+}
+function useIdea(i){ const x=TRENDS.ideas[i]; $("topic").value=x.topic+(x.hook?` — शुरुआत इस hook से: "${x.hook}"`:"");
+  const short=/short/i.test(x.format||""); $("format").value=short?"9:16":"16:9"; if(short) $("mins").value=1;
+  saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status(`✅ Topic set${short?" (Short, 1 min)":""} — tap 🚀 Make full video.`); }
+function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set — tap 🚀 Make full video."); }
+(function(){ try{ const t=JSON.parse(localStorage.getItem("hdm_trends")||"null"); if(t&&t.ideas&&Date.now()-t.at<20*3600e3){ TRENDS=t; drawIdeas(); drawRaw(); } }catch(e){} })();
+
 const PRESETS={
  doc:{look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  viral:{look:"bleach",trans:"mix",subStyle:"pop",subPos:"middle",titleStyle:"punch",titlePos:"after",factStyle:"pop",kwHL:1,punch:1,shake:1,progress:1,bars:0,grain:0,leaks:1},
