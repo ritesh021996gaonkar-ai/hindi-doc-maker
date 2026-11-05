@@ -36,7 +36,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -60,13 +60,13 @@ details summary{cursor:pointer;font-weight:700}
 <label>Voice style instruction</label>
 <input id="ttsStyle" value="एक गंभीर, रोचक डॉक्यूमेंट्री नैरेटर की आवाज़ में, साफ़ और मध्यम गति से पढ़ें">
 <div class="row">
- <div><label>Script model</label><input id="mText" value="gemini-flash-latest"></div>
- <div><label>Voice model</label><input id="mTts" value="gemini-2.5-flash-preview-tts"></div>
+ <div><label>Script model</label><input id="mText" value="auto"></div>
+ <div><label>Voice model</label><input id="mTts" value="auto"></div>
 </div>
-<label>Image model</label><input id="mImg" value="gemini-3.1-flash-image">
+<label>Image model</label><input id="mImg" value="auto">
 <label>Image style (added to every picture)</label>
 <input id="imgStyle" value="cinematic documentary photograph, dramatic lighting, highly detailed, 35mm, no text, no watermark">
-<p class="muted">Model names change over time — if a step fails with "model not found", update the name here.</p>
+<p class="muted">Leave models on <b>auto</b> — the app picks the newest working model for your key.</p>
 <button class="sec" onclick="saveSettings()">Save settings</button>
 </details>
 
@@ -118,8 +118,9 @@ const SET_IDS = ["key","voice","format","imgSrc","ttsStyle","mText","mTts","mImg
 function log(m){ const l=$("log"); l.textContent += m+"\n"; l.scrollTop=l.scrollHeight; console.log(m); }
 function store(k,v){ try{ localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{ return localStorage.getItem(k);}catch(e){ return null; } }
-function saveSettings(){ SET_IDS.forEach(id=>store("hdm_"+id,$(id).value)); log("Settings saved."); $("setBox").open=false; }
+function saveSettings(){ MODELS=null; SET_IDS.forEach(id=>store("hdm_"+id,$(id).value)); log("Settings saved."); $("setBox").open=false; }
 SET_IDS.forEach(id=>{ const v=load("hdm_"+id); if(v!==null) $(id).value=v; });
+if(load("hdm_v")!=="1.2"){ ["mText","mTts","mImg"].forEach(id=>{$(id).value="auto";store("hdm_"+id,"auto");}); store("hdm_v","1.2"); }
 if(!$("key").value) $("setBox").open=true;
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -142,6 +143,47 @@ async function gemini(model, body, tries=5){
     throw new Error(`${model}: ${res.status} ${msg}`);
   }
 }
+/* Ask Google which models this key can use, and pick the best ones automatically */
+let MODELS=null;
+async function listModels(){
+  if(MODELS) return MODELS;
+  try{
+    const key=$("key").value.trim(); let out=[], tok="";
+    do{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000${tok?"&pageToken="+tok:""}`,{headers:{"x-goog-api-key":key}});
+      if(!r.ok) break; const d=await r.json();
+      (d.models||[]).forEach(m=>{ if((m.supportedGenerationMethods||[]).includes("generateContent")) out.push(m.name.replace(/^models\//,"")); });
+      tok=d.nextPageToken||"";
+    }while(tok);
+    if(out.length){ MODELS=out; log(`Found ${out.length} models for your key.`); }
+  }catch(e){ log("Could not list models: "+e.message); }
+  return MODELS||[];
+}
+function ver(n){ const m=n.match(/gemini-(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):0; }
+function rank(list,kind){
+  const bad=/embed|live|audio-|native-audio|computer|robotics|gemma|aqa|learnlm|veo|imagen/;
+  let f;
+  if(kind==="tts") f=list.filter(n=>/tts/.test(n));
+  else if(kind==="image") f=list.filter(n=>/image/.test(n)&&!/tts/.test(n));
+  else f=list.filter(n=>/^gemini/.test(n)&&!/tts|image/.test(n)&&!bad.test(n));
+  const score=n=>ver(n)*10 + (/flash/.test(n)?3:0) + (/lite/.test(n)?-1:0) + (/pro/.test(n)&&kind!=="text"?1:0) + (/latest/.test(n)?0.5:0) - (/exp/.test(n)?2:0);
+  return f.sort((a,b)=>score(b)-score(a));
+}
+async function geminiAuto(kind,preferred,body){
+  const want=(preferred||"").replace(/\s+/g,"").replace(/^auto$/i,"");
+  const avail=await listModels();
+  let cands=[];
+  if(want&&(!avail.length||avail.includes(want))) cands.push(want);
+  cands.push(...rank(avail,kind).slice(0,4));
+  if(!cands.length) cands.push(want);
+  cands=[...new Set(cands.filter(Boolean))];
+  let lastErr=null;
+  for(const m of cands){
+    try{ const j=await gemini(m,body,3); if(m!==want){ log(`Using model ${m}`); } return j; }
+    catch(e){ lastErr=e; log(`${m}: ${String(e.message).replace(/^[^:]+:\s*/,"").slice(0,90)} → trying next…`); }
+  }
+  throw lastErr||new Error("No working model found for your API key.");
+}
 const parts = j => (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
 
 /* ---------- 1. Script ---------- */
@@ -163,13 +205,7 @@ async function makeScript(){
 - "title" एक आकर्षक हिंदी YouTube शीर्षक हो।
 केवल JSON लौटाएँ: {"title":"...","description":"YouTube description हिंदी में","scenes":[{"narration":"...","image_prompt":"..."}]}`;
     const body={contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}};
-    const models=[...new Set([$("mText").value.trim(),"gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.5-pro"])];
-    let j=null,lastErr=null;
-    for(const m of models){
-      try{ j=await gemini(m,body,2); if(m!==models[0]) log(`Used backup model ${m}`); break; }
-      catch(e){ lastErr=e; log(`${m} not available, trying next model…`); }
-    }
-    if(!j) throw lastErr;
+    const j=await geminiAuto("text",$("mText").value,body);
     let t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```json|```$/g,"");
     const d=JSON.parse(t);
     S.title=d.title||topic; S.description=d.description||"";
@@ -198,13 +234,8 @@ function addScene(){ S.scenes.push({narration:"",prompt:"",status:"new"}); drawS
 /* ---------- 2. Voice + images ---------- */
 function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 
-async function geminiFallback(list,body){
-  let lastErr=null;
-  for(const m of [...new Set(list)]){ try{ return await gemini(m,body,3); }catch(e){ lastErr=e; log(`${m} busy/unavailable, trying next…`); } }
-  throw lastErr;
-}
 async function makeVoice(s){
-  const j=await geminiFallback([$("mTts").value.trim(),"gemini-2.5-flash-preview-tts","gemini-2.5-pro-preview-tts"],{
+  const j=await geminiAuto("tts",$("mTts").value,{
     contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}
   });
@@ -228,7 +259,7 @@ async function makeImage(s,i){
     if(!r.ok) throw new Error("Pollinations "+r.status);
     blob=await r.blob();
   }else{
-    const j=await geminiFallback([$("mImg").value.trim(),"gemini-3.1-flash-image","gemini-2.5-flash-image"],{
+    const j=await geminiAuto("image",$("mImg").value,{
       contents:[{parts:[{text:"Generate an image: "+full}]}],
       generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}
     });
