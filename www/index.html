@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -54,6 +54,14 @@ details summary{cursor:pointer;font-weight:700}
 <h3>🧠 Google Gemini (script + pictures + Omni video)</h3>
 <label>Gemini API key — aistudio.google.com/apikey (billing on)</label>
 <input id="key" type="password" placeholder="AIza...">
+
+<h3>🖼️ Pictures</h3>
+<label>Picture engine</label>
+<select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (~170 pictures/day)</option><option value="gemini">Google Gemini (paid, best quality)</option></select>
+<div id="cfBox">
+ <label>Cloudflare Account ID — dash.cloudflare.com → Workers AI</label><input id="cfAcct" placeholder="32-character ID">
+ <label>Cloudflare API token (Workers AI permission)</label><input id="cfToken" type="password">
+</div>
 
 <h3>🎙️ Voiceover</h3>
 <label>Voice engine</label>
@@ -196,7 +204,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
+const SET_IDS=["imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -208,6 +216,7 @@ function refreshUI(){
   $("vidRes").innerHTML=RES[ve].map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
   if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
   $("grokBox").style.display=ve==="grok"?"":"none";
+  $("cfBox").style.display=$("imgEngine").value==="cloudflare"?"":"none";
   $("klingBox").style.display=ve==="kling"?"":"none";
   $("vidRule").disabled=ve==="none";
   const el=$("voiceEngine").value==="eleven";
@@ -221,7 +230,7 @@ function refreshUI(){
   refreshUI();
   SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); });
   refreshUI();
-  ["vidEngine","voiceEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
+  ["vidEngine","voiceEngine","imgEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
   ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
   ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
   if(!$("key").value) $("setBox").open=true;
@@ -377,12 +386,12 @@ function updateCost(){
   if(!sc.length){ const mins=+$("mins").value||3, n=Math.max(4,Math.round(mins*60/9)); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat(22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
-  const vCost=vSecs*priceSec(), iCost=sc.length*0.06;
+  const vCost=vSecs*priceSec(), iCost=$("imgEngine").value==="cloudflare"?0:sc.length*0.06;
   const chars=S.scenes.length?S.scenes.reduce((a,s)=>a+s.narration.length,0):Math.round(secs*14);
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
   box.innerHTML=`<div class="cost">📊 <b>Estimate</b> for ${sc.length} scenes · ~${Math.round(secs/60*10)/10} min<br>
-   🖼️ Pictures (Gemini): ≈ $${iCost.toFixed(2)}<br>
+   🖼️ Pictures (${$("imgEngine").value==="cloudflare"?"Cloudflare FLUX":"Gemini"}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
    🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
    🎙️ ${voiceTxt}<br>
    <b>Total ≈ $${tot.toFixed(2)} (≈ ₹${Math.round(tot*USD_INR).toLocaleString("en-IN")})</b> <span class="muted">+ voice plan · rough estimate</span></div>`;
@@ -432,7 +441,23 @@ async function setImage(s,blob,save=true){
   s.img={blob,url:URL.createObjectURL(blob),bmp:await createImageBitmap(blob)};
   if(save) await DB.put("i_"+s.id,blob);
 }
+async function cropTo(blob,ar){ const bm=await createImageBitmap(blob); const [rw,rh]=ar==="9:16"?[9,16]:[16,9];
+  let w=bm.width,h=Math.round(bm.width*rh/rw); if(h>bm.height){ h=bm.height; w=Math.round(h*rw/rh); }
+  const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bm,(bm.width-w)/2,(bm.height-h)/2,w,h,0,0,w,h);
+  return new Promise(r=>c.toBlob(r,"image/jpeg",0.93)); }
+async function makeImageCF(s){
+  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings.");
+  const body={prompt:`${s.prompt}. ${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,2000),steps:4,seed:Math.floor(Math.random()*1e9)};
+  let r;
+  for(let t=0;t<4;t++){ r=await http("POST",`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/@cf/black-forest-labs/flux-1-schnell`,{headers:{Authorization:"Bearer "+tok},json:body});
+    if(r.ok||![429,500,502,503,504].includes(r.status)) break; await sleep(4000*(t+1)); }
+  const d=r.data||{}, img=d.result&&d.result.image;
+  if(!r.ok||!img){ const m=(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d); throw new Error(`Cloudflare ${r.status}: ${m}${/neuron|limit|quota/i.test(m)?" (free daily limit reached — resets 5:30 AM IST)":""}`); }
+  await setImage(s,await cropTo(new Blob([b64ToBytes(img)],{type:"image/jpeg"}),$("format").value));
+  if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
+}
 async function makeImage(s){
+  if($("imgEngine").value==="cloudflare") return makeImageCF(s);
   const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${s.prompt}. ${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
   const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No picture returned (prompt blocked? edit it and retry)");
   await setImage(s,new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}));
