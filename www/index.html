@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hindi Doc Maker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind:wght@500;600;700&family=Rozha+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Hind:wght@500;600;700&family=Rozha+One&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--text:#e8eaf0;--muted:#9aa3b2;--acc:#ff8a3d;--ok:#3ecf8e;--bad:#ff5d5d;--blue:#5b9dff}
 *{box-sizing:border-box}
@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.8</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.0</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -86,8 +86,16 @@ details summary{cursor:pointer;font-weight:700}
   <div><label>Voice</label><select id="elVoice"><option value="">— load voices —</option></select></div>
   <div><label>Model</label><select id="elModel"><option value="eleven_multilingual_v2">Multilingual v2 (stable)</option><option value="eleven_v3">Eleven v3 (most expressive)</option><option value="eleven_flash_v2_5">Flash v2.5 (cheap, fast)</option></select></div>
  </div>
+ <div class="row">
+  <div><label>Voice speed</label><select id="elSpeed"><option value="0.95">Slow</option><option value="1.0">Normal</option><option value="1.05" selected>Slightly fast (better retention)</option><option value="1.1">Fast</option></select></div>
+  <div><label>Delivery</label><select id="elStyle"><option value="natural">Natural storyteller</option><option value="dramatic">Dramatic / emotional</option><option value="steady">Calm &amp; steady</option></select></div>
+ </div>
  <button class="small sec" onclick="loadVoices()">🔄 Load my ElevenLabs voices</button>
+ <p class="muted">Tip: for correct Hindi pronunciation pick a <b>native Hindi voice</b> from ElevenLabs Voice Library and try model <b>Eleven v3</b>.</p>
 </div>
+<label>🗣️ Pronunciation fixes (one per line: <i>word = how to say it</i>)</label>
+<textarea id="pronDict" style="min-height:70px" placeholder="AI = एआई&#10;UNESCO = यूनेस्को&#10;काकतीय = का-क-तीय"></textarea>
+<p class="muted">Numbers, years, %, km and ई.पू. are converted to spoken Hindi automatically.</p>
 <div id="gvBox">
  <label>Gemini voice</label>
  <select id="voice"><option>Charon</option><option>Orus</option><option>Fenrir</option><option>Algenib</option><option>Kore</option><option>Aoede</option><option>Leda</option><option>Achernar</option></select>
@@ -144,6 +152,8 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>Length (min)</label><input id="mins" type="number" value="3" min="1" max="20"></div>
  <div><label>Format</label><select id="format"><option value="16:9">16:9 long video</option><option value="9:16">9:16 Short</option></select></div>
 </div>
+<label>Language style</label>
+<select id="lang"><option value="modern">Modern Hindi — everyday words like YouTubers speak</option><option value="hinglish">Hinglish — more English words</option><option value="pure">Pure (shuddh) Hindi</option></select>
 <label>Tone</label>
 <select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select>
 <button class="big" id="btnAuto" onclick="autoRun()">🚀 Make full video automatically</button>
@@ -178,19 +188,35 @@ details summary{cursor:pointer;font-weight:700}
 <h2>3. Final video</h2>
 <h3>✨ Style &amp; effects</h3>
 <div class="row">
- <div><label>Cinematic look</label><select id="look"><option value="warm">Cinematic warm (teal-orange)</option><option value="mystery">Dark mystery (cold)</option><option value="vintage">Vintage film</option><option value="natural">Natural</option></select></div>
- <div><label>Channel name (title + end screen)</label><input id="channel" placeholder="e.g. Itihaas Ki Kahaniyan"></div>
+ <div><label>Quick preset</label><select id="preset" onchange="applyPreset(this.value)"><option value="">— choose —</option><option value="doc">🎞️ Cinematic documentary</option><option value="viral">🔥 Viral / high retention</option><option value="mystery">🕵️ Mystery thriller</option><option value="history">📜 Old history</option><option value="clean">✨ Clean &amp; minimal</option></select></div>
+ <div><label>Channel name</label><input id="channel" placeholder="e.g. MinuteVerse"></div>
 </div>
-<div class="chk"><input type="checkbox" id="titleCard" checked><label for="titleCard">🎬 Animated title intro</label></div>
+<div class="row">
+ <div><label>🎨 Look / filter</label><select id="look"><option value="warm">Cinematic teal-orange</option><option value="golden">Golden hour</option><option value="mystery">Dark mystery</option><option value="vintage">Vintage film</option><option value="bleach">Gritty (bleach bypass)</option><option value="neon">Neon night</option><option value="bw">Black &amp; white</option><option value="natural">Natural</option></select></div>
+ <div><label>🔀 Transitions</label><select id="trans"><option value="mix">Mixed (auto variety)</option><option value="zoom">Zoom punch</option><option value="whip">Whip pan</option><option value="flash">Flash</option><option value="glitch">Glitch</option><option value="fade">Smooth fade</option></select></div>
+</div>
+<div class="row">
+ <div><label>💬 Subtitle style</label><select id="subStyle"><option value="karaoke">Word-by-word highlight</option><option value="pop">Big pop words (Shorts style)</option><option value="box">Classic box</option><option value="type">Typewriter</option><option value="minimal">Minimal shadow</option><option value="none">No subtitles</option></select></div>
+ <div><label>Subtitle position</label><select id="subPos"><option value="bottom">Bottom</option><option value="middle">Middle</option></select></div>
+</div>
+<div class="row">
+ <div><label>🎬 Title animation</label><select id="titleStyle"><option value="gold">Gold cinematic</option><option value="punch">Word punch</option><option value="glitch">Glitch</option><option value="type">Typewriter</option></select></div>
+ <div><label>Title appears</label><select id="titlePos"><option value="after">After the hook (better retention)</option><option value="start">At the very start</option></select></div>
+</div>
+<label>📍 Fact box style</label><select id="factStyle"><option value="bar">Gold bar</option><option value="pop">Yellow pop box</option><option value="underline">Animated underline</option></select>
+<div class="chk"><input type="checkbox" id="titleCard" checked><label for="titleCard">🎬 Animated title</label></div>
 <div class="chk"><input type="checkbox" id="onscreen" checked><label for="onscreen">📍 On-screen facts, dates &amp; places</label></div>
-<div class="chk"><input type="checkbox" id="subs" checked><label for="subs">💬 Hindi subtitles</label></div>
+<div class="chk"><input type="checkbox" id="kwHL" checked><label for="kwHL">🟡 Highlight key word in yellow</label></div>
+<div class="chk"><input type="checkbox" id="punch" checked><label for="punch">💥 Zoom punch on key word</label></div>
+<div class="chk"><input type="checkbox" id="shake"><label for="shake">🎥 Handheld camera shake</label></div>
+<div class="chk"><input type="checkbox" id="progress" checked><label for="progress">⏳ Progress bar on top</label></div>
 <div class="chk"><input type="checkbox" id="bars" checked><label for="bars">🎞️ Cinema black bars</label></div>
 <div class="chk"><input type="checkbox" id="grain" checked><label for="grain">🌫️ Film grain</label></div>
-<div class="chk"><input type="checkbox" id="leaks" checked><label for="leaks">🌅 Light leaks on scene changes</label></div>
-<div class="chk"><input type="checkbox" id="sfx" checked><label for="sfx">🔊 Cinematic boom &amp; whoosh sounds</label></div>
+<div class="chk"><input type="checkbox" id="leaks" checked><label for="leaks">🌅 Light leaks</label></div>
+<div class="chk"><input type="checkbox" id="sfx" checked><label for="sfx">🔊 Boom, whoosh &amp; transition sounds</label></div>
 <div class="chk"><input type="checkbox" id="endScreen" checked><label for="endScreen">🔔 Subscribe end screen (6 s)</label></div>
 <div class="chk"><input type="checkbox" id="monitor"><label for="monitor">Play sound while rendering</label></div>
-<button class="small sec" onclick="preview()">👁️ Preview title, style &amp; end screen</button>
+<button class="small sec" onclick="preview()">👁️ Preview style (hook, title, subtitles, end)</button>
 <label>Background music (optional, from phone)</label>
 <input type="file" id="bgm" accept="audio/*">
 <label>Music volume</label><input type="range" id="bgmVol" min="0" max="40" value="10">
@@ -227,7 +253,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
+const SET_IDS=["claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -280,13 +306,13 @@ async function http(method,url,{headers={},json,blob=false,timeout=600000}={}){
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
   S.scenes=p.scenes.map(s=>({...s,st:{}}));
   for(const s of S.scenes){
-    try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false); }catch(e){}
+    try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false,a.text); }catch(e){}
     try{ const im=await DB.get("i_"+s.id); if(im) await setImage(s,im,false); }catch(e){}
     try{ const c=await DB.get("c_"+s.id); if(c) await setClip(s,c.blob,false); }catch(e){}
   }
@@ -351,27 +377,35 @@ async function makeScript(){
 let PROMPT="", PTOPIC="";
 function copyPrompt(){ (navigator.clipboard?navigator.clipboard.writeText(PROMPT):Promise.reject()).then(()=>status("✅ Prompt copied — now paste it in ChatGPT or Claude."),()=>prompt("Copy this:",PROMPT)); }
 async function usePasted(){ try{ const d=parseJSON($("pasteIn").value); if(!d.scenes||!d.scenes.length) throw new Error("No scenes found in the reply."); await applyScript(d,PTOPIC||$("topic").value.trim()); $("pasteBox").style.display="none"; $("pasteIn").value=""; }catch(e){ alert("Could not read the reply: "+e.message+"\nMake sure you copied the whole reply."); } }
+const LANG={
+ modern:"आज की आसान, बोलचाल वाली modern हिंदी — जैसी लोकप्रिय YouTube चैनल बोलते हैं। भारी संस्कृत/शुद्ध शब्द बिल्कुल नहीं (जैसे 'अद्भुत'→'कमाल का', 'संरचना'→'बनावट', 'प्राचीन'→'पुराना', 'रहस्यमयी'→'रहस्य से भरा', 'तत्पश्चात'→'उसके बाद')। रोज़ इस्तेमाल होने वाले अंग्रेज़ी शब्द चलेंगे (मिस्ट्री, टेक्नोलॉजी, साइंस, प्लान)।",
+ hinglish:"Hinglish — आम बोलचाल जिसमें काफ़ी अंग्रेज़ी शब्द हों (जैसे 'ये सच में एक बड़ी मिस्ट्री है, साइंटिस्ट्स भी कन्फ़्यूज़ हैं')। फिर भी पूरी लाइन देवनागरी में लिखें।",
+ pure:"शुद्ध पर सरल हिंदी।"};
 function buildPrompt(topic,mins,n){
     return `आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
 विषय: "${topic}"
 टोन: ${$("tone").value}
 लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें। हर दृश्य एक ही वीडियो शॉट (8-10 सेकंड) है।
+भाषा: ${LANG[$("lang").value]}
 नियम:
-- "narration": शुद्ध, सरल, बोलचाल की हिंदी (देवनागरी), हर दृश्य में 20-26 शब्द। अंक भी शब्दों में लिखें।
-- पहला दृश्य दमदार hook हो। आखिरी दृश्य में निष्कर्ष और like/subscribe की छोटी अपील।
+- "narration": हर दृश्य में 20-26 शब्द, सिर्फ़ देवनागरी लिपि में (अंग्रेज़ी शब्द भी देवनागरी में, जैसे "टेक्नोलॉजी", "इंजीनियरिंग")। छोटे, पंच वाले वाक्य — जैसे कोई दोस्त कहानी सुना रहा हो।
+- उच्चारण के लिए: अंक/साल हमेशा शब्दों में (1336 → "तेरह सौ छत्तीस", 2.5 → "ढाई"); कोई abbreviation, symbol, %, & या ब्रैकेट नहीं; "ई.पू." की जगह "ईसा पूर्व"; नुक़्ता सही लगाएँ (ज़, फ़)।
+- Retention: पहले दृश्य की पहली लाइन में सबसे चौंकाने वाली बात या सवाल (hook)। बीच-बीच में curiosity बनाए रखें ("लेकिन असली राज़ अभी बाकी है…", "और यहीं से कहानी पलटती है…")। हर 3-4 दृश्यों में नया twist या fact। दर्शक से सीधे बात करें ("सोचिए…", "क्या आप जानते हैं…")।
+- आखिरी दृश्य में दमदार निष्कर्ष और like/subscribe की छोटी अपील।
+- "keyword": उस दृश्य की narration से सबसे ज़रूरी 1 शब्द (बिल्कुल वैसा ही जैसा narration में लिखा है) — स्क्रीन पर highlight होगा।
 - तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" से कहें।
 - "image_prompt": English में उस दृश्य की पहली फ्रेम का विस्तृत सिनेमैटिक वर्णन (कोई टेक्स्ट नहीं, किसी असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
 - "motion": English में उस शॉट की गति — कैमरा मूवमेंट और दृश्य में क्या हिलता है (1 वाक्य)।
 - "onscreen": लगभग हर तीसरे दृश्य में स्क्रीन पर दिखाने के लिए 2-5 शब्दों का छोटा टेक्स्ट — कोई तारीख/वर्ष, जगह का नाम या मुख्य तथ्य (जैसे "1336 ई. — विजयनगर की स्थापना"); बाकी दृश्यों में ""।
 - "screen_title": वीडियो की शुरुआत में बड़े अक्षरों में दिखाने के लिए 2-4 शब्दों का छोटा शीर्षक। "screen_subtitle": उसके नीचे एक छोटी पंक्ति (6-10 शब्द)।
 - "title": आकर्षक हिंदी YouTube शीर्षक। "description": हिंदी YouTube description। "tags": 10 tags।
-केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"scenes":[{"narration":"","image_prompt":"","motion":"","onscreen":""}]}`;
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"scenes":[{"narration":"","keyword":"","image_prompt":"","motion":"","onscreen":""}]}`;
 }
 async function applyScript(d,topic){
     await DB.clear();
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
-    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",st:{}}));
+    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",st:{}}));
     applyRule(); await saveProj(); drawScript();
     log(`Script ready: ${S.scenes.length} scenes.`); status("✅ Script ready — check the cost below.");
 }
@@ -439,7 +473,8 @@ function drawScenes(){
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
        <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()"></details>
-      <label>📍 On-screen text (empty = none)</label><input value="${esc(s.onscreen||"")}" placeholder="e.g. 1336 ई. — विजयनगर" oninput="S.scenes[${i}].onscreen=this.value;saveProj()">
+      <div class="row"><div><label>📍 On-screen text</label><input value="${esc(s.onscreen||"")}" placeholder="e.g. 1336 ई. — विजयनगर" oninput="S.scenes[${i}].onscreen=this.value;saveProj()"></div>
+      <div><label>🟡 Highlight word</label><input value="${esc(s.keyword||"")}" placeholder="key word" oninput="S.scenes[${i}].keyword=this.value;saveProj()"></div></div>
       <div class="chk"><input type="checkbox" id="uv_${s.id}" ${s.useVideo?"checked":""} ${$("vidEngine").value==="none"?"disabled":""} onchange="S.scenes[${i}].useVideo=this.checked;saveProj();drawScenes();updateCost()"><label for="uv_${s.id}">🎥 AI video clip for this scene</label></div>
       <button class="small sec" onclick="one(${i},'v')">🎙️ Redo voice</button>
       <button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>
@@ -485,31 +520,60 @@ async function loadVoices(){
   const v=(r.data.voices||[]).map(x=>({id:x.voice_id,name:`${x.name}${x.labels&&x.labels.accent?" · "+x.labels.accent:""}${x.labels&&x.labels.gender?" · "+x.labels.gender:""}`}));
   store("hdm2_elVoiceList",JSON.stringify(v)); fillVoices(v); log(`Loaded ${v.length} ElevenLabs voices. Tip: add a Hindi voice from the Voice Library on elevenlabs.io, then reload.`);
 }
-async function setVoice(s,blob,align,save=true){
+async function setVoice(s,blob,align,save=true,text){
   const buf=await ac().decodeAudioData(await blob.arrayBuffer());
-  s.voice={blob,align,buf}; if(save) await DB.put("a_"+s.id,{blob,align});
+  text=text||s.narration; s.voice={blob,align,buf,text}; if(save) await DB.put("a_"+s.id,{blob,align,text});
 }
 function pcmToWav(bytes,rate){ const h=new ArrayBuffer(44), v=new DataView(h), w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
   w(0,"RIFF");v.setUint32(4,36+bytes.length,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,bytes.length,true);
   return new Blob([h,bytes],{type:"audio/wav"}); }
+/* ---------- pronunciation: make text speakable ---------- */
+const HN="शून्य एक दो तीन चार पाँच छह सात आठ नौ दस ग्यारह बारह तेरह चौदह पंद्रह सोलह सत्रह अठारह उन्नीस बीस इक्कीस बाईस तेईस चौबीस पच्चीस छब्बीस सत्ताईस अट्ठाईस उनतीस तीस इकतीस बत्तीस तैंतीस चौंतीस पैंतीस छत्तीस सैंतीस अड़तीस उनतालीस चालीस इकतालीस बयालीस तैंतालीस चवालीस पैंतालीस छियालीस सैंतालीस अड़तालीस उनचास पचास इक्यावन बावन तिरेपन चौवन पचपन छप्पन सत्तावन अट्ठावन उनसठ साठ इकसठ बासठ तिरसठ चौंसठ पैंसठ छियासठ सड़सठ अड़सठ उनहत्तर सत्तर इकहत्तर बहत्तर तिहत्तर चौहत्तर पचहत्तर छिहत्तर सतहत्तर अठहत्तर उन्यासी अस्सी इक्यासी बयासी तिरासी चौरासी पचासी छियासी सत्तासी अट्ठासी नवासी नब्बे इक्यानवे बानवे तिरानवे चौरानवे पंचानवे छियानवे सत्तानवे अट्ठानवे निन्यानवे".split(" ");
+function hiNum(n){ n=Math.floor(n); if(n<100) return HN[n];
+  if(n<1000){ const r=n%100; return HN[Math.floor(n/100)]+" सौ"+(r?" "+HN[r]:""); }
+  if(n<10000&&Math.floor(n/100)%10!==0){ const r=n%100; return HN[Math.floor(n/100)]+" सौ"+(r?" "+HN[r]:""); }
+  if(n<100000){ const r=n%1000; return hiNum(Math.floor(n/1000))+" हज़ार"+(r?" "+hiNum(r):""); }
+  if(n<10000000){ const r=n%100000; return hiNum(Math.floor(n/100000))+" लाख"+(r?" "+hiNum(r):""); }
+  const r=n%10000000; return hiNum(Math.floor(n/10000000))+" करोड़"+(r?" "+hiNum(r):""); }
+const DEV_DIG="०१२३४५६७८९";
+function speakable(t){
+  t=String(t||"").replace(/[०-९]/g,d=>DEV_DIG.indexOf(d));
+  t=t.replace(/(\d),(?=\d)/g,"$1");
+  t=t.replace(/ई\.\s?पू\./g,"ईसा पूर्व").replace(/(\d)\s?ई\./g,"$1 ईस्वी").replace(/(\d)\s?(वीं|वी|वाँ|वां|वें)/g,(m,d,s)=>d+"$"+s);
+  t=t.replace(/(\d+)\.(\d+)/g,(m,a,b)=>a==="2"&&b==="5"?"ढाई":a==="1"&&b==="5"?"डेढ़":hiNum(+a)+" दशमलव "+b.split("").map(x=>HN[+x]).join(" "));
+  t=t.replace(/(\d+)\$(वीं|वी|वाँ|वां|वें)/g,(m,a,s)=>hiNum(+a)+s);
+  t=t.replace(/\d+/g,m=>m.length>9?m.split("").map(x=>HN[+x]).join(" "):hiNum(+m));
+  t=t.replace(/\s*%/g," प्रतिशत").replace(/\s*&\s*/g," और ").replace(/\bkm\b|किमी\.?/gi,"किलोमीटर").replace(/[()\[\]{}"“”*_#]/g," ").replace(/[—–]/g,", ").replace(/\s+/g," ").trim();
+  const dict=($("pronDict").value||"").split("\n").map(l=>l.split("=")).filter(x=>x.length>=2&&x[0].trim());
+  dict.forEach(([w,...say])=>{ const esc=w.trim().replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); try{ t=t.replace(new RegExp(`(?<![\\p{L}\\p{M}])${esc}(?![\\p{L}\\p{M}])`,"gu"),say.join("=").trim()); }catch(e){} });
+  return t; }
 async function makeVoice(s){
   if($("voiceEngine").value==="eleven"){
     const key=$("elKey").value.trim(); if(!key) throw new Error("Add ElevenLabs key in Settings (or switch voice engine to Gemini).");
     if(!$("elVoice").value) await loadVoices();
     const vid=$("elVoice").value; if(!vid) throw new Error("Pick an ElevenLabs voice in Settings.");
+    const text=speakable(s.narration), i=S.scenes.indexOf(s);
+    const st=$("elStyle").value, spd=+$("elSpeed").value||1;
+    const call=async model=>{
+      const body={text,model_id:model};
+      if(model!=="eleven_multilingual_v2") body.language_code="hi";
+      if(model==="eleven_v3") body.voice_settings={stability:st==="dramatic"?0:st==="steady"?1:0.5};
+      else { body.voice_settings={stability:st==="dramatic"?0.3:st==="steady"?0.75:0.5,similarity_boost:0.8,style:st==="dramatic"?0.45:st==="steady"?0:0.15,use_speaker_boost:true,speed:spd};
+        if(i>0) body.previous_text=speakable(S.scenes[i-1].narration); if(i<S.scenes.length-1) body.next_text=speakable(S.scenes[i+1].narration); }
+      let r; for(let t=0;t<3;t++){ r=await http("POST",`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}/with-timestamps?output_format=mp3_44100_128`,{headers:{"xi-api-key":key},json:body});
+        if(r.ok||![429,500,502,503].includes(r.status)) break; await sleep(4000*(t+1)); }
+      return r; };
     const model=$("elModel").value;
-    const body={text:s.narration,model_id:model}; if(model!=="eleven_multilingual_v2") body.language_code="hi";
-    let r;
-    for(let t=0;t<3;t++){ r=await http("POST",`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}/with-timestamps?output_format=mp3_44100_128`,{headers:{"xi-api-key":key},json:body});
-      if(r.ok||![429,500,502,503].includes(r.status)) break; await sleep(4000*(t+1)); }
+    let r=await call(model);
+    if(!r.ok&&model!=="eleven_multilingual_v2"&&r.status!==401&&!/quota|credits|limit/i.test(errMsg(r.data))){ log(`${model} failed (${errMsg(r.data).slice(0,80)}) → using Multilingual v2`); r=await call("eleven_multilingual_v2"); }
     if(!r.ok) throw new Error(`ElevenLabs ${r.status}: ${errMsg(r.data)}`);
-    await setVoice(s,new Blob([b64ToBytes(r.data.audio_base64)],{type:"audio/mpeg"}),r.data.alignment||r.data.normalized_alignment||null);
+    await setVoice(s,new Blob([b64ToBytes(r.data.audio_base64)],{type:"audio/mpeg"}),r.data.alignment||r.data.normalized_alignment||null,true,text);
   }else{
-    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}});
+    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${speakable(s.narration)}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}});
     const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
     const mime=p.inlineData.mimeType||"", bytes=b64ToBytes(p.inlineData.data);
     const blob=/wav|mp3|mpeg|ogg/.test(mime)?new Blob([bytes],{type:mime}):pcmToWav(bytes,+((mime.match(/rate=(\d+)/)||[])[1]||24000));
-    await setVoice(s,blob,null);
+    await setVoice(s,blob,null,true,speakable(s.narration));
   }
 }
 
@@ -656,31 +720,27 @@ async function autoRun(){
   });
 }
 
-/* ---------- 3. Render (cinematic) ---------- */
+/* ---------- 3. Render (retention style engine v3) ---------- */
 function pickMime(){ const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]; return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||""; }
-function splitSubs(text){ const out=[]; let off=0;
-  text.split(/(?<=[।.!?,;])\s+/).forEach(p=>{ const at=text.indexOf(p,off); off=at+p.length; let pos=at;
-    while(p.length>60){ let k=p.lastIndexOf(" ",60); if(k<20) k=60; out.push({t:p.slice(0,k),o:pos,l:k}); const rest=p.slice(k); const trim=rest.length-rest.trimStart().length; pos+=k+trim; p=rest.trim(); }
-    if(p) out.push({t:p,o:pos,l:p.length}); });
-  return out; }
-function subTimes(s){ const subs=splitSubs(s.narration), d=s.voice.buf.duration, al=s.voice.align;
-  if(al&&al.character_start_times_seconds&&al.character_start_times_seconds.length>=s.narration.length*0.9){
-    const st=al.character_start_times_seconds;
-    return subs.map((x,i)=>({text:x.t,a:st[Math.min(x.o,st.length-1)]||0,b:i<subs.length-1?(st[Math.min(subs[i+1].o,st.length-1)]||d):d})); }
-  const tot=subs.reduce((a,x)=>a+x.t.length,0)||1; let c=0; return subs.map(x=>{ const dd=d*x.t.length/tot, o={text:x.t,a:c,b:c+dd}; c+=dd; return o; }); }
 function wrap(g,text,maxW){ const w=String(text).split(" "),L=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(g.measureText(t).width>maxW&&l){L.push(l);l=x;}else l=t; }); if(l)L.push(l); return L; }
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const ease=x=>1-Math.pow(1-clamp(x),3);
 const easeBack=x=>{ x=clamp(x); const c=1.9; return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2); };
+const SEG=(window.Intl&&Intl.Segmenter)?new Intl.Segmenter("hi",{granularity:"grapheme"}):null;
+const graph=t=>SEG?[...SEG.segment(t)].map(x=>x.segment):[...t];
 function screenTitle(){ let t=(S.screenTitle||"").trim(), sub=(S.screenSub||"").trim();
   if(!t){ const base=String(S.title||"").split("|")[0].trim(); const m=base.match(/^(.{4,40}?)[:?।!-]\s*(.+)$/); if(m){ t=m[1].trim(); sub=sub||m[2].trim(); } else t=base; }
   return {t,sub}; }
-const TITLE_FONT='"Rozha One","Noto Serif Devanagari",serif', UI_FONT='"Hind","Noto Sans Devanagari",sans-serif';
+const TITLE_FONT='"Rozha One","Noto Serif Devanagari",serif', UI_FONT='"Hind","Noto Sans Devanagari",sans-serif', POP_FONT='"Baloo 2","Hind","Noto Sans Devanagari",sans-serif';
 const LOOKS={
   natural:[],
   warm:[["soft-light","grad",["rgba(255,150,60,0.55)","rgba(20,110,140,0.55)"]],["soft-light","#000",0.12]],
+  golden:[["soft-light","#ffb347",0.55],["soft-light","grad",["rgba(255,200,120,0.35)","rgba(120,60,20,0.3)"]]],
+  mystery:[["saturation","hsl(0,0%,50%)",0.45],["multiply","#24324a",0.35],["soft-light","#3a6ea8",0.35]],
   vintage:[["saturation","hsl(0,0%,50%)",0.35],["soft-light","#c8843c",0.45],["multiply","#f3e2c4",0.25]],
-  mystery:[["saturation","hsl(0,0%,50%)",0.45],["multiply","#24324a",0.35],["soft-light","#3a6ea8",0.35]]
+  bw:[["saturation","hsl(0,0%,50%)",1],["soft-light","#000",0.2]],
+  neon:[["soft-light","grad",["rgba(255,40,180,0.6)","rgba(0,220,255,0.6)"]],["multiply","#2a1a5e",0.18]],
+  bleach:[["saturation","hsl(0,0%,50%)",0.55],["soft-light","#000",0.28],["soft-light","#9fb8c8",0.22]]
 };
 function makeGrain(){ const tiles=[]; for(let k=0;k<4;k++){ const c=document.createElement("canvas"); c.width=c.height=256; const x=c.getContext("2d"), im=x.createImageData(256,256); for(let i=0;i<im.data.length;i+=4){ const v=110+Math.random()*90|0; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=255; } x.putImageData(im,0,0); tiles.push(c); } return tiles; }
 function boom(a,dest,t){
@@ -689,10 +749,24 @@ function boom(a,dest,t){
   const n=a.createBuffer(1,Math.floor(a.sampleRate*1.6),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,4);
   const ns=a.createBufferSource(), lp=a.createBiquadFilter(), ng=a.createGain(); ns.buffer=n; lp.type="lowpass"; lp.frequency.value=700; ng.gain.value=0.5; ns.connect(lp); lp.connect(ng); ng.connect(dest); ns.start(t);
 }
-function whoosh(a,dest,t){
-  const n=a.createBuffer(1,Math.floor(a.sampleRate*1.2),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.6; }
-  const s=a.createBufferSource(), bp=a.createBiquadFilter(), g=a.createGain(); s.buffer=n; bp.type="bandpass"; bp.Q.value=1.2; bp.frequency.setValueAtTime(300,t); bp.frequency.exponentialRampToValueAtTime(3500,t+1.1); g.gain.value=0.35; s.connect(bp); bp.connect(g); g.connect(dest); s.start(t);
+function whoosh(a,dest,t,vol=0.35,len=1.1){
+  const n=a.createBuffer(1,Math.floor(a.sampleRate*len),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.6; }
+  const s=a.createBufferSource(), bp=a.createBiquadFilter(), g=a.createGain(); s.buffer=n; bp.type="bandpass"; bp.Q.value=1.2; bp.frequency.setValueAtTime(300,t); bp.frequency.exponentialRampToValueAtTime(3500,t+len*0.95); g.gain.value=vol; s.connect(bp); bp.connect(g); g.connect(dest); s.start(t);
 }
+function wordTimes(s){
+  const text=(s.voice&&s.voice.text)||s.narration, d=s.voice.buf.duration, al=s.voice.align, words=[], re=/\S+/g; let m;
+  while((m=re.exec(text))) words.push({w:m[0],o:m.index,l:m[0].length});
+  const ok=al&&al.character_start_times_seconds&&al.character_start_times_seconds.length>=text.length*0.9;
+  const st=ok&&al.character_start_times_seconds, en=ok&&al.character_end_times_seconds, tot=text.length||1;
+  words.forEach(x=>{ if(ok){ x.a=st[Math.min(x.o,st.length-1)]||0; x.b=en[Math.min(x.o+x.l-1,en.length-1)]||x.a+0.3; } else { x.a=d*x.o/tot; x.b=d*(x.o+x.l)/tot; } });
+  return markKw(words,s.keyword);
+}
+function markKw(words,keyword){ const strip=w=>String(w).replace(/[^\p{L}\p{M}\p{N}]/gu,""); const kws=String(keyword||"").split(/\s+/).map(strip).filter(Boolean);
+  words.forEach(x=>{ x.c=strip(x.w); x.kw=!!kws.length&&kws.some(k=>x.c===k||(k.length>2&&x.c.startsWith(k))); }); return words; }
+function groupWords(words,maxChars,maxWords){ const out=[]; let cur=[], len=0;
+  words.forEach(x=>{ cur.push(x); len+=x.w.length+1; if(/[।.!?,;:]$/.test(x.w)||len>=maxChars||cur.length>=maxWords){ out.push(cur); cur=[]; len=0; } });
+  if(cur.length) out.push(cur);
+  return out.map((ws,i,arr)=>({ws,a:ws[0].a,b:i<arr.length-1?arr[i+1][0].a:ws[ws.length-1].b+0.4})); }
 
 function preview(){ return renderVideo(false,true); }
 async function renderVideo(auto,PV){
@@ -702,88 +776,159 @@ async function renderVideo(auto,PV){
   BUSY=true; $("btnRender").disabled=true; if(!PV) $("outBox").innerHTML="";
   let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
   try{
-  try{ await Promise.race([Promise.all([document.fonts.load(`40px ${TITLE_FONT}`,"हम्पी"),document.fonts.load(`700 40px ${UI_FONT}`,"हम्पी"),document.fonts.load(`600 40px ${UI_FONT}`,"हम्पी")]),sleep(4000)]); }catch(e){}
+  try{ await Promise.race([Promise.all([document.fonts.load(`40px ${TITLE_FONT}`,"हम्पी"),document.fonts.load(`700 40px ${UI_FONT}`,"हम्पी"),document.fonts.load(`800 40px ${POP_FONT}`,"हम्पी")]),sleep(4000)]); }catch(e){}
   const a=ac(), [W,H]=dims(), cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
-  const on=id=>$(id).checked;
-  const INTRO=on("titleCard")?5:0.6, OUTRO=on("endScreen")?6:0.8, GAP=0.45, FADE=0.7, FPS=30;
-  const SC=PV?S.scenes.filter(s=>s.img).slice(0,2):S.scenes;
-  let t=INTRO; const tl=SC.map((s,i)=>{ const st=t, d=s.voice?s.voice.buf.duration:4; t+=d+GAP; const sb=s.voice?subTimes(s):[{text:s.narration.slice(0,60),a:0,b:d}]; return {s,i,start:st,vend:t,subs:sb.map(x=>({text:x.text,a:x.a+st,b:x.b+st}))}; });
+  const on=id=>$(id).checked, val=id=>$(id).value;
+  const TSTY=val("titleStyle"), SUB=val("subStyle"), TRANS=val("trans"), FACT=val("factStyle");
+  const TITLE=on("titleCard")?4.4:0, TR=0.55, GAP=0.4, FPS=30, OUTRO=on("endScreen")?6:0.8, HL=on("kwHL"), SHAKE=on("shake");
+  const SC=PV?S.scenes.filter(s=>s.img).slice(0,3):S.scenes;
+  const after=!!TITLE&&val("titlePos")==="after"&&SC.length>1;
+  let t=after?0.25:(TITLE?TITLE+0.2:0.5), titleStart=after?null:0;
+  const tl=[];
+  SC.forEach((s,i)=>{ let vs;
+    if(after&&i===1){ titleStart=t; vs=t; t+=TITLE; } else vs=i===0?0:t-TR;
+    const d=s.voice?s.voice.buf.duration:4, st=t; t+=d+GAP;
+    const words=s.voice?wordTimes(s).map(w=>({...w,a:w.a+st,b:w.b+st})):markKw(s.narration.split(/\s+/).filter(Boolean).map((w,k,arr)=>({w,a:st+d*k/arr.length,b:st+d*(k+1)/arr.length})),s.keyword);
+    tl.push({s,i,start:st,vend:t,vs,words});
+  });
+  if(!TITLE) titleStart=-99;
   const BODY_END=t, total=t+OUTRO;
-  const look=LOOKS[$("look").value]||[], grain=on("grain")?makeGrain():null;
-  const barH=on("bars")?(W>H?Math.round((H-W/2.39)/2):Math.round(H*0.06)):0;
+  tl.forEach((x,j)=>{ x.ve=j<tl.length-1?tl[j+1].vs+TR:total; x.chunks=groupWords(x.words,SUB==="pop"?14:40,SUB==="pop"?3:9); const kw=x.words.find(w=>w.kw); x.kwT=kw?kw.a:null; });
+  const KINDS=["zoom","flash","whip","fade","glitch"], tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS;
+  const look=LOOKS[val("look")]||[], grain=on("grain")?makeGrain():null;
+  const barH=on("bars")?(W>H?Math.round((H-W/2.39)/2):Math.round(H*0.05)):0;
   const ST=screenTitle();
   const dest=a.createMediaStreamDestination(), mon=$("monitor").checked, srcs=[];
   const out=a.createGain(); out.connect(dest); if(mon) out.connect(a.destination);
   let mSrc=null, mGain=null; const f=$("bgm").files[0];
-  if(f){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; mGain=a.createGain(); mSrc.connect(mGain); mGain.connect(out); }catch(e){ log("Music not readable: "+e.message); } }
+  if(f&&!PV){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; mGain=a.createGain(); mSrc.connect(mGain); mGain.connect(out); }catch(e){ log("Music not readable: "+e.message); } }
   const stream=cv.captureStream(FPS); dest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr));
   const mime=pickMime(); if(!mime) throw new Error("This phone can't record video (no MediaRecorder).");
   const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:W>H?6e6:5e6,audioBitsPerSecond:160000});
   const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
   const fs=Math.round(Math.min(W,H)*0.046), U=Math.min(W,H)/1080;
-  const vids={}; const playStart=j=>j===0?0:tl[j].start-FADE;
+  let SX=0, SY=0;
+  const inTitle=T=>TITLE&&T>=titleStart&&T<titleStart+TITLE;
+  function rr(x,y,w,h,r){ g.beginPath(); if(g.roundRect) g.roundRect(x,y,w,h,r); else g.rect(x,y,w,h); }
+  // clip players created just in time
+  const vids={};
   function prep(j){ const x=tl[j]; if(!x||!x.s.useVideo||!x.s.clip||vids[j]) return; const el=document.createElement("video"); el.muted=true; el.playsInline=true; el.preload="auto"; el.src=x.s.clip.url; el.load(); vids[j]={el,started:false}; }
   function release(j){ const v=vids[j]; if(!v) return; try{ v.el.pause(); v.el.removeAttribute("src"); v.el.load(); }catch(e){} delete vids[j]; }
-  function cover(src,sw,sh,z,px,py,alpha){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha; g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5,(H-dh)/2+py*(dh-H)*0.5,dw,dh); g.globalAlpha=1; }
-  function drawScene(x,T,alpha){
-    const j=x.i, end=j===tl.length-1?total:x.vend, p=clamp((T-playStart(j))/(end-playStart(j)));
-    const v=vids[j];
-    if(v&&v.el.readyState>=2&&v.started){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,el.ended?1+0.04*p:1,0,0,alpha); return; }
+  function cover(src,sw,sh,z,px,py,alpha,dx){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha; g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5+dx+SX,(H-dh)/2+py*(dh-H)*0.5+SY,dw,dh); g.globalAlpha=1; }
+  function punch(x,T){ if(!on("punch")||x.kwT==null) return 1; const d=T-x.kwT; return d>=0&&d<0.9?1+0.07*(1-ease(d/0.9)):1; }
+  function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1), dx=(o.dx||0)*W;
+    const v=vids[j]; if(v&&v.started&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx); return; }
     const im=x.s.img.bmp, k=j%4, z=(k%2===0)?1.05+0.10*p:1.15-0.10*p;
-    cover(im,im.width,im.height,z,(k<2?-1:1)*(p-0.5),(k===1||k===2?1:-1)*(p-0.5)*0.6,alpha);
+    cover(im,im.width,im.height,z*zm,(k<2?-1:1)*(p-0.5),(k===1||k===2?1:-1)*(p-0.5)*0.6,alpha,dx); }
+  function transition(A,B,T,q,kind){
+    if(kind==="fade"){ drawScene(A,T,1); drawScene(B,T,q); }
+    else if(kind==="zoom"){ if(q<0.5) drawScene(A,T,1,{z:1+0.5*ease(q*2)}); else drawScene(B,T,1,{z:1.35-0.35*ease((q-0.5)*2)}); g.fillStyle=`rgba(255,255,255,${0.3*(1-Math.abs(2*q-1))})`; g.fillRect(0,0,W,H); }
+    else if(kind==="flash"){ drawScene(q<0.5?A:B,T,1); g.fillStyle=`rgba(255,255,255,${Math.pow(1-Math.abs(2*q-1),1.5)})`; g.fillRect(0,0,W,H); }
+    else if(kind==="whip"){ const e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2; drawScene(A,T,1,{dx:-e}); drawScene(B,T,1,{dx:1-e});
+      if(q>0.15&&q<0.85){ g.globalAlpha=0.35; g.drawImage(cv,W*0.04,0); g.drawImage(cv,-W*0.04,0); g.globalAlpha=1; } }
+    else { drawScene(q<0.5?A:B,T,1); const amt=1-Math.abs(2*q-1), n=6+Math.floor(Math.random()*6);
+      for(let k=0;k<n;k++){ const y=Math.random()*H, hh=Math.random()*H*0.08+4; g.drawImage(cv,0,y,W,hh,(Math.random()-0.5)*W*0.12*amt,y,W,hh); }
+      g.globalCompositeOperation="screen"; g.fillStyle=`rgba(255,0,60,${0.2*amt})`; g.fillRect(W*0.006*amt,0,W,H); g.fillStyle=`rgba(0,200,255,${0.2*amt})`; g.fillRect(-W*0.006*amt,0,W,H); g.globalCompositeOperation="source-over"; }
   }
   function grade(){ look.forEach(([op,col,al])=>{ g.globalCompositeOperation=op; if(col==="grad"){ const gr=g.createLinearGradient(0,0,W*0.3,H); gr.addColorStop(0,al[0]); gr.addColorStop(1,al[1]); g.fillStyle=gr; g.globalAlpha=1; } else { g.fillStyle=col; g.globalAlpha=al; } g.fillRect(0,0,W,H); }); g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
-  function leaks(T){
-    if(!on("leaks")) return; let s=0;
-    tl.forEach(x=>{ const d=Math.abs(T-x.start); if(x.i>0&&d<1.2) s=Math.max(s,1-d/1.2); });
-    if(T<INTRO) s=Math.max(s,0.5*Math.sin(Math.PI*clamp(T/INTRO)));
+  function leaks(T){ if(!on("leaks")) return; let s=0;
+    tl.forEach(x=>{ if(x.i>0){ const d=Math.abs(T-(x.vs+TR/2)); if(d<1.1) s=Math.max(s,1-d/1.1); } });
+    if(inTitle(T)) s=Math.max(s,0.5*Math.sin(Math.PI*clamp((T-titleStart)/TITLE)));
     if(s<=0.01) return;
     const cx=W*(0.2+0.6*((Math.sin(T*0.7)+1)/2)), cy=H*(0.15+0.3*((Math.cos(T*0.5)+1)/2)), r=Math.max(W,H)*0.6;
     const gr=g.createRadialGradient(cx,cy,0,cx,cy,r); gr.addColorStop(0,"rgba(255,170,80,0.85)"); gr.addColorStop(0.35,"rgba(255,90,60,0.35)"); gr.addColorStop(1,"rgba(255,60,40,0)");
-    g.globalCompositeOperation="screen"; g.globalAlpha=0.55*s; g.fillStyle=gr; g.fillRect(0,0,W,H); g.globalCompositeOperation="source-over"; g.globalAlpha=1;
-  }
+    g.globalCompositeOperation="screen"; g.globalAlpha=0.5*s; g.fillStyle=gr; g.fillRect(0,0,W,H); g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
   function filmFx(n){
     if(grain){ const pat=g.createPattern(grain[n%4],"repeat"); g.save(); g.globalCompositeOperation="overlay"; g.globalAlpha=0.16; g.translate(Math.random()*256,Math.random()*256); g.fillStyle=pat; g.fillRect(-256,-256,W+512,H+512); g.restore(); }
-    if($("look").value==="vintage"){ g.globalAlpha=0.03+Math.random()*0.03; g.fillStyle=Math.random()<0.5?"#000":"#fff"; g.fillRect(0,0,W,H); g.globalAlpha=1;
-      if(Math.random()<0.25){ g.strokeStyle="rgba(255,255,255,0.25)"; g.lineWidth=1.5*U; const x=Math.random()*W; g.beginPath(); g.moveTo(x,0); g.lineTo(x+(Math.random()-0.5)*20,H); g.stroke(); } }
-  }
+    if(val("look")==="vintage"){ g.globalAlpha=0.03+Math.random()*0.03; g.fillStyle=Math.random()<0.5?"#000":"#fff"; g.fillRect(0,0,W,H); g.globalAlpha=1;
+      if(Math.random()<0.25){ g.strokeStyle="rgba(255,255,255,0.25)"; g.lineWidth=1.5*U; const x=Math.random()*W; g.beginPath(); g.moveTo(x,0); g.lineTo(x+(Math.random()-0.5)*20,H); g.stroke(); } } }
   function vignette(){ const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.38,W/2,H/2,Math.max(W,H)*0.78); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.6)"); g.fillStyle=vg; g.fillRect(0,0,W,H); }
-  function bars(T){ if(!barH) return; const k=on("titleCard")?ease(T/1.2):1; const h=barH*k; g.fillStyle="#000"; g.fillRect(0,0,W,h); g.fillRect(0,H-h,W,h); }
-  function titleIntro(T){
-    if(!on("titleCard")||T>INTRO) return;
-    const fade=1-ease((T-(INTRO-1.1))/1.1);
-    g.fillStyle=`rgba(0,0,0,${(T<1.2?1-0.45*ease(T/1.2):0.55)*Math.max(fade,0.0)})`; g.fillRect(0,0,W,H);
-    g.save(); g.globalAlpha=fade; g.textAlign="center"; g.textBaseline="middle";
+  function bars(T){ if(!barH) return; const k=titleStart===0&&TITLE?ease(T/1.2):1, h=barH*k; g.fillStyle="#000"; g.fillRect(0,0,W,h); g.fillRect(0,H-h,W,h); }
+  function progress(T){ if(!on("progress")||T>=BODY_END) return; const y=barH, h=Math.max(4,Math.round(6*U)); g.fillStyle="rgba(255,255,255,0.18)"; g.fillRect(0,y,W,h); g.fillStyle="#ffb03d"; g.fillRect(0,y,W*clamp(T/BODY_END),h); }
+  function titleCard(T){
+    if(!TITLE) return; const tau=T-titleStart; if(tau<0||tau>TITLE) return;
+    const fade=1-ease((tau-(TITLE-0.8))/0.8);
+    const dark=titleStart===0&&tau<1.1?1-0.4*ease(tau/1.1):0.6; g.fillStyle=`rgba(0,0,0,${dark*fade})`; g.fillRect(0,0,W,H);
+    g.save(); g.textAlign="center"; g.textBaseline="middle";
     const big=Math.round(fs*(W>H?2.3:1.9)); g.font=`${big}px ${TITLE_FONT}`;
-    const lines=wrap(g,ST.t,W*0.82), lh=big*1.25, cy=H*0.47, top=cy-(lines.length-1)*lh/2;
-    const zoom=1+0.04*clamp(T/INTRO); g.translate(W/2,cy); g.scale(zoom,zoom); g.translate(-W/2,-cy);
-    // small label above
-    const lab=($("channel").value.trim()||"एक डॉक्यूमेंट्री"); g.font=`600 ${Math.round(fs*0.62)}px ${UI_FONT}`; try{ g.letterSpacing=`${Math.round(6*U)}px`; }catch(e){}
-    g.globalAlpha=fade*ease((T-0.3)/0.8); g.fillStyle="rgba(255,225,170,0.9)"; g.fillText(lab.toUpperCase(),W/2,top-lh*0.95);
+    const lines=wrap(g,ST.t,W*0.82), lh=big*1.25, cy=H*0.46, top=cy-(lines.length-1)*lh/2;
+    g.font=`600 ${Math.round(fs*0.62)}px ${UI_FONT}`; try{ g.letterSpacing=`${Math.round(6*U)}px`; }catch(e){}
+    g.globalAlpha=fade*ease((tau-0.2)/0.6); g.fillStyle="rgba(255,225,170,0.9)"; g.fillText(($("channel").value.trim()||"एक डॉक्यूमेंट्री").toUpperCase(),W/2,top-lh*0.95);
     try{ g.letterSpacing="0px"; }catch(e){}
-    // words reveal
-    g.font=`${big}px ${TITLE_FONT}`;
-    const gold=g.createLinearGradient(0,top-big,0,top+lh*lines.length); gold.addColorStop(0,"#fff6d8"); gold.addColorStop(0.5,"#f6c66a"); gold.addColorStop(1,"#c98b2c");
-    let wi=0;
-    lines.forEach((ln,li)=>{ const words=ln.split(" "); const fullW=g.measureText(ln).width; let x=W/2-fullW/2; const y=top+li*lh;
-      words.forEach(w=>{ const ww=g.measureText(w).width, sp=g.measureText(" ").width; const k=ease((T-0.55-wi*0.14)/0.7);
-        if(k>0){ g.save(); g.globalAlpha=fade*k; g.filter=k<1?`blur(${Math.round((1-k)*10*U)}px)`:"none"; g.shadowColor="rgba(255,180,80,0.55)"; g.shadowBlur=big*0.35; g.fillStyle=gold; g.textAlign="left"; g.fillText(w,x,y+(1-k)*big*0.35); g.restore(); }
-        x+=ww+sp; wi++; }); });
-    // gold line + subtitle
-    const lk=ease((T-1.1)/0.8), ly=top+(lines.length-1)*lh+lh*0.62, lw=W*0.28*lk;
-    g.globalAlpha=fade; g.fillStyle="#f6c66a"; g.fillRect(W/2-lw/2,ly,lw,Math.max(2,3*U));
-    if(ST.sub){ g.font=`500 ${Math.round(fs*0.85)}px ${UI_FONT}`; g.globalAlpha=fade*ease((T-1.6)/0.8); g.fillStyle="#f2f2f2"; wrap(g,ST.sub,W*0.78).slice(0,2).forEach((l,i)=>g.fillText(l,W/2,ly+fs*1.2+i*fs*1.25)); }
+    g.globalAlpha=fade; g.font=`${big}px ${TITLE_FONT}`;
+    if(TSTY==="gold"){
+      const gold=g.createLinearGradient(0,top-big,0,top+lh*lines.length); gold.addColorStop(0,"#fff6d8"); gold.addColorStop(0.5,"#f6c66a"); gold.addColorStop(1,"#c98b2c");
+      let wi=0; lines.forEach((ln,li)=>{ const fw=g.measureText(ln).width, sp=g.measureText(" ").width; let x=W/2-fw/2; const y=top+li*lh;
+        ln.split(" ").forEach(w=>{ const ww=g.measureText(w).width, k=ease((tau-0.5-wi*0.14)/0.7);
+          if(k>0){ g.save(); g.globalAlpha=fade*k; g.filter=k<1?`blur(${Math.round((1-k)*10*U)}px)`:"none"; g.shadowColor="rgba(255,180,80,0.55)"; g.shadowBlur=big*0.35; g.fillStyle=gold; g.textAlign="left"; g.fillText(w,x,y+(1-k)*big*0.35); g.restore(); }
+          x+=ww+sp; wi++; }); });
+    } else if(TSTY==="glitch"){
+      const jit=tau<1.1||Math.random()<0.06;
+      lines.forEach((ln,li)=>{ const y=top+li*lh; if(jit){ const o=big*0.05*(tau<1.1?1.2-tau/1.1:0.6)+2; g.globalCompositeOperation="screen"; g.fillStyle="rgba(255,0,70,0.9)"; g.fillText(ln,W/2-o+(Math.random()-0.5)*o,y); g.fillStyle="rgba(0,220,255,0.9)"; g.fillText(ln,W/2+o,y+(Math.random()-0.5)*o); g.globalCompositeOperation="source-over"; } g.fillStyle="#fff"; g.fillText(ln,W/2,y); });
+      if(jit) for(let k=0;k<5;k++){ const y=top-big+Math.random()*(lh*lines.length+big), hh=4+Math.random()*big*0.25; g.drawImage(cv,0,y,W,hh,(Math.random()-0.5)*big*0.5,y,W,hh); }
+    } else if(TSTY==="type"){
+      const total=lines.reduce((s,l)=>s+graph(l).length,0), n=Math.floor(total*clamp((tau-0.35)/1.5)); let used=0;
+      g.textAlign="left"; g.fillStyle="#fff"; g.shadowColor="rgba(0,0,0,0.6)"; g.shadowBlur=big*0.2;
+      lines.forEach((ln,li)=>{ const lg=graph(ln), k=clamp(n-used,0,lg.length); used+=lg.length; const part=lg.slice(0,k).join(""), fw=g.measureText(ln).width, y=top+li*lh;
+        g.fillText(part,W/2-fw/2,y);
+        const typing=(k>0&&k<lg.length)||(li===lines.length-1&&k===lg.length);
+        if(typing&&Math.floor(tau*2.5)%2===0) g.fillRect(W/2-fw/2+g.measureText(part).width+big*0.06,y-big*0.45,Math.max(3,big*0.06),big*0.9); });
+      g.textAlign="center"; g.shadowBlur=0;
+    } else { // punch
+      const all=ST.t.split(" ").length; let wi=0;
+      lines.forEach((ln,li)=>{ const fw=g.measureText(ln).width, sp=g.measureText(" ").width; let x0=W/2-fw/2;
+        ln.split(" ").forEach(w=>{ const ww=g.measureText(w).width, k=(tau-(0.3+wi*0.3))/0.22;
+          if(k>0){ const s=k<1?2.4-1.4*ease(k):1; g.save(); g.translate(x0+ww/2,top+li*lh); g.scale(s,s); g.globalAlpha=fade*clamp(k*2); g.fillStyle=wi===all-1?"#ffd400":"#fff"; g.shadowColor="rgba(0,0,0,0.7)"; g.shadowBlur=big*0.25; g.fillText(w,0,0); g.restore(); }
+          x0+=ww+sp; wi++; }); });
+    }
+    const lk=ease((tau-1.1)/0.7), ly=top+(lines.length-1)*lh+lh*0.62, lw=W*0.28*lk;
+    g.globalAlpha=fade; g.fillStyle=TSTY==="gold"?"#f6c66a":"#ffd400"; g.fillRect(W/2-lw/2,ly,lw,Math.max(2,3*U));
+    if(ST.sub){ g.textAlign="center"; g.font=`500 ${Math.round(fs*0.85)}px ${UI_FONT}`; g.globalAlpha=fade*ease((tau-1.5)/0.7); g.fillStyle="#f2f2f2"; wrap(g,ST.sub,W*0.78).slice(0,2).forEach((l,i)=>g.fillText(l,W/2,ly+fs*1.2+i*fs*1.25)); }
     g.restore();
   }
   function lowerThird(x,T){
-    if(!on("onscreen")) return; const txt=(x.s.onscreen||"").trim(); if(!txt) return;
-    const a0=x.start+0.4, a1=Math.min(x.start+5, x.vend-0.6); if(T<a0||T>a1+0.5) return;
+    if(!on("onscreen")||inTitle(T)) return; const txt=(x.s.onscreen||"").trim(); if(!txt) return;
+    const a0=x.start+0.4, a1=Math.min(x.start+5,x.vend-0.6); if(T<a0||T>a1+0.5) return;
     const kin=ease((T-a0)/0.5), kout=1-ease((T-a1)/0.5), k=Math.min(kin,kout);
     const bx=W*0.06, by=barH+H*(W>H?0.09:0.11), h=fs*1.7;
-    g.save(); g.textAlign="left"; g.textBaseline="alphabetic"; g.font=`700 ${Math.round(fs*1.05)}px ${UI_FONT}`; const tw=Math.min(g.measureText(txt).width,W*0.8);
-    g.fillStyle="#f6c66a"; g.globalAlpha=Math.min(1,k*2); g.fillRect(bx,by,Math.max(3,6*U),h*clamp(kin*1.5));
-    const bw=(tw+fs*1.4)*k; g.fillStyle="rgba(0,0,0,0.55)"; g.fillRect(bx+8*U,by,bw,h);
-    g.beginPath(); g.rect(bx+8*U,by,bw,h); g.clip(); g.fillStyle="#fff"; g.textBaseline="middle"; g.globalAlpha=k; g.fillText(txt,bx+8*U+fs*0.7-(1-k)*fs*2,by+h/2+fs*0.05,W*0.8);
+    g.save(); g.textAlign="left"; g.textBaseline="middle"; g.font=`700 ${Math.round(fs*1.05)}px ${UI_FONT}`; const tw=Math.min(g.measureText(txt).width,W*0.8);
+    if(FACT==="pop"){ const s=Math.min(easeBack((T-a0)/0.45),1)*kout+(1-kout)*0; const sc=T>a1?kout:easeBack((T-a0)/0.45);
+      g.translate(bx,by+h/2); g.scale(sc,sc); g.fillStyle="#ffd400"; rr(0,-h/2,tw+fs*1.4,h,h*0.3); g.fill(); g.fillStyle="#111"; g.fillText(txt,fs*0.7,fs*0.05,W*0.8);
+    } else if(FACT==="underline"){ g.globalAlpha=k; g.fillStyle="#fff"; g.shadowColor="rgba(0,0,0,0.8)"; g.shadowBlur=fs*0.4; g.fillText(txt,bx,by+h/2,W*0.8); g.shadowBlur=0; g.fillStyle="#ffb03d"; g.fillRect(bx,by+h*0.95,tw*ease((T-a0-0.2)/0.6),Math.max(3,5*U));
+    } else { g.fillStyle="#f6c66a"; g.globalAlpha=Math.min(1,k*2); g.fillRect(bx,by,Math.max(3,6*U),h*clamp(kin*1.5));
+      const bw=(tw+fs*1.4)*k; g.fillStyle="rgba(0,0,0,0.55)"; g.fillRect(bx+8*U,by,bw,h);
+      g.beginPath(); g.rect(bx+8*U,by,bw,h); g.clip(); g.fillStyle="#fff"; g.globalAlpha=k; g.fillText(txt,bx+8*U+fs*0.7-(1-k)*fs*2,by+h/2+fs*0.05,W*0.8); }
+    g.restore();
+  }
+  function layoutWords(ws,maxW){ const sp=g.measureText(" ").width, lines=[]; let cur=[], w=0;
+    ws.forEach(x=>{ const ww=g.measureText(x.w).width; if(cur.length&&w+sp+ww>maxW){ lines.push({items:cur,width:w}); cur=[]; w=0; } const off=cur.length?w+sp:0; cur.push({x,ww,off}); w=off+ww; });
+    if(cur.length) lines.push({items:cur,width:w}); return lines; }
+  function subtitles(x,T){
+    if(SUB==="none"||T>=BODY_END||inTitle(T)) return;
+    const ch=x.chunks.find(c=>T>=c.a&&T<c.b); if(!ch) return;
+    const mid=val("subPos")==="middle";
+    g.save(); g.textBaseline="alphabetic"; g.textAlign="left";
+    if(SUB==="pop"){
+      const size=Math.round(fs*(W>H?1.55:1.9)); g.font=`800 ${size}px ${POP_FONT}`;
+      const lines=layoutWords(ch.ws,W*0.8), lh=size*1.2, y0=mid?H*0.62:H-barH-size*0.7-(lines.length-1)*lh, s=0.7+0.3*easeBack((T-ch.a)/0.2);
+      g.translate(W/2,y0); g.scale(s,s); g.translate(-W/2,-y0); g.lineJoin="round"; g.lineWidth=size*0.16; g.strokeStyle="#000";
+      lines.forEach((L,li)=>{ const sx=W/2-L.width/2, y=y0+li*lh; L.items.forEach(it=>{ g.strokeText(it.x.w,sx+it.off,y); g.fillStyle=(HL&&it.x.kw)?"#ffd400":"#fff"; g.fillText(it.x.w,sx+it.off,y); }); });
+    } else {
+      const size=fs; g.font=`700 ${size}px ${SUB==="karaoke"?POP_FONT:UI_FONT}`;
+      const lines=layoutWords(ch.ws,W*0.84), lh=size*1.45, bh=lines.length*lh+size*0.55, by=(mid?H*0.66:H-barH-size*0.6)-bh, bw=Math.max(...lines.map(l=>l.width))+size*1.2;
+      if(SUB==="box"||SUB==="type"){ g.fillStyle="rgba(0,0,0,0.55)"; rr(W/2-bw/2,by,bw,bh,size*0.3); g.fill(); }
+      if(SUB==="karaoke"){ g.fillStyle="rgba(0,0,0,0.4)"; rr(W/2-bw/2,by,bw,bh,size*0.5); g.fill(); }
+      if(SUB==="minimal"){ g.shadowColor="rgba(0,0,0,0.95)"; g.shadowBlur=size*0.35; }
+      let shown=Infinity, cnt=0;
+      if(SUB==="type"){ const tot=ch.ws.reduce((s,w)=>s+graph(w.w).length,0); shown=Math.floor(tot*clamp((T-ch.a)/Math.max(0.3,(ch.b-ch.a)*0.6))); }
+      lines.forEach((L,li)=>{ const sx=W/2-L.width/2, y=by+size*0.28+lh*(li+0.75);
+        L.items.forEach(it=>{ const w=it.x; let txt=w.w;
+          if(SUB==="type"){ const gs=graph(txt), rem=shown-cnt; cnt+=gs.length; if(rem<=0) return; if(rem<gs.length) txt=gs.slice(0,rem).join(""); }
+          if(SUB==="karaoke"){ const cur=T>=w.a&&T<w.b+0.05;
+            if(cur){ g.save(); const cx=sx+it.off+it.ww/2, cy=y-size*0.35; g.translate(cx,cy); g.scale(1.12,1.12); g.translate(-cx,-cy); g.fillStyle="#ffd400"; g.fillText(txt,sx+it.off,y); g.restore(); return; }
+            g.fillStyle=T>=w.a?((HL&&w.kw)?"#ffd400":"#fff"):"rgba(255,255,255,0.55)"; g.fillText(txt,sx+it.off,y); return; }
+          g.fillStyle=(HL&&w.kw)?"#ffd400":"#fff"; g.fillText(txt,sx+it.off,y); }); });
+    }
     g.restore();
   }
   function endScreen(T){
@@ -791,43 +936,47 @@ async function renderVideo(auto,PV){
     g.fillStyle=`rgba(0,0,0,${0.62*k})`; g.fillRect(0,0,W,H);
     g.save(); g.textAlign="center"; g.textBaseline="middle";
     g.globalAlpha=k; g.font=`600 ${Math.round(fs*0.9)}px ${UI_FONT}`; g.fillStyle="#f6c66a"; g.fillText("देखने के लिए धन्यवाद 🙏",W/2,H*0.30);
-    const ch=$("channel").value.trim(); if(ch){ g.font=`${Math.round(fs*1.6)}px ${TITLE_FONT}`; g.fillStyle="#fff"; g.fillText(ch,W/2,H*0.42); }
-    const s=easeBack((e-0.5)/0.6), bw=fs*9, bh=fs*2.1; if(s>0){ g.save(); g.translate(W/2,H*0.56); g.scale(s,s); g.fillStyle="#e62117"; g.beginPath(); (g.roundRect?g.roundRect(-bw/2,-bh/2,bw,bh,bh/2):g.rect(-bw/2,-bh/2,bw,bh)); g.fill();
+    const chn=$("channel").value.trim(); if(chn){ g.font=`${Math.round(fs*1.6)}px ${TITLE_FONT}`; g.fillStyle="#fff"; g.fillText(chn,W/2,H*0.42); }
+    const s=easeBack((e-0.5)/0.6), bw=fs*9, bh=fs*2.1;
+    if(s>0){ g.save(); g.translate(W/2,H*0.56); g.scale(s,s); g.fillStyle="#e62117"; rr(-bw/2,-bh/2,bw,bh,bh/2); g.fill();
       g.fillStyle="#fff"; g.font=`700 ${Math.round(fs*0.95)}px ${UI_FONT}`; g.fillText("▶  SUBSCRIBE करें",0,fs*0.05); g.restore();
       const wig=Math.sin(e*14)*0.35*Math.max(0,1-(e-1.2)/1.5); g.save(); g.translate(W/2+bw/2+fs*1.4,H*0.56); g.rotate(e>1.2?wig:0); g.font=`${Math.round(fs*1.5)}px sans-serif`; g.globalAlpha=k; g.fillText("🔔",0,0); g.restore(); }
     g.globalAlpha=ease((e-1.4)/0.8); g.font=`500 ${Math.round(fs*0.75)}px ${UI_FONT}`; g.fillStyle="#ddd"; g.fillText("ऐसी और कहानियों के लिए चैनल से जुड़ें",W/2,H*0.68);
-    g.restore();
-  }
-  function subtitles(x,T){
-    if(!on("subs")||T<INTRO-0.2||T>=BODY_END) return; const sb=x.subs.find(q=>T>=q.a&&T<q.b); if(!sb) return;
-    g.font=`700 ${fs}px ${UI_FONT}`; g.textAlign="center"; g.textBaseline="alphabetic";
-    const ls=wrap(g,sb.text,W*0.86), lh=fs*1.45, bh=ls.length*lh+fs*0.6, by=(barH?H-barH-fs*0.5:H*(W>H?0.91:0.80))-bh;
-    const bw=Math.min(W*0.92,Math.max(...ls.map(l=>g.measureText(l).width))+fs*1.2);
-    g.fillStyle="rgba(0,0,0,0.55)"; g.fillRect((W-bw)/2,by,bw,bh); g.fillStyle="#fff"; ls.forEach((l,j)=>g.fillText(l,W/2,by+fs*0.3+lh*(j+0.75)));
-  }
+    g.restore(); }
+  const slams=TSTY==="punch"&&TITLE?ST.t.split(" ").map((w,k)=>titleStart+0.3+k*0.3+0.2):[];
   let n=0;
   function frame(T){
     n++; g.fillStyle="#000"; g.fillRect(0,0,W,H);
-    let i=tl.findIndex(x=>T<x.vend); if(i<0) i=tl.length-1;
-    prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i) release(+k); });
-    [i,i+1].forEach(j=>{ const v=vids[j]; if(v&&!v.started&&T>=playStart(j)&&v.el.readyState>=2){ const span=tl[j].vend-playStart(j); v.el.playbackRate=clamp(tl[j].s.clip.dur/span,0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
-    drawScene(tl[i],T,1);
-    if(i<tl.length-1&&T>tl[i].vend-FADE) drawScene(tl[i+1],T,(T-(tl[i].vend-FADE))/FADE);
+    SX=SY=0;
+    if(SHAKE){ SX=(Math.sin(T*1.7)*0.6+Math.sin(T*3.3+1)*0.4)*W*0.0035; SY=(Math.cos(T*1.3)*0.6+Math.sin(T*2.9)*0.4)*H*0.0035; }
+    slams.forEach(st=>{ const d=T-st; if(d>0&&d<0.15){ SX+=(Math.random()-0.5)*fs*0.5; SY+=(Math.random()-0.5)*fs*0.5; } });
+    let i=0; for(let j=0;j<tl.length;j++) if(tl[j].vs<=T) i=j;
+    prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i-1||(+k===i-1&&T>tl[i].vs+TR)) release(+k); });
+    [i,i+1].forEach(j=>{ const v=vids[j]; if(v&&!v.started&&T>=tl[j].vs&&v.el.readyState>=2){ v.el.playbackRate=clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
+    const q=i>0?(T-tl[i].vs)/TR:1;
+    if(q<1) transition(tl[i-1],tl[i],T,clamp(q),tk(i)); else drawScene(tl[i],T,1);
     grade(); leaks(T); vignette(); filmFx(n);
-    titleIntro(T); lowerThird(tl[i],T); subtitles(tl[i],T); endScreen(T); bars(T);
+    titleCard(T); lowerThird(tl[i],T); subtitles(tl[i],T); endScreen(T); bars(T); progress(T);
   }
   prep(0); prep(1); await sleep(600); frame(0);
-  if(PV){ cv.scrollIntoView({behavior:"smooth",block:"center"}); const segs=[[0,Math.min(INTRO+3,BODY_END)],[BODY_END,BODY_END+4]]; status("👁️ Preview (no sound, not saved)");
+  if(PV){ cv.scrollIntoView({behavior:"smooth",block:"center"}); status("👁️ Preview (no sound, not saved)");
+    const segs=[]; if(titleStart>0){ segs.push([0,Math.min(5,titleStart)]); segs.push([titleStart-0.3,Math.min(titleStart+TITLE+3,BODY_END)]); } else segs.push([0,Math.min((TITLE||0)+4,BODY_END)]); segs.push([BODY_END,BODY_END+4]);
     for(const [s0,s1] of segs){ const w0=performance.now(); await new Promise(res=>{ (function loop(){ const T=s0+(performance.now()-w0)/1000; if(T>=s1){ res(); return; } frame(T); requestAnimationFrame(loop); })(); }); }
     Object.keys(vids).forEach(k=>release(+k)); status(""); return; }
   const done=new Promise(r=>rec.onstop=r);
   rec.start(1000);
   const t0=a.currentTime+0.2;
   tl.forEach(x=>{ const src=a.createBufferSource(); src.buffer=x.s.voice.buf; src.connect(out); src.start(t0+x.start); srcs.push(src); });
-  if(on("sfx")){ if(on("titleCard")) boom(a,out,t0+0.5); if(on("endScreen")) whoosh(a,out,t0+BODY_END+0.2); if(on("onscreen")) tl.forEach(x=>{ if((x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25); }); }
-  if(mSrc){ const v=(+$("bgmVol").value)/100, G=mGain.gain, hi=Math.min(0.8,v*2.5);
-    G.setValueAtTime(hi,t0); G.setValueAtTime(hi,t0+INTRO-0.8); G.linearRampToValueAtTime(v,t0+INTRO);
-    G.setValueAtTime(v,t0+BODY_END-0.4); G.linearRampToValueAtTime(hi,t0+BODY_END+0.6); G.setValueAtTime(hi,t0+total-1.5); G.linearRampToValueAtTime(0.0001,t0+total);
+  if(on("sfx")){
+    if(TITLE) boom(a,out,t0+titleStart+0.3);
+    tl.forEach((x,j)=>{ if(j>0&&tk(j)!=="fade"&&!(after&&j===1)) whoosh(a,out,t0+x.vs-0.2,0.2,0.8); if(on("onscreen")&&(x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25,0.25); });
+    if(on("endScreen")) whoosh(a,out,t0+BODY_END+0.2); }
+  if(mSrc){ const v=(+$("bgmVol").value)/100, G=mGain.gain, hi=Math.min(0.8,v*2.5); let c=t0;
+    const set=(tt,val,ramp)=>{ tt=Math.max(tt,c+0.01); if(ramp) G.linearRampToValueAtTime(val,tt); else G.setValueAtTime(val,tt); c=tt; };
+    G.setValueAtTime(TITLE&&titleStart===0?hi:v,t0);
+    if(TITLE&&titleStart===0){ set(t0+TITLE-0.6,hi); set(t0+TITLE+0.2,v,1); }
+    else if(TITLE){ set(t0+titleStart-0.3,v); set(t0+titleStart+0.2,hi,1); set(t0+titleStart+TITLE-0.6,hi); set(t0+titleStart+TITLE+0.2,v,1); }
+    set(t0+BODY_END-0.4,v); set(t0+BODY_END+0.6,hi,1); set(t0+total-1.5,hi); set(t0+total,0.0001,1);
     mSrc.start(t0); }
   log(`Rendering ${Math.round(total)}s (${mime.split(";")[0]})…`);
   await new Promise(res=>{ (function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; status(`🎬 Rendering ${Math.max(0,Math.round(T))}/${Math.round(total)}s — keep app open`); requestAnimationFrame(loop); })(); });
@@ -846,6 +995,13 @@ async function renderVideo(auto,PV){
   }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
   finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
+const PRESETS={
+ doc:{look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
+ viral:{look:"bleach",trans:"mix",subStyle:"pop",subPos:"middle",titleStyle:"punch",titlePos:"after",factStyle:"pop",kwHL:1,punch:1,shake:1,progress:1,bars:0,grain:0,leaks:1},
+ mystery:{look:"mystery",trans:"glitch",subStyle:"karaoke",titleStyle:"glitch",titlePos:"after",factStyle:"underline",kwHL:1,punch:1,shake:1,progress:1,bars:1,grain:1,leaks:0},
+ history:{look:"vintage",trans:"fade",subStyle:"type",titleStyle:"type",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
+ clean:{look:"natural",trans:"fade",subStyle:"minimal",titleStyle:"gold",titlePos:"start",factStyle:"underline",kwHL:0,punch:0,shake:0,progress:0,bars:0,grain:0,leaks:0}};
+function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
 function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
 /* ---------- my own clips (GenV / FlixGen / any app) ---------- */
 function clipPrompt(s){ return `${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
