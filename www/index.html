@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.4</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -57,8 +57,16 @@ details summary{cursor:pointer;font-weight:700}
 
 <h3>✍️ Script writer</h3>
 <label>Script engine</label>
-<select id="txtEngine"><option value="cloudflare">Cloudflare Llama — FREE (uses Cloudflare keys below)</option><option value="gemini">Google Gemini (best Hindi; free key works)</option></select>
-<label>Cloudflare script model</label><input id="cfTxtModel" value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">
+<select id="txtEngine">
+ <option value="paste">ChatGPT / Claude app — FREE (copy &amp; paste)</option>
+ <option value="claude">Claude API (best Hindi, ≈ ₹5/script)</option>
+ <option value="openai">ChatGPT API (≈ ₹2/script)</option>
+ <option value="gemini">Google Gemini (free key works)</option>
+ <option value="cloudflare">Cloudflare Llama — FREE automatic</option>
+</select>
+<div id="claudeBox"><div class="row"><div><label>Claude API key — platform.claude.com</label><input id="claudeKey" type="password" placeholder="sk-ant-..."></div><div><label>Model</label><input id="claudeModel" value="claude-sonnet-5-5"></div></div></div>
+<div id="oaBox"><div class="row"><div><label>OpenAI API key — platform.openai.com</label><input id="oaKey" type="password" placeholder="sk-..."></div><div><label>Model</label><input id="oaModel" value="gpt-5-mini"></div></div></div>
+<div id="cfTxtBox"><label>Cloudflare script model</label><input id="cfTxtModel" value="@cf/meta/llama-3.3-70b-instruct-fp8-fast"></div>
 
 <h3>🖼️ Pictures</h3>
 <label>Picture engine</label>
@@ -140,6 +148,14 @@ details summary{cursor:pointer;font-weight:700}
 <button class="big" id="btnAuto" onclick="autoRun()">🚀 Make full video automatically</button>
 <p class="muted">Does everything: script → voiceover → pictures → video clips → final video → share. Or go step by step below.</p>
 <button class="sec" id="btnScript" onclick="makeScript()">✍️ Only write script (to review first)</button>
+<div id="pasteBox" class="cost" style="display:none">
+ <b>Free script with ChatGPT / Claude app</b><br>
+ 1. <button class="small" onclick="copyPrompt()">📋 Copy prompt</button><br>
+ 2. Open <a href="https://chatgpt.com/" target="_blank" style="color:var(--acc)">ChatGPT</a> or <a href="https://claude.ai/new" target="_blank" style="color:var(--acc)">Claude</a> → paste → send<br>
+ 3. Copy its whole reply and paste here:
+ <textarea id="pasteIn" placeholder='{"title": ... }'></textarea>
+ <button onclick="usePasted()">✅ Use this script</button>
+</div>
 <div id="costBox"></div>
 <div id="status"></div>
 <div class="bar"><div id="aBar"></div></div>
@@ -209,7 +225,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
+const SET_IDS=["claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -221,6 +237,7 @@ function refreshUI(){
   $("vidRes").innerHTML=RES[ve].map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
   if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
   $("grokBox").style.display=ve==="grok"?"":"none";
+  const te=$("txtEngine").value; $("claudeBox").style.display=te==="claude"?"":"none"; $("oaBox").style.display=te==="openai"?"":"none"; $("cfTxtBox").style.display=te==="cloudflare"?"":"none";
   $("cfBox").style.display=($("imgEngine").value==="cloudflare"||$("txtEngine").value==="cloudflare")?"":"none";
   $("klingBox").style.display=ve==="kling"?"":"none";
   $("vidRule").disabled=ve==="none";
@@ -318,9 +335,21 @@ function applyRule(){ const r=$("vidRule").value, none=$("vidEngine").value==="n
 async function makeScript(){
   const topic=$("topic").value.trim(); if(!topic){ alert("Enter a topic"); return false; }
   const mins=Math.max(1,Math.min(20,+$("mins").value||3)), n=Math.max(4,Math.round(mins*60/9));
+  const prompt=buildPrompt(topic,mins,n);
+  if($("txtEngine").value==="paste"){ PROMPT=prompt; PTOPIC=topic; $("pasteBox").style.display=""; $("pasteBox").scrollIntoView({behavior:"smooth",block:"center"}); status("📋 Copy the prompt → ChatGPT/Claude → paste the reply below."); return false; }
   status("✍️ Writing script…"); $("btnScript").disabled=true;
   try{
-    const prompt=`आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
+    const d=await writeScript(prompt);
+    await applyScript(d,topic);
+    return true;
+  }catch(e){ log("❌ Script: "+e.message); status("❌ "+e.message); return false; }
+  finally{ $("btnScript").disabled=false; }
+}
+let PROMPT="", PTOPIC="";
+function copyPrompt(){ (navigator.clipboard?navigator.clipboard.writeText(PROMPT):Promise.reject()).then(()=>status("✅ Prompt copied — now paste it in ChatGPT or Claude."),()=>prompt("Copy this:",PROMPT)); }
+async function usePasted(){ try{ const d=parseJSON($("pasteIn").value); if(!d.scenes||!d.scenes.length) throw new Error("No scenes found in the reply."); await applyScript(d,PTOPIC||$("topic").value.trim()); $("pasteBox").style.display="none"; $("pasteIn").value=""; }catch(e){ alert("Could not read the reply: "+e.message+"\nMake sure you copied the whole reply."); } }
+function buildPrompt(topic,mins,n){
+    return `आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
 विषय: "${topic}"
 टोन: ${$("tone").value}
 लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें। हर दृश्य एक ही वीडियो शॉट (8-10 सेकंड) है।
@@ -334,16 +363,14 @@ async function makeScript(){
 - "screen_title": वीडियो की शुरुआत में बड़े अक्षरों में दिखाने के लिए 2-4 शब्दों का छोटा शीर्षक। "screen_subtitle": उसके नीचे एक छोटी पंक्ति (6-10 शब्द)।
 - "title": आकर्षक हिंदी YouTube शीर्षक। "description": हिंदी YouTube description। "tags": 10 tags।
 केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"scenes":[{"narration":"","image_prompt":"","motion":"","onscreen":""}]}`;
-    const d=await writeScript(prompt);
+}
+async function applyScript(d,topic){
     await DB.clear();
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
     S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",st:{}}));
     applyRule(); await saveProj(); drawScript();
     log(`Script ready: ${S.scenes.length} scenes.`); status("✅ Script ready — check the cost below.");
-    return true;
-  }catch(e){ log("❌ Script: "+e.message); status("❌ "+e.message); return false; }
-  finally{ $("btnScript").disabled=false; }
 }
 function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
   try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error("Script was not valid JSON — tap again."); } }
@@ -366,8 +393,26 @@ async function cfScript(prompt){
   }
   throw last;
 }
+const SYS="You are an expert Hindi documentary scriptwriter. Reply with ONE valid JSON object only, no other text. Write narration in pure Devanagari Hindi.";
+async function claudeScript(prompt){
+  const k=$("claudeKey").value.trim(); if(!k) throw new Error("Add Claude API key in Settings.");
+  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.anthropic.com/v1/messages",{headers:{"x-api-key":k,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},json:{model:$("claudeModel").value.trim()||"claude-sonnet-5-5",max_tokens:12000,system:SYS,messages:[{role:"user",content:prompt}]}});
+    if(r.ok||![429,500,502,503,529].includes(r.status)) break; log("Claude busy, retrying…"); await sleep(5000*(t+1)); }
+  if(!r.ok) throw new Error(`Claude ${r.status}: ${errMsg(r.data)}`);
+  return parseJSON((r.data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join(""));
+}
+async function openaiScript(prompt){
+  const k=$("oaKey").value.trim(); if(!k) throw new Error("Add OpenAI API key in Settings.");
+  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.openai.com/v1/chat/completions",{headers:{Authorization:"Bearer "+k},json:{model:$("oaModel").value.trim()||"gpt-5-mini",messages:[{role:"system",content:SYS},{role:"user",content:prompt}],response_format:{type:"json_object"},max_completion_tokens:20000}});
+    if(r.ok||![429,500,502,503].includes(r.status)||/quota/i.test(errMsg(r.data))) break; log("ChatGPT busy, retrying…"); await sleep(5000*(t+1)); }
+  if(!r.ok) throw new Error(`ChatGPT ${r.status}: ${errMsg(r.data)}`);
+  return parseJSON(r.data.choices[0].message.content);
+}
 async function writeScript(prompt){
-  if($("txtEngine").value==="cloudflare") return cfScript(prompt);
+  const te=$("txtEngine").value;
+  if(te==="cloudflare") return cfScript(prompt);
+  if(te==="claude") return claudeScript(prompt);
+  if(te==="openai") return openaiScript(prompt);
   const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
   return parseJSON(parts(j).map(p=>p.text||"").join(""));
 }
@@ -420,7 +465,7 @@ function updateCost(){
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
   box.innerHTML=`<div class="cost">📊 <b>Estimate</b> for ${sc.length} scenes · ~${Math.round(secs/60*10)/10} min<br>
-   ✍️ Script (${$("txtEngine").value==="cloudflare"?"Cloudflare":"Gemini"}): ${$("txtEngine").value==="cloudflare"?"FREE":"≈ $0.01"}<br>
+   ✍️ Script (${$("txtEngine").selectedOptions[0].text.split(/ [—(]/)[0]}): ${({paste:"FREE",cloudflare:"FREE",gemini:"≈ $0.01",claude:"≈ $0.06",openai:"≈ $0.02"})[$("txtEngine").value]}<br>
    🖼️ Pictures (${$("imgEngine").value==="cloudflare"?"Cloudflare FLUX":"Gemini"}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
    🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
    🎙️ ${voiceTxt}<br>
