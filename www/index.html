@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.4</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.5</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -72,10 +72,18 @@ details summary{cursor:pointer;font-weight:700}
 
 <h3>🖼️ Pictures</h3>
 <label>Picture engine</label>
-<select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (~170 pictures/day)</option><option value="openai">ChatGPT images API (≈ ₹3.5 each)</option><option value="chatgptapp">ChatGPT app — FREE (copy prompt &amp; import)</option><option value="gemini">Google Gemini (paid)</option></select>
+<select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (fast)</option><option value="horde">AI Horde — FREE realistic (slower, unlimited)</option><option value="openai">ChatGPT images API (≈ ₹3.5 each)</option><option value="chatgptapp">ChatGPT app — FREE (copy prompt &amp; import)</option><option value="gemini">Google Gemini (paid)</option></select>
 <div id="oaImgBox"><label>Uses the OpenAI key from ✍️ Script writer (set engine there once or paste below)</label>
  <input id="oaKey2" type="password" placeholder="sk-... (same OpenAI key)" oninput="$('oaKey').value=this.value">
  <div class="row"><div><label>Quality</label><select id="oaImgQ"><option value="low">Low (≈ ₹0.5)</option><option value="medium" selected>Medium (≈ ₹3.5)</option><option value="high">High (≈ ₹15)</option></select></div><div><label>Model</label><input id="oaImgModel" value="gpt-image-2"></div></div></div>
+<div id="cfModelBox"><label>Cloudflare picture model (all free — share 10,000 credits/day)</label>
+ <select id="cfImgModel"><option value="klein">FLUX.2 klein — realistic, ~100/day (recommended)</option><option value="flux2dev">FLUX.2 dev — most realistic, ~20/day</option><option value="lucid">Leonardo Lucid Origin — photo-real, ~5/day</option><option value="schnell">FLUX.1 schnell — fast, ~170/day</option></select>
+ <p class="muted">If the daily limit runs out, it automatically falls back to the next model.</p></div>
+<div id="hordeBox"><label>AI Horde model</label>
+ <select id="hordeModel"><option value="Juggernaut XL|RealVisXL|AlbedoBase XL (SDXL)">Realistic SDXL (Juggernaut / RealVis)</option><option value="Flux.1-Schnell fp8 (Compact)|AlbedoBase XL (SDXL)">FLUX schnell</option><option value="AlbedoBase XL (SDXL)|Juggernaut XL">AlbedoBase XL (all-round)</option></select>
+ <label>AI Horde key (optional — free at aihorde.net/register, makes it faster)</label><input id="hordeKey" type="password" placeholder="leave empty to use anonymous">
+ <p class="muted">Free volunteer GPUs. Each picture takes ~30 s – 3 min. No daily limit.</p></div>
+<div class="chk"><input type="checkbox" id="realism" checked><label for="realism">📷 Extra photo-realism (adds camera &amp; lighting details to every picture)</label></div>
 <div id="cfBox">
  <label>Cloudflare Account ID — dash.cloudflare.com → Workers AI</label><input id="cfAcct" placeholder="32-character ID">
  <label>Cloudflare API token (Workers AI permission)</label><input id="cfToken" type="password">
@@ -271,7 +279,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -284,7 +292,7 @@ function refreshUI(){
   if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
   $("grokBox").style.display=ve==="grok"?"":"none";
   const te=$("txtEngine").value; $("claudeBox").style.display=te==="claude"?"":"none"; $("oaBox").style.display=te==="openai"?"":"none"; $("cfTxtBox").style.display=te==="cloudflare"?"":"none";
-  const ie=$("imgEngine").value; $("oaImgBox").style.display=ie==="openai"?"":"none"; $("oaKey2").value=$("oaKey").value;
+  const ie=$("imgEngine").value; $("oaImgBox").style.display=ie==="openai"?"":"none"; $("cfModelBox").style.display=ie==="cloudflare"?"":"none"; $("hordeBox").style.display=ie==="horde"?"":"none"; $("oaKey2").value=$("oaKey").value;
   $("cfBox").style.display=($("imgEngine").value==="cloudflare"||$("txtEngine").value==="cloudflare")?"":"none";
   $("klingBox").style.display=ve==="kling"?"":"none";
   $("vidRule").disabled=ve==="none";
@@ -521,7 +529,7 @@ function updateCost(){
   if(!sc.length){ const mins=+$("mins").value||3, n=Math.max(4,Math.round(mins*60/9)); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat(22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
-  const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
+  const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
   const chars=S.scenes.length?S.scenes.reduce((a,s)=>a+s.narration.length,0):Math.round(secs*14);
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
@@ -611,17 +619,61 @@ async function cropTo(blob,ar){ const bm=await createImageBitmap(blob); const [r
   const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bm,(bm.width-w)/2,(bm.height-h)/2,w,h,0,0,w,h);
   return new Promise(r=>c.toBlob(r,"image/jpeg",0.93)); }
 function cfCheck(acct){ if(!/^[0-9a-f]{32}$/i.test(acct)) throw new Error("Cloudflare Account ID looks wrong. It must be 32 letters/numbers (0-9, a-f) — you may have pasted the API token (cfut_…) there. Copy the Account ID from dash.cloudflare.com → Workers AI → Use REST API."); }
+const REAL="photorealistic, shot on a full-frame DSLR, 35mm lens, natural light, realistic textures and skin, film grain, high dynamic range, sharp focus, no text, no watermark, not illustration, not cartoon, not CGI";
+function imgPromptText(s,max=2000){ return `${s.prompt}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,max); }
+function imgWH(){ return $("format").value==="9:16"?[576,1024]:[1024,576]; }
+async function httpMultipart(url,headers,fields){
+  if(CH){ const B="----HDM"+Math.random().toString(36).slice(2);
+    const body=Object.entries(fields).map(([k,v])=>`--${B}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`).join("")+`--${B}--\r\n`;
+    const r=await CH.request({method:"POST",url,headers:{...headers,"Content-Type":"multipart/form-data; boundary="+B},data:body,responseType:"json",connectTimeout:30000,readTimeout:300000});
+    let d=r.data; if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(e){} } return {ok:r.status>=200&&r.status<300,status:r.status,data:d}; }
+  const fd=new FormData(); Object.entries(fields).forEach(([k,v])=>fd.append(k,String(v)));
+  const r=await fetch(url,{method:"POST",headers,body:fd}); const t=await r.text(); let d; try{ d=JSON.parse(t); }catch(e){ d=t; } return {ok:r.ok,status:r.status,data:d}; }
+const CF_MODELS={ "flux2dev":["@cf/black-forest-labs/flux-2-dev","multi"], "klein":["@cf/black-forest-labs/flux-2-klein-4b","multi"], "lucid":["@cf/leonardo/lucid-origin","json"], "schnell":["@cf/black-forest-labs/flux-1-schnell","json"] };
+async function cfImageOnce(key,s){
+  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(), [model,kind]=CF_MODELS[key], [w,h]=imgWH();
+  const url=`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/${model}`, hd={Authorization:"Bearer "+tok};
+  let r;
+  for(let t=0;t<4;t++){
+    if(kind==="multi") r=await httpMultipart(url,hd,{prompt:imgPromptText(s),width:w,height:h,...(key==="flux2dev"?{steps:20}:{})});
+    else if(key==="lucid") r=await http("POST",url,{headers:hd,json:{prompt:imgPromptText(s),width:w,height:h}});
+    else { const body={prompt:imgPromptText(s),steps:4}; r=await http("POST",url,{headers:hd,json:body}); if(r.status===400&&/not allowed|Bad input/i.test(JSON.stringify(r.data||""))){ r=await http("POST",url,{headers:hd,json:{prompt:body.prompt}}); } }
+    if(r.ok||![429,500,502,503,504].includes(r.status)||/neuron|allocation|4006/i.test(JSON.stringify(r.data||""))) break; await sleep(4000*(t+1)); }
+  const d=r.data||{}, img=(d.result&&(d.result.image||(d.result.images&&d.result.images[0])))||d.image;
+  if(!r.ok||!img){ const m=(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d); const e=new Error(`Cloudflare ${model.split("/").pop()} ${r.status}: ${m}`); e.limit=/neuron|limit|quota|allocation|4006/i.test(m+JSON.stringify(d.errors||"")); throw e; }
+  return new Blob([b64ToBytes(img)],{type:"image/jpeg"});
+}
 async function makeImageCF(s){
   const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings."); cfCheck(acct);
-  const body={prompt:`${s.prompt}. ${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,2000),steps:4};
-  let r;
-  for(let t=0;t<4;t++){ r=await http("POST",`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/@cf/black-forest-labs/flux-1-schnell`,{headers:{Authorization:"Bearer "+tok},json:body});
-    if(r.status===400&&/not allowed|Bad input/i.test(JSON.stringify(r.data||""))&&body.steps){ delete body.steps; continue; }
-    if(r.ok||![429,500,502,503,504].includes(r.status)) break; await sleep(4000*(t+1)); }
-  const d=r.data||{}, img=d.result&&d.result.image;
-  if(!r.ok||!img){ const m=(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d); throw new Error(`Cloudflare ${r.status}: ${m}${/neuron|limit|quota/i.test(m)?" (free daily limit reached — resets 5:30 AM IST)":""}`); }
-  await setImage(s,await cropTo(new Blob([b64ToBytes(img)],{type:"image/jpeg"}),$("format").value));
-  if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
+  const want=$("cfImgModel").value, order=[...new Set([want,"klein","schnell"])];
+  let last;
+  for(const k of order){
+    if(window._cfDone&&window._cfDone[k]===new Date().toDateString()&&k!==order[order.length-1]) continue;
+    try{ const blob=await cfImageOnce(k,s); if(k!==want) log(`Picture made with ${k} (fallback).`);
+      await setImage(s,await cropTo(blob,$("format").value)); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } return; }
+    catch(e){ last=e; log(e.message.slice(0,140)); if(e.limit){ (window._cfDone=window._cfDone||{})[k]=new Date().toDateString(); continue; } if(k===order[order.length-1]) break; }
+  }
+  throw new Error(last.message+(last.limit?" — free daily limit used up (resets 5:30 AM IST). Try 🆓 AI Horde.":""));
+}
+/* AI Horde: free community GPUs, realistic SDXL models */
+async function makeImageHorde(s){
+  const key=$("hordeKey").value.trim()||"0000000000", hd={apikey:key,"Client-Agent":"HindiDocMaker:3.5:android"}, [w,h]=imgWH();
+  const models=$("hordeModel").value.split("|");
+  const body={prompt:`${imgPromptText(s,900)} ### cartoon, anime, illustration, painting, drawing, cgi, 3d render, text, watermark, logo, blurry, deformed, extra fingers, bad anatomy`,
+    params:{width:w,height:h,steps:28,cfg_scale:6,sampler_name:"k_dpmpp_2m",karras:true,n:1},models,nsfw:false,censor_nsfw:true,r2:true,shared:false,slow_workers:true};
+  const r=await http("POST","https://aihorde.net/api/v2/generate/async",{headers:hd,json:body});
+  if(!r.ok||!r.data||!r.data.id) throw new Error(`AI Horde ${r.status}: ${errMsg(r.data)}`);
+  const id=r.data.id; s.st.i="queue"; drawScenes();
+  for(let t=0;t<120;t++){ await sleep(t<3?4000:6000);
+    const c=await http("GET",`https://aihorde.net/api/v2/generate/check/${id}`,{headers:hd}); const q=c.data||{};
+    if(q.faulted) throw new Error("AI Horde: generation failed — try again");
+    if(q.is_possible===false) throw new Error("AI Horde: no worker has this model right now — pick another Horde model");
+    if(q.done){ const st=await http("GET",`https://aihorde.net/api/v2/generate/status/${id}`,{headers:hd}); const g=st.data&&st.data.generations&&st.data.generations[0];
+      if(!g||!g.img) throw new Error("AI Horde: no image returned"); if(g.censored) throw new Error("AI Horde: image was filtered — edit the prompt");
+      const img=/^https?:/.test(g.img)?(await http("GET",g.img,{blob:true})).data:new Blob([b64ToBytes(g.img)],{type:"image/webp"});
+      await setImage(s,await cropTo(img,$("format").value)); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } return; }
+    status(`🆓 AI Horde: scene ${S.scenes.indexOf(s)+1} in queue${q.queue_position?` #${q.queue_position}`:""} · ~${q.wait_time||"?"}s`); }
+  throw new Error("AI Horde timed out — try again later");
 }
 async function makeImageOA(s){
   const k=$("oaKey").value.trim(); if(!k) throw new Error("Add your OpenAI API key in Settings (✍️ Script writer or 🖼️ Pictures).");
@@ -646,6 +698,7 @@ function picHint(){ const n=S.scenes.filter(s=>!s.img).length; status(n?`🖼️
 async function makeImage(s){
   const ie=$("imgEngine").value;
   if(ie==="cloudflare") return makeImageCF(s);
+  if(ie==="horde") return makeImageHorde(s);
   if(ie==="openai") return makeImageOA(s);
   if(ie==="chatgptapp") throw new Error("ChatGPT app mode: tap 📋 Copy picture prompt, make it in ChatGPT, then 📥 Import picture.");
   const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${s.prompt}. ${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
