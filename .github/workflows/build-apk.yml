@@ -47,6 +47,12 @@ jobs:
           }
           EOF
 
+      - name: Storage permission for older Android (10 and below)
+        run: |
+          m=android/app/src/main/AndroidManifest.xml
+          grep -q WRITE_EXTERNAL_STORAGE $m || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n</manifest>#' $m
+          grep -n permission $m
+
       - name: Build APK
         run: |
           cd android

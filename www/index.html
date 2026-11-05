@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.6</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.7</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -712,7 +712,7 @@ async function renderVideo(auto,PV){
   if(f){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; mGain=a.createGain(); mSrc.connect(mGain); mGain.connect(out); }catch(e){ log("Music not readable: "+e.message); } }
   const stream=cv.captureStream(FPS); dest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr));
   const mime=pickMime(); if(!mime) throw new Error("This phone can't record video (no MediaRecorder).");
-  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:W>H?8e6:6e6,audioBitsPerSecond:160000});
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:W>H?6e6:5e6,audioBitsPerSecond:160000});
   const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
   const fs=Math.round(Math.min(W,H)*0.046), U=Math.min(W,H)/1080;
   const vids={}; const playStart=j=>j===0?0:tl[j].start-FADE;
@@ -831,24 +831,42 @@ async function renderVideo(auto,PV){
   const name=(S.title||"documentary").replace(/[\\/:*?"<>|]/g,"").slice(0,60).trim()+"."+ext;
   window._out={blob,name};
   $("outBox").innerHTML=`<video controls src="${URL.createObjectURL(blob)}"></video><div class="muted">${(blob.size/1048576).toFixed(1)} MB · ${ext.toUpperCase()}</div>
-   <button onclick="saveVideo()">💾 Save / Share (YouTube, Drive, Gallery)</button>
+   <div id="saveState" class="muted" style="margin-top:8px"></div>
+   <button onclick="shareVideo()">📤 Share / Upload (YouTube, Drive, WhatsApp)</button>
+   <button class="sec" onclick="saveToPhone()">💾 Save to phone again</button>
    <button class="sec" onclick="copyDesc()">📋 Copy title + description</button>`;
   log("✅ Video ready: "+name); status("✅ Video ready!");
-  if(auto) saveVideo();
+  SAVED=null; await saveToPhone();
   }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
   finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
 function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
-async function saveVideo(){
+let SAVED=null, SHARING=false;
+async function writeFile(blob,path,dir){ const FS=Capacitor.Plugins.Filesystem, CHK=3*1024*1024;
+  for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path,data,directory:dir,recursive:true}); else await FS.appendFile({path,data,directory:dir});
+    status(`💾 Saving ${Math.min(100,Math.round((o+CHK)/blob.size*100))}%…`); }
+  return (await FS.getUri({path,directory:dir})).uri; }
+async function saveToPhone(){
   const {blob,name}=window._out||{}; if(!blob) return;
-  if(NATIVE){ const FS=Capacitor.Plugins.Filesystem, SH=Capacitor.Plugins.Share;
-    try{ const CHK=3*1024*1024;
-      for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path:name,data,directory:"CACHE"}); else await FS.appendFile({path:name,data,directory:"CACHE"}); }
-      const {uri}=await FS.getUri({path:name,directory:"CACHE"});
-      await SH.share({title:S.title,text:S.title,url:uri,dialogTitle:"Save or upload video"});
-    }catch(e){ log("Save: "+e.message); } }
-  else{ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); }
+  if(!NATIVE){ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); return; }
+  const FS=Capacitor.Plugins.Filesystem;
+  try{ try{ const p=await FS.checkPermissions(); if(p.publicStorage!=="granted") await FS.requestPermissions(); }catch(e){}
+    const uri=await writeFile(blob,"HindiDocMaker/"+name,"DOCUMENTS"); SAVED={uri,dir:"DOCUMENTS"};
+    status("✅ Saved to phone: Documents/HindiDocMaker"); log("✅ Saved: Documents/HindiDocMaker/"+name);
+  }catch(e){ log("Saving to Documents failed ("+e.message+") — saving inside the app instead.");
+    try{ const uri=await writeFile(blob,name,"CACHE"); SAVED={uri,dir:"CACHE"}; status("Saved inside app — tap Share to send it to Gallery/Drive/YouTube."); }catch(e2){ log("❌ Save: "+e2.message); status("❌ Save failed: "+e2.message); } }
+  const sb=$("saveState"); if(sb) sb.innerHTML=SAVED&&SAVED.dir==="DOCUMENTS"?"✅ Saved on your phone → <b>Files app › Documents › HindiDocMaker</b>":"";
 }
+async function shareVideo(){
+  if(!NATIVE) return saveToPhone();
+  if(!SAVED) await saveToPhone(); if(!SAVED) return;
+  if(SHARING){ alert("The share menu is still open somewhere. Your video is already saved in Documents/HindiDocMaker — open it from the Files app."); return; }
+  SHARING=true; const done=setTimeout(()=>{ SHARING=false; },20000);
+  try{ await Capacitor.Plugins.Share.share({title:S.title,url:SAVED.uri,dialogTitle:"Upload or save video"}); }
+  catch(e){ if(/in progress/i.test(e.message)) alert("Android's share menu is stuck. Your video is already saved: Files app › Documents › HindiDocMaker. (Restarting the app also fixes Share.)"); else log("Share: "+e.message); }
+  finally{ clearTimeout(done); SHARING=false; }
+}
+const saveVideo=shareVideo;
 
 restore().then(updateCost);
 </script>
