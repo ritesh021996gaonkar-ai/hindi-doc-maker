@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -1017,7 +1017,7 @@ function applySettingsJSON(t){ const o=JSON.parse(t); if(!o||o.v!==1) throw new 
   SET_IDS.forEach(id=>{ if(o[id]!==undefined&&o[id]!==null) setV(id,String(o[id])); }); refreshUI(); saveSettings(true); }
 async function backupSettings(){ const t=settingsJSON();
   try{ await navigator.clipboard.writeText(t); }catch(e){}
-  if(NATIVE){ try{ await writeFile(new Blob([t],{type:"application/json"}),"HindiDocMaker/settings-backup.json","DOCUMENTS"); status("✅ Backup saved: Files › Documents › HindiDocMaker › settings-backup.json (also copied)"); return; }catch(e){ log("Backup file: "+e.message); } }
+  if(NATIVE){ try{ await writePublic(new Blob([t],{type:"application/json"}),"HindiDocMaker/settings-backup.json"); status("✅ Backup saved: Files › Documents › HindiDocMaker › settings-backup.json (also copied)"); return; }catch(e){ log("Backup file: "+e.message); } }
   status("✅ Settings copied — paste them into a private note to keep safe."); }
 function restoreSettings(){
   const inp=document.createElement("input"); inp.type="file"; inp.accept=".json,application/json,text/plain";
@@ -1119,10 +1119,10 @@ async function sendToApp(i){
   if(!NATIVE){ alert("Prompt copied:\n\n"+pr); return; }
   try{
     const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
-    const uri=await writeFile(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`,"DOCUMENTS");
+    const uri=await writeFile(await toJpeg(s.img.blob),`share/${S.scenes[i].id}_${name}`,"CACHE");
     status(`📋 Motion prompt copied. Pick GenV or FlixGen, choose "Image to video", paste the prompt.`);
     await Capacitor.Plugins.Share.share({title:`Scene ${i+1}`,text:pr,files:[uri],dialogTitle:"Open in GenV / FlixGen"});
-  }catch(e){ if(/cancel/i.test(e.message)) return; log("Send: "+e.message); alert("Picture saved in Files › Documents › HindiDocMaker › pictures. Prompt copied:\n\n"+pr); }
+  }catch(e){ if(/cancel/i.test(e.message)) return; log("Send: "+e.message); alert("Could not open the share menu ("+e.message+"). Prompt copied — use 📤 Save all pictures, then pick the picture inside GenV/FlixGen.\n\n"+pr); }
 }
 function pickClip(i){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
@@ -1131,13 +1131,14 @@ function pickClip(i){
     drawScenes(); if($("vidEngine").value==="manual") manualHint(); };
   inp.click();
 }
-async function exportAll(){
+async function exportAll(){ try{ await exportAll2(); }catch(e){ log("❌ Export: "+e.message); status("❌ "+e.message); } }
+async function exportAll2(){
   if(!S.scenes.length) return;
   let txt=`${S.title}\n\n`; let k=0;
   for(const [i,s] of S.scenes.entries()){ if(!s.img) continue; const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
-    if(NATIVE) await writeFile(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`,"DOCUMENTS"); k++;
+    if(NATIVE) await writePublic(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`); k++;
     txt+=`${name}${s.useVideo?"":" (no clip needed)"}\n${clipPrompt(s)}\n\n`; }
-  if(NATIVE) await writeFile(new Blob([txt],{type:"text/plain"}),"HindiDocMaker/pictures/prompts.txt","DOCUMENTS");
+  if(NATIVE) await writePublic(new Blob([txt],{type:"text/plain"}),"HindiDocMaker/pictures/prompts.txt");
   status(`✅ ${k} pictures + prompts.txt saved: Files › Documents › HindiDocMaker › pictures`);
 }
 let SAVED=null, SHARING=false;
@@ -1145,12 +1146,18 @@ async function writeFile(blob,path,dir){ const FS=Capacitor.Plugins.Filesystem, 
   for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path,data,directory:dir,recursive:true}); else await FS.appendFile({path,data,directory:dir});
     status(`💾 Saving ${Math.min(100,Math.round((o+CHK)/blob.size*100))}%…`); }
   return (await FS.getUri({path,directory:dir})).uri; }
+async function writePublic(blob,path){
+  try{ return await writeFile(blob,path,"DOCUMENTS"); }
+  catch(e){ if(!/EACCES|Permission|exist/i.test(e.message)) throw e;
+    const stamp=new Date().toISOString().slice(0,19).replace(/[-:T]/g,"");
+    const p2=path.replace(/(\.[a-z0-9]+)$/i,`_${stamp}$1`); log("File name in use — saving as "+p2.split("/").pop());
+    return await writeFile(blob,p2,"DOCUMENTS"); } }
 async function saveToPhone(){
   const {blob,name}=window._out||{}; if(!blob) return;
   if(!NATIVE){ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); return; }
   const FS=Capacitor.Plugins.Filesystem;
   try{ try{ const p=await FS.checkPermissions(); if(p.publicStorage!=="granted") await FS.requestPermissions(); }catch(e){}
-    const uri=await writeFile(blob,"HindiDocMaker/"+name,"DOCUMENTS"); SAVED={uri,dir:"DOCUMENTS"};
+    const uri=await writePublic(blob,"HindiDocMaker/"+name); SAVED={uri,dir:"DOCUMENTS"};
     status("✅ Saved to phone: Documents/HindiDocMaker"); log("✅ Saved: Documents/HindiDocMaker/"+name);
   }catch(e){ log("Saving to Documents failed ("+e.message+") — saving inside the app instead.");
     try{ const uri=await writeFile(blob,name,"CACHE"); SAVED={uri,dir:"CACHE"}; status("Saved inside app — tap Share to send it to Gallery/Drive/YouTube."); }catch(e2){ log("❌ Save: "+e2.message); status("❌ Save failed: "+e2.message); } }
