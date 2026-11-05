@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.4</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -72,7 +72,10 @@ details summary{cursor:pointer;font-weight:700}
 
 <h3>🖼️ Pictures</h3>
 <label>Picture engine</label>
-<select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (~170 pictures/day)</option><option value="gemini">Google Gemini (paid, best quality)</option></select>
+<select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (~170 pictures/day)</option><option value="openai">ChatGPT images API (≈ ₹3.5 each)</option><option value="chatgptapp">ChatGPT app — FREE (copy prompt &amp; import)</option><option value="gemini">Google Gemini (paid)</option></select>
+<div id="oaImgBox"><label>Uses the OpenAI key from ✍️ Script writer (set engine there once or paste below)</label>
+ <input id="oaKey2" type="password" placeholder="sk-... (same OpenAI key)" oninput="$('oaKey').value=this.value">
+ <div class="row"><div><label>Quality</label><select id="oaImgQ"><option value="low">Low (≈ ₹0.5)</option><option value="medium" selected>Medium (≈ ₹3.5)</option><option value="high">High (≈ ₹15)</option></select></div><div><label>Model</label><input id="oaImgModel" value="gpt-image-2"></div></div></div>
 <div id="cfBox">
  <label>Cloudflare Account ID — dash.cloudflare.com → Workers AI</label><input id="cfAcct" placeholder="32-character ID">
  <label>Cloudflare API token (Workers AI permission)</label><input id="cfToken" type="password">
@@ -189,7 +192,8 @@ details summary{cursor:pointer;font-weight:700}
 <section class="card" id="scriptCard" style="display:none">
 <h2>2. Script &amp; scenes</h2>
 <div id="scriptBox"></div>
-<button class="small sec" onclick="exportAll()">📤 Save all pictures + prompts to phone (for GenV/FlixGen)</button>
+<button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
+<button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
 <div class="row">
  <button class="sec" onclick="runVoices()">🎙️ Voices</button>
  <button class="sec" onclick="runImages()">🖼️ Pictures</button>
@@ -267,7 +271,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -280,6 +284,7 @@ function refreshUI(){
   if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
   $("grokBox").style.display=ve==="grok"?"":"none";
   const te=$("txtEngine").value; $("claudeBox").style.display=te==="claude"?"":"none"; $("oaBox").style.display=te==="openai"?"":"none"; $("cfTxtBox").style.display=te==="cloudflare"?"":"none";
+  const ie=$("imgEngine").value; $("oaImgBox").style.display=ie==="openai"?"":"none"; $("oaKey2").value=$("oaKey").value;
   $("cfBox").style.display=($("imgEngine").value==="cloudflare"||$("txtEngine").value==="cloudflare")?"":"none";
   $("klingBox").style.display=ve==="kling"?"":"none";
   $("vidRule").disabled=ve==="none";
@@ -296,6 +301,7 @@ function refreshUI(){
   refreshUI();
   ["vidEngine","voiceEngine","imgEngine","txtEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
   $("vidEngine").addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); });
+  $("imgEngine").addEventListener("change",()=>{ drawScenes(); updateCost(); });
   ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
   ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
   if(!$("key").value) $("setBox").open=true;
@@ -492,7 +498,8 @@ function drawScenes(){
       <div><label>🟡 Highlight word</label><input value="${esc(s.keyword||"")}" placeholder="key word" oninput="S.scenes[${i}].keyword=this.value;saveProj()"></div></div>
       <div class="chk"><input type="checkbox" id="uv_${s.id}" ${s.useVideo?"checked":""} ${$("vidEngine").value==="none"?"disabled":""} onchange="S.scenes[${i}].useVideo=this.checked;saveProj();drawScenes();updateCost()"><label for="uv_${s.id}">🎥 AI video clip for this scene</label></div>
       <button class="small sec" onclick="one(${i},'v')">🎙️ Redo voice</button>
-      <button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>
+      ${$("imgEngine").value==="chatgptapp"?`<button class="small" onclick="copyPicPrompt(${i})">📋 Copy picture prompt</button>`:`<button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>`}
+      <button class="small sec" onclick="pickPicture(${i})">📥 Import picture</button>
       ${s.useVideo&&$("vidEngine").value!=="manual"?`<button class="small sec" onclick="one(${i},'c')">🎥 New clip</button>`:""}
       ${s.useVideo&&$("vidEngine").value==="manual"?`${s.img?`<button class="small" onclick="sendToApp(${i})">📤 Send to GenV/FlixGen</button>`:""}<button class="small" onclick="pickClip(${i})">📥 Import clip</button>`:""}
       ${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}
@@ -514,13 +521,13 @@ function updateCost(){
   if(!sc.length){ const mins=+$("mins").value||3, n=Math.max(4,Math.round(mins*60/9)); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat(22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
-  const vCost=vSecs*priceSec(), iCost=$("imgEngine").value==="cloudflare"?0:sc.length*0.06;
+  const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
   const chars=S.scenes.length?S.scenes.reduce((a,s)=>a+s.narration.length,0):Math.round(secs*14);
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
   box.innerHTML=`<div class="cost">📊 <b>Estimate</b> for ${sc.length} scenes · ~${Math.round(secs/60*10)/10} min<br>
    ✍️ Script (${$("txtEngine").selectedOptions[0].text.split(/ [—(]/)[0]}): ${({paste:"FREE",cloudflare:"FREE",gemini:"≈ $0.01",claude:"≈ $0.06",openai:"≈ $0.02"})[$("txtEngine").value]}<br>
-   🖼️ Pictures (${$("imgEngine").value==="cloudflare"?"Cloudflare FLUX":"Gemini"}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
+   🖼️ Pictures (${$("imgEngine").selectedOptions[0].text.split(/ [—(]/)[0]}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
    🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
    🎙️ ${voiceTxt}<br>
    <b>Total ≈ $${tot.toFixed(2)} (≈ ₹${Math.round(tot*USD_INR).toLocaleString("en-IN")})</b> <span class="muted">+ voice plan · rough estimate</span></div>`;
@@ -616,8 +623,31 @@ async function makeImageCF(s){
   await setImage(s,await cropTo(new Blob([b64ToBytes(img)],{type:"image/jpeg"}),$("format").value));
   if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
 }
+async function makeImageOA(s){
+  const k=$("oaKey").value.trim(); if(!k) throw new Error("Add your OpenAI API key in Settings (✍️ Script writer or 🖼️ Pictures).");
+  const vert=$("format").value==="9:16";
+  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.openai.com/v1/images/generations",{headers:{Authorization:"Bearer "+k},json:{model:$("oaImgModel").value.trim()||"gpt-image-2",prompt:`${vert?"Vertical 9:16":"Wide 16:9"} cinematic documentary image. ${s.prompt}. ${$("imgStyle").value}`.slice(0,3900),size:vert?"1024x1536":"1536x1024",quality:$("oaImgQ").value,n:1},timeout:300000});
+    if(r.ok||![429,500,502,503].includes(r.status)||/quota|billing|verif/i.test(errMsg(r.data))) break; log("ChatGPT images busy, retrying…"); await sleep(8000*(t+1)); }
+  if(!r.ok) throw new Error(`ChatGPT image ${r.status}: ${errMsg(r.data)}${/verif/i.test(errMsg(r.data))?" — verify your organization at platform.openai.com → Settings → Organization.":""}`);
+  const b64=r.data.data&&r.data.data[0]&&r.data.data[0].b64_json; if(!b64) throw new Error("ChatGPT returned no image");
+  await setImage(s,await cropTo(new Blob([b64ToBytes(b64)],{type:"image/png"}),$("format").value));
+  if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
+}
+function picPrompt(s){ return `Create a ${$("format").value==="9:16"?"vertical 9:16":"wide 16:9 landscape"} cinematic documentary image (no text, no watermark): ${s.prompt}. ${$("imgStyle").value}`; }
+async function copyPicPrompt(i){ const t=picPrompt(S.scenes[i]); try{ await navigator.clipboard.writeText(t); status(`📋 Scene ${i+1} picture prompt copied — paste it in ChatGPT, save the image, then 📥 Import picture.`); }catch(e){ prompt("Copy:",t); } }
+async function copyAllPicPrompts(){ const t=`Please create these ${S.scenes.length} images one by one (one image per message, same style for all). Wait for me to say "next" after each.\n\n`+S.scenes.map((s,i)=>`${i+1}. ${picPrompt(s)}`).join("\n\n"); try{ await navigator.clipboard.writeText(t); status("📋 All picture prompts copied — paste in ChatGPT, save each image, then 📥 Import picture on each scene."); }catch(e){ prompt("Copy:",t); } }
+function pickPicture(i){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const s=S.scenes[i];
+    try{ await setImage(s,await cropTo(f,$("format").value)); s.st.i="ok"; s.err=""; if(s.clip){ s.clip=null; DB.del("c_"+s.id); } log(`Scene ${i+1}: picture imported.`); }catch(e){ s.st.i="error"; s.err="Import: "+e.message; }
+    drawScenes(); updateCost(); if($("imgEngine").value==="chatgptapp") picHint(); };
+  inp.click(); }
+function picHint(){ const n=S.scenes.filter(s=>!s.img).length; status(n?`🖼️ ${n} scene(s) need a picture: 📋 Copy prompt → ChatGPT → save image → 📥 Import picture.`:"✅ All pictures ready."); }
 async function makeImage(s){
-  if($("imgEngine").value==="cloudflare") return makeImageCF(s);
+  const ie=$("imgEngine").value;
+  if(ie==="cloudflare") return makeImageCF(s);
+  if(ie==="openai") return makeImageOA(s);
+  if(ie==="chatgptapp") throw new Error("ChatGPT app mode: tap 📋 Copy picture prompt, make it in ChatGPT, then 📥 Import picture.");
   const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${s.prompt}. ${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
   const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No picture returned (prompt blocked? edit it and retry)");
   await setImage(s,new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}));
@@ -718,15 +748,15 @@ async function runStep(k,label,n){
 }
 async function guard(fn){ if(BUSY){ alert("Already working…"); return; } BUSY=true; ac(); let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} try{ return await fn(); }finally{ BUSY=false; if(wake) try{wake.release();}catch(e){} } }
 const runVoices=()=>guard(()=>runStep("v","🎙️ Voices",3));
-const runImages=()=>guard(()=>runStep("i","🖼️ Pictures",2));
-const runClips=()=>guard(async()=>{ await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); if($("vidEngine").value==="manual"){ manualHint(); return 0; } return runStep("c","🎥 Clips",+$("par").value||2); });
+const runImages=()=>guard(async()=>{ if($("imgEngine").value==="chatgptapp"){ picHint(); return 0; } return runStep("i","🖼️ Pictures",2); });
+const runClips=()=>guard(async()=>{ if($("imgEngine").value!=="chatgptapp") await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); if($("vidEngine").value==="manual"){ manualHint(); return 0; } return runStep("c","🎥 Clips",+$("par").value||2); });
 function manualHint(){ const n=S.scenes.filter(s=>s.useVideo&&!s.clip).length; status(n?`📥 ${n} scene(s) need your clip: tap 📤 Send → make the clip in GenV/FlixGen → 📥 Import clip. Then tap Render.`:"✅ All clips imported — tap Render."); $("mediaBox").scrollIntoView({behavior:"smooth"}); }
 async function autoRun(){
   saveSettings(true);
   await guard(async()=>{
     if(!S.scenes.length||(S.topic!==$("topic").value.trim()&&$("topic").value.trim())){ if(!(await makeScript())) return; }
     let f=await runStep("v","🎙️ Voices",3);
-    f+=await runStep("i","🖼️ Pictures",2);
+    if($("imgEngine").value==="chatgptapp"){ if(S.scenes.some(s=>!s.img)){ picHint(); return; } } else f+=await runStep("i","🖼️ Pictures",2);
     if($("vidEngine").value==="manual"){ if(f){ status(`⚠️ ${f} item(s) failed — retry them in step 2.`); return; } if(S.scenes.some(s=>s.useVideo&&!s.clip)){ manualHint(); return; } }
     else if($("vidEngine").value!=="none") f+=await runStep("c","🎥 Clips",+$("par").value||2);
     if(f){ status(`⚠️ ${f} item(s) failed — fix/retry them in step 2, then tap Render.`); return; }
@@ -1119,7 +1149,9 @@ async function sendToApp(i){
   if(!NATIVE){ alert("Prompt copied:\n\n"+pr); return; }
   try{
     const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
-    const uri=await writeFile(await toJpeg(s.img.blob),`share/${S.scenes[i].id}_${name}`,"CACHE");
+    const jpg=await toJpeg(s.img.blob);
+    try{ await writeGallery(jpg,"Pictures",name.replace(".jpg",`_${s.id}.jpg`)); }catch(e){}
+    const uri=await writeFile(jpg,`share/${S.scenes[i].id}_${name}`,"CACHE");
     status(`📋 Motion prompt copied. Pick GenV or FlixGen, choose "Image to video", paste the prompt.`);
     await Capacitor.Plugins.Share.share({title:`Scene ${i+1}`,text:pr,files:[uri],dialogTitle:"Open in GenV / FlixGen"});
   }catch(e){ if(/cancel/i.test(e.message)) return; log("Send: "+e.message); alert("Could not open the share menu ("+e.message+"). Prompt copied — use 📤 Save all pictures, then pick the picture inside GenV/FlixGen.\n\n"+pr); }
@@ -1133,19 +1165,26 @@ function pickClip(i){
 }
 async function exportAll(){ try{ await exportAll2(); }catch(e){ log("❌ Export: "+e.message); status("❌ "+e.message); } }
 async function exportAll2(){
-  if(!S.scenes.length) return;
+  if(!S.scenes.length) return; let where="Pictures › HindiDocMaker";
   let txt=`${S.title}\n\n`; let k=0;
   for(const [i,s] of S.scenes.entries()){ if(!s.img) continue; const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
-    if(NATIVE) await writePublic(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`); k++;
+    if(NATIVE){ const r=await writeGallery(await toJpeg(s.img.blob),"Pictures",name.replace(".jpg",`_${s.id}.jpg`)); where=r.where; } k++;
     txt+=`${name}${s.useVideo?"":" (no clip needed)"}\n${clipPrompt(s)}\n\n`; }
   if(NATIVE) await writePublic(new Blob([txt],{type:"text/plain"}),"HindiDocMaker/pictures/prompts.txt");
-  status(`✅ ${k} pictures + prompts.txt saved: Files › Documents › HindiDocMaker › pictures`);
+  status(`✅ ${k} pictures saved to Gallery (${where}) — newest first in Recents. Prompts: Documents › HindiDocMaker › pictures › prompts.txt`);
 }
 let SAVED=null, SHARING=false;
 async function writeFile(blob,path,dir){ const FS=Capacitor.Plugins.Filesystem, CHK=3*1024*1024;
   for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path,data,directory:dir,recursive:true}); else await FS.appendFile({path,data,directory:dir});
     status(`💾 Saving ${Math.min(100,Math.round((o+CHK)/blob.size*100))}%…`); }
   return (await FS.getUri({path,directory:dir})).uri; }
+async function writeGallery(blob,kind,name){
+  const path=`${kind}/HindiDocMaker/${name}`, stamp=()=>new Date().toISOString().slice(0,19).replace(/[-:T]/g,"");
+  try{ return {uri:await writeFile(blob,path,"EXTERNAL_STORAGE"),where:`${kind} › HindiDocMaker`}; }
+  catch(e){
+    if(/EACCES|Permission|exist/i.test(e.message)){ try{ return {uri:await writeFile(blob,path.replace(/(\.[a-z0-9]+)$/i,`_${stamp()}$1`),"EXTERNAL_STORAGE"),where:`${kind} › HindiDocMaker`}; }catch(e2){} }
+    log(`Gallery save failed (${e.message.slice(0,80)}) — saving to Documents instead.`);
+    return {uri:await writePublic(blob,"HindiDocMaker/"+name),where:"Documents › HindiDocMaker"}; } }
 async function writePublic(blob,path){
   try{ return await writeFile(blob,path,"DOCUMENTS"); }
   catch(e){ if(!/EACCES|Permission|exist/i.test(e.message)) throw e;
@@ -1157,11 +1196,11 @@ async function saveToPhone(){
   if(!NATIVE){ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); return; }
   const FS=Capacitor.Plugins.Filesystem;
   try{ try{ const p=await FS.checkPermissions(); if(p.publicStorage!=="granted") await FS.requestPermissions(); }catch(e){}
-    const uri=await writePublic(blob,"HindiDocMaker/"+name); SAVED={uri,dir:"DOCUMENTS"};
-    status("✅ Saved to phone: Documents/HindiDocMaker"); log("✅ Saved: Documents/HindiDocMaker/"+name);
+    const r=await writeGallery(blob,"Movies",name); SAVED={uri:r.uri,dir:"DOCUMENTS",where:r.where};
+    status("✅ Saved to phone: "+r.where+" (shows in Gallery)"); log("✅ Saved: "+r.where+" › "+name);
   }catch(e){ log("Saving to Documents failed ("+e.message+") — saving inside the app instead.");
     try{ const uri=await writeFile(blob,name,"CACHE"); SAVED={uri,dir:"CACHE"}; status("Saved inside app — tap Share to send it to Gallery/Drive/YouTube."); }catch(e2){ log("❌ Save: "+e2.message); status("❌ Save failed: "+e2.message); } }
-  const sb=$("saveState"); if(sb) sb.innerHTML=SAVED&&SAVED.dir==="DOCUMENTS"?"✅ Saved on your phone → <b>Files app › Documents › HindiDocMaker</b>":"";
+  const sb=$("saveState"); if(sb) sb.innerHTML=SAVED&&SAVED.dir==="DOCUMENTS"?`✅ Saved on your phone → <b>Gallery / Files › ${SAVED.where}</b>`:"";
 }
 async function shareVideo(){
   if(!NATIVE) return saveToPhone();
