@@ -53,6 +53,11 @@ jobs:
           grep -q WRITE_EXTERNAL_STORAGE $m || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n</manifest>#' $m
           grep -n permission $m
 
+      - name: Use the same signing key every build (so updates keep your settings)
+        run: |
+          mkdir -p ~/.android
+          cp keystore/debug.keystore ~/.android/debug.keystore
+
       - name: Build APK
         run: |
           cd android

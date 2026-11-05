@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -144,6 +144,8 @@ details summary{cursor:pointer;font-weight:700}
  <label>Clips at the same time</label><input id="par" type="number" value="2" min="1" max="4">
 </details>
 <button onclick="saveSettings()">💾 Save settings</button>
+<div class="row"><button class="small sec" onclick="backupSettings()">📤 Backup keys &amp; settings</button><button class="small sec" onclick="restoreSettings()">📥 Restore from backup</button></div>
+<p class="muted">Settings are saved on this phone automatically. Backup = a safety copy in Files › Documents › HindiDocMaker (keep it private — it has your keys).</p>
 </details>
 
 <section class="card" id="trendCard">
@@ -1008,6 +1010,21 @@ async function renderVideo(auto,PV){
   }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
   finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
+/* ---------- settings backup ---------- */
+function settingsJSON(){ const o={v:1}; SET_IDS.forEach(id=>o[id]=getV(id)); o.elVoiceList=load("hdm2_elVoiceList"); return JSON.stringify(o,null,1); }
+function applySettingsJSON(t){ const o=JSON.parse(t); if(!o||o.v!==1) throw new Error("Not a Hindi Doc Maker backup");
+  if(o.elVoiceList){ store("hdm2_elVoiceList",o.elVoiceList); try{ fillVoices(JSON.parse(o.elVoiceList)); }catch(e){} }
+  SET_IDS.forEach(id=>{ if(o[id]!==undefined&&o[id]!==null) setV(id,String(o[id])); }); refreshUI(); saveSettings(true); }
+async function backupSettings(){ const t=settingsJSON();
+  try{ await navigator.clipboard.writeText(t); }catch(e){}
+  if(NATIVE){ try{ await writeFile(new Blob([t],{type:"application/json"}),"HindiDocMaker/settings-backup.json","DOCUMENTS"); status("✅ Backup saved: Files › Documents › HindiDocMaker › settings-backup.json (also copied)"); return; }catch(e){ log("Backup file: "+e.message); } }
+  status("✅ Settings copied — paste them into a private note to keep safe."); }
+function restoreSettings(){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept=".json,application/json,text/plain";
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; try{ applySettingsJSON(await f.text()); status("✅ Settings restored."); }catch(e){ alert("Restore failed: "+e.message); } };
+  if(confirm("Pick the backup file (settings-backup.json)?\n\nTap Cancel to paste the backup text instead.")) inp.click();
+  else { const t=prompt("Paste your settings backup:"); if(t) try{ applySettingsJSON(t); status("✅ Settings restored."); }catch(e){ alert("Restore failed: "+e.message); } } }
+
 /* ---------- 🔥 trending ideas ---------- */
 let TRENDS={items:[],ideas:[]};
 async function getText(url,headers={}){ const r=await http("GET",url,{headers,text:true,timeout:30000}); if(!r.ok) throw new Error(`${url.split("/")[2]} ${r.status}`); return String(r.data||""); }
