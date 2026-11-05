@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hindi Doc Maker</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--text:#e8eaf0;--muted:#9aa3b2;--acc:#ff8a3d;--ok:#3ecf8e;--bad:#ff5d5d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans Devanagari",sans-serif;font-size:15px;padding:env(safe-area-inset-top) 0 40px}
+header{padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:18px;margin:0}
+main{padding:12px;max-width:820px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px}
+label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
+input,select,textarea{width:100%;background:#0c0e12;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+button{background:var(--acc);color:#111;border:0;border-radius:10px;padding:12px 14px;font-weight:700;font:inherit;font-weight:700;width:100%;margin-top:12px}
+button.sec{background:#2a2f3a;color:var(--text)}
+button.small{width:auto;padding:7px 10px;margin:6px 6px 0 0;font-size:13px}
+button:disabled{opacity:.5}
+.muted{color:var(--muted);font-size:13px}
+.scene{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.scene .hd{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+.thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;background:#0c0e12}
+.st{font-size:12px;padding:2px 8px;border-radius:20px;background:#2a2f3a}
+.st.ok{background:#173d2c;color:var(--ok)}.st.bad{background:#3d1717;color:var(--bad)}
+.bar{height:10px;background:#0c0e12;border-radius:10px;overflow:hidden;margin-top:10px}
+.bar>div{height:100%;width:0;background:var(--acc);transition:width .2s}
+#log{font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:140px;overflow:auto;margin-top:8px}
+video,canvas{width:100%;border-radius:8px;margin-top:10px;background:#000}
+details summary{cursor:pointer;font-weight:700}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px}.chk input{width:auto}
+</style>
+</head>
+<body>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.0</span></header>
+<main>
+
+<details class="card" id="setBox">
+<summary>⚙️ Settings (API key, voice, models)</summary>
+<label>Gemini API key (aistudio.google.com → Get API key)</label>
+<input id="key" type="password" placeholder="AIza...">
+<div class="row">
+ <div><label>Voice</label>
+ <select id="voice">
+  <option>Charon</option><option>Orus</option><option>Fenrir</option><option>Algenib</option>
+  <option>Kore</option><option>Aoede</option><option>Leda</option><option>Achernar</option>
+ </select></div>
+ <div><label>Video format</label>
+ <select id="format"><option value="16:9">Long video 16:9 (1920×1080)</option><option value="9:16">Short 9:16 (1080×1920)</option></select></div>
+</div>
+<label>Image source</label>
+<select id="imgSrc">
+ <option value="gemini">Gemini image (paid, best quality)</option>
+ <option value="pollinations">Pollinations (free, no key)</option>
+</select>
+<label>Voice style instruction</label>
+<input id="ttsStyle" value="एक गंभीर, रोचक डॉक्यूमेंट्री नैरेटर की आवाज़ में, साफ़ और मध्यम गति से पढ़ें">
+<div class="row">
+ <div><label>Script model</label><input id="mText" value="gemini-flash-latest"></div>
+ <div><label>Voice model</label><input id="mTts" value="gemini-2.5-flash-preview-tts"></div>
+</div>
+<label>Image model</label><input id="mImg" value="gemini-3.1-flash-image">
+<label>Image style (added to every picture)</label>
+<input id="imgStyle" value="cinematic documentary photograph, dramatic lighting, highly detailed, 35mm, no text, no watermark">
+<p class="muted">Model names change over time — if a step fails with "model not found", update the name here.</p>
+<button class="sec" onclick="saveSettings()">Save settings</button>
+</details>
+
+<section class="card">
+<h2>1. Topic → Hindi script</h2>
+<label>Documentary topic (Hindi or English)</label>
+<input id="topic" placeholder="e.g. हम्पी साम्राज्य का उदय और पतन">
+<div class="row">
+ <div><label>Length (minutes)</label><input id="mins" type="number" value="5" min="1" max="20"></div>
+ <div><label>Tone</label><select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select></div>
+</div>
+<button id="btnScript" onclick="makeScript()">✍️ Write script</button>
+<div id="scriptBox"></div>
+</section>
+
+<section class="card">
+<h2>2. Voice + pictures</h2>
+<p class="muted">Makes a Hindi voiceover and an AI picture for every scene. You can redo any single picture.</p>
+<button id="btnMedia" onclick="makeAllMedia()" disabled>🎙️ Generate voice & images</button>
+<div class="bar"><div id="mBar"></div></div>
+<div id="mediaBox"></div>
+</section>
+
+<section class="card">
+<h2>3. Make the video</h2>
+<div class="chk"><input type="checkbox" id="subs" checked><label for="subs" style="margin:0">Hindi subtitles</label></div>
+<div class="chk"><input type="checkbox" id="titleCard" checked><label for="titleCard" style="margin:0">Title at start</label></div>
+<div class="chk"><input type="checkbox" id="monitor"><label for="monitor" style="margin:0">Play sound while rendering</label></div>
+<label>Background music (optional, from phone)</label>
+<input type="file" id="bgm" accept="audio/*">
+<label>Music volume</label><input type="range" id="bgmVol" min="0" max="40" value="12">
+<p class="muted">Rendering runs in real time (a 5-min video takes ~5 min). Keep the app open and the screen on.</p>
+<button id="btnRender" onclick="renderVideo()" disabled>🎬 Render video</button>
+<div class="bar"><div id="rBar"></div></div>
+<canvas id="cv" width="1920" height="1080"></canvas>
+<div id="outBox"></div>
+</section>
+
+<div id="log"></div>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const S = { title: "", scenes: [] };      // scene: {narration, prompt, img, imgUrl, audio, status}
+let AC = null;                             // AudioContext
+const SET_IDS = ["key","voice","format","imgSrc","ttsStyle","mText","mTts","mImg","imgStyle"];
+
+function log(m){ const l=$("log"); l.textContent += m+"\n"; l.scrollTop=l.scrollHeight; console.log(m); }
+function store(k,v){ try{ localStorage.setItem(k,v);}catch(e){} }
+function load(k){ try{ return localStorage.getItem(k);}catch(e){ return null; } }
+function saveSettings(){ SET_IDS.forEach(id=>store("hdm_"+id,$(id).value)); log("Settings saved."); $("setBox").open=false; }
+SET_IDS.forEach(id=>{ const v=load("hdm_"+id); if(v!==null) $(id).value=v; });
+if(!$("key").value) $("setBox").open=true;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); return AC; }
+
+/* ---------- Gemini API ---------- */
+async function gemini(model, body, tries=5){
+  const key=$("key").value.trim();
+  if(!key) throw new Error("Add your Gemini API key in Settings first.");
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  for(let i=0;i<tries;i++){
+    let res;
+    try{
+      res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body)});
+    }catch(e){ if(i===tries-1) throw e; await sleep(2000*(i+1)); continue; }
+    if(res.ok) return res.json();
+    const txt = await res.text();
+    if([429,500,502,503,504].includes(res.status) && i<tries-1){ log(`API busy (${res.status}), retrying...`); await sleep(4000*(i+1)); continue; }
+    let msg=txt; try{ msg=JSON.parse(txt).error.message; }catch(e){}
+    throw new Error(`${model}: ${res.status} ${msg}`);
+  }
+}
+const parts = j => (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+
+/* ---------- 1. Script ---------- */
+async function makeScript(){
+  const topic=$("topic").value.trim(); if(!topic) return alert("Enter a topic");
+  const mins=Math.max(1,Math.min(20,+$("mins").value||5));
+  const n=Math.max(4,Math.round(mins*60/22));
+  const btn=$("btnScript"); btn.disabled=true; btn.textContent="Writing...";
+  try{
+    const prompt=`आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
+विषय: "${topic}"
+टोन: ${$("tone").value}
+लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें।
+नियम:
+- हर दृश्य की "narration" शुद्ध, सरल, बोलचाल की हिंदी (देवनागरी) में 45-60 शब्दों की हो।
+- पहला दृश्य एक दमदार hook हो जो दर्शक को रोके रखे। आखिरी दृश्य में निष्कर्ष और दर्शकों से like/subscribe की छोटी अपील हो।
+- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" जैसे शब्दों से कहें।
+- हर दृश्य का "image_prompt" अंग्रेज़ी में हो: उस दृश्य का एक विस्तृत, सिनेमैटिक दृश्य-वर्णन (कोई टेक्स्ट नहीं, कोई असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
+- "title" एक आकर्षक हिंदी YouTube शीर्षक हो।
+केवल JSON लौटाएँ: {"title":"...","description":"YouTube description हिंदी में","scenes":[{"narration":"...","image_prompt":"..."}]}`;
+    const j=await gemini($("mText").value.trim(),{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
+    let t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```json|```$/g,"");
+    const d=JSON.parse(t);
+    S.title=d.title||topic; S.description=d.description||"";
+    S.scenes=(d.scenes||[]).map(s=>({narration:s.narration||"",prompt:s.image_prompt||"",status:"new"}));
+    store("hdm_script",JSON.stringify({title:S.title,description:S.description,scenes:S.scenes.map(s=>({narration:s.narration,prompt:s.prompt}))}));
+    log(`Script ready: ${S.scenes.length} scenes.`);
+    drawScript();
+  }catch(e){ log("❌ "+e.message); alert(e.message); }
+  btn.disabled=false; btn.textContent="✍️ Write script";
+}
+function drawScript(){
+  const b=$("scriptBox");
+  b.innerHTML=`<label>Title</label><input id="ttl" value="${esc(S.title)}" oninput="S.title=this.value">
+  ${S.description?`<label>YouTube description</label><textarea oninput="S.description=this.value">${esc(S.description)}</textarea>`:""}
+  ${S.scenes.map((s,i)=>`<div class="scene"><div class="hd">Scene ${i+1}<button class="small sec" onclick="delScene(${i})">✕</button></div>
+   <label>Narration (Hindi)</label><textarea oninput="S.scenes[${i}].narration=this.value;S.scenes[${i}].audio=null">${esc(s.narration)}</textarea>
+   <label>Picture prompt</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value">${esc(s.prompt)}</textarea></div>`).join("")}
+  <button class="small sec" onclick="addScene()">+ Add scene</button>`;
+  $("btnMedia").disabled=!S.scenes.length;
+  drawMedia();
+}
+function delScene(i){ S.scenes.splice(i,1); drawScript(); }
+function addScene(){ S.scenes.push({narration:"",prompt:"",status:"new"}); drawScript(); }
+(function restore(){ const v=load("hdm_script"); if(!v) return; try{ const d=JSON.parse(v); S.title=d.title; S.description=d.description; S.scenes=d.scenes.map(s=>({...s,status:"new"})); drawScript(); log("Restored last script."); }catch(e){} })();
+
+/* ---------- 2. Voice + images ---------- */
+function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+
+async function makeVoice(s){
+  const j=await gemini($("mTts").value.trim(),{
+    contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],
+    generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}
+  });
+  const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
+  const mime=p.inlineData.mimeType||""; const bytes=b64ToBytes(p.inlineData.data);
+  if(/wav|mp3|mpeg|ogg/.test(mime)){ s.audio=await ac().decodeAudioData(bytes.buffer); return; }
+  const rate=+((mime.match(/rate=(\d+)/)||[])[1]||24000);
+  const n=Math.floor(bytes.length/2); const dv=new DataView(bytes.buffer);
+  const buf=ac().createBuffer(1,n,rate); const ch=buf.getChannelData(0);
+  for(let i=0;i<n;i++) ch[i]=dv.getInt16(i*2,true)/32768;
+  s.audio=buf;
+}
+function dims(){ return $("format").value==="9:16"?[1080,1920]:[1920,1080]; }
+
+async function makeImage(s,i){
+  const full=`${s.prompt}. ${$("imgStyle").value}`;
+  let blob;
+  if($("imgSrc").value==="pollinations"){
+    const [w,h]=dims();
+    const r=await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=${w}&height=${h}&nologo=true&seed=${Date.now()%100000+i}`);
+    if(!r.ok) throw new Error("Pollinations "+r.status);
+    blob=await r.blob();
+  }else{
+    const j=await gemini($("mImg").value.trim(),{
+      contents:[{parts:[{text:"Generate an image: "+full}]}],
+      generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}
+    });
+    const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No image returned (prompt may be blocked — edit it)");
+    blob=new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"});
+  }
+  if(s.imgUrl) URL.revokeObjectURL(s.imgUrl);
+  s.imgUrl=URL.createObjectURL(blob);
+  s.img=await createImageBitmap(blob);
+}
+
+async function doScene(i,force){
+  const s=S.scenes[i];
+  try{
+    s.status="voice…"; drawMedia();
+    if(!s.audio||force==="voice") await makeVoice(s);
+    s.status="picture…"; drawMedia();
+    if(!s.img||force==="img") await makeImage(s,i);
+    s.status="ok";
+  }catch(e){ s.status="error"; s.err=e.message; log(`❌ Scene ${i+1}: ${e.message}`); }
+  drawMedia();
+}
+async function makeAllMedia(){
+  ac(); const btn=$("btnMedia"); btn.disabled=true;
+  for(let i=0;i<S.scenes.length;i++){
+    $("mBar").style.width=(i/S.scenes.length*100)+"%";
+    if(S.scenes[i].status!=="ok") await doScene(i);
+  }
+  $("mBar").style.width="100%"; btn.disabled=false;
+  const bad=S.scenes.filter(s=>s.status!=="ok").length;
+  log(bad?`${bad} scene(s) failed — tap Retry on them.`:"All scenes ready ✅");
+}
+function drawMedia(){
+  $("mediaBox").innerHTML=S.scenes.map((s,i)=>`<div class="scene"><div class="hd">Scene ${i+1}
+   <span class="st ${s.status==="ok"?"ok":s.status==="error"?"bad":""}">${s.status==="ok"?(s.audio?s.audio.duration.toFixed(1)+"s":"ok"):esc(s.status||"new")}</span></div>
+   ${s.imgUrl?`<img class="thumb" src="${s.imgUrl}">`:""}
+   ${s.status==="error"?`<div class="muted">${esc(s.err||"")}</div>`:""}
+   <button class="small sec" onclick="doScene(${i},'img')">🖼️ New picture</button>
+   <button class="small sec" onclick="doScene(${i},'voice')">🎙️ Redo voice</button>
+   ${s.audio?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}</div>`).join("");
+  $("btnRender").disabled=!(S.scenes.length&&S.scenes.every(s=>s.status==="ok"));
+}
+let playing=null;
+function playScene(i){ if(playing){try{playing.stop();}catch(e){}} const src=ac().createBufferSource(); src.buffer=S.scenes[i].audio; src.connect(ac().destination); src.start(); playing=src; }
+
+/* ---------- 3. Render ---------- */
+function pickMime(){
+  const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+  return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||"";
+}
+function splitSubs(text){
+  const raw=text.replace(/\s+/g," ").split(/(?<=[।.!?,;])\s+/); const out=[];
+  raw.forEach(p=>{ while(p.length>70){ let k=p.lastIndexOf(" ",70); if(k<20)k=70; out.push(p.slice(0,k)); p=p.slice(k).trim(); } if(p) out.push(p); });
+  return out;
+}
+function wrap(ctx,text,maxW){ const w=text.split(" "),lines=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(ctx.measureText(t).width>maxW&&l){lines.push(l);l=x;}else l=t; }); if(l)lines.push(l); return lines; }
+
+async function renderVideo(){
+  const btn=$("btnRender"); btn.disabled=true; $("outBox").innerHTML="";
+  const a=ac(); const [W,H]=dims(); const cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
+  const LEAD=0.6, GAP=0.5, FADE=0.8;
+  // timeline
+  let t=LEAD; const tl=S.scenes.map(s=>{ const st=t; t+=s.audio.duration+GAP; const subs=splitSubs(s.narration); const tot=subs.reduce((x,y)=>x+y.length,0)||1; let c=st; return {s,start:st,vend:t,subs:subs.map(x=>{const d=s.audio.duration*x.length/tot; const o={text:x,a:c,b:c+d}; c+=d; return o;})}; });
+  const total=t+0.8;
+  // voice track
+  const rate=S.scenes[0].audio.sampleRate;
+  const full=a.createBuffer(1,Math.ceil(total*rate),rate); const fd=full.getChannelData(0);
+  tl.forEach(x=>{ let src=x.s.audio.getChannelData(0); if(x.s.audio.sampleRate!==rate){ log("Sample-rate mismatch; redo voice for consistency."); } fd.set(src.subarray(0,Math.min(src.length,fd.length-Math.floor(x.start*rate))),Math.floor(x.start*rate)); });
+  const dest=a.createMediaStreamDestination();
+  const vSrc=a.createBufferSource(); vSrc.buffer=full; vSrc.connect(dest); if($("monitor").checked) vSrc.connect(a.destination);
+  let mSrc=null;
+  const f=$("bgm").files[0];
+  if(f){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; const mg=a.createGain(); mg.gain.value=(+$("bgmVol").value)/100; mSrc.connect(mg); mg.connect(dest); if($("monitor").checked) mg.connect(a.destination);}catch(e){ log("Music file could not be read: "+e.message); } }
+  const stream=cv.captureStream(30); dest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr));
+  const mime=pickMime(); if(!mime){ alert("This phone can't record video (MediaRecorder missing)."); btn.disabled=false; return; }
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:W>H?8e6:6e6,audioBitsPerSecond:160000});
+  const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
+  const fs=Math.round(Math.min(W,H)*0.048);
+  function drawImg(x,idx,p,alpha){
+    const im=x.s.img; const k=idx%4; const z=(k%2===0)?1.06+0.10*p:1.16-0.10*p;
+    const sc=Math.max(W/im.width,H/im.height)*z; const dw=im.width*sc, dh=im.height*sc;
+    const px=(k<2?-1:1)*(p-0.5)*(dw-W)*0.5, py=(k===1||k===2?1:-1)*(p-0.5)*(dh-H)*0.3;
+    g.globalAlpha=alpha; g.drawImage(im,(W-dw)/2+px,(H-dh)/2+py,dw,dh); g.globalAlpha=1;
+  }
+  function frame(T){
+    g.fillStyle="#000"; g.fillRect(0,0,W,H);
+    let i=tl.findIndex(x=>T<x.vend); if(i<0) i=tl.length-1;
+    const x=tl[i]; const vs=i===0?0:x.start, ve=x.vend;
+    drawImg(x,i,Math.min(1,Math.max(0,(T-vs)/(ve-vs))),1);
+    if(i<tl.length-1&&T>ve-FADE){ const n=tl[i+1]; drawImg(n,i+1,0,(T-(ve-FADE))/FADE); }
+    // vignette
+    const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.35,W/2,H/2,Math.max(W,H)*0.75); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.55)"); g.fillStyle=vg; g.fillRect(0,0,W,H);
+    if($("titleCard").checked&&T<4.5){ const al=T<3.5?1:(4.5-T); g.globalAlpha=al; g.fillStyle="rgba(0,0,0,0.45)"; g.fillRect(0,0,W,H); g.fillStyle="#fff"; g.textAlign="center"; g.font=`800 ${fs*1.6}px "Noto Sans Devanagari",sans-serif`; const ls=wrap(g,S.title,W*0.85); ls.forEach((l,j)=>g.fillText(l,W/2,H/2+(j-(ls.length-1)/2)*fs*2)); g.globalAlpha=1; }
+    else if($("subs").checked){ const sb=x.subs.find(q=>T>=q.a&&T<q.b); if(sb){ g.font=`700 ${fs}px "Noto Sans Devanagari",sans-serif`; g.textAlign="center"; const ls=wrap(g,sb.text,W*0.86); const lh=fs*1.45, bh=ls.length*lh+fs*0.6, by=H*(W>H?0.90:0.80)-bh; g.fillStyle="rgba(0,0,0,0.6)"; const bw=Math.min(W*0.92,Math.max(...ls.map(l=>g.measureText(l).width))+fs*1.2); g.fillRect((W-bw)/2,by,bw,bh); g.fillStyle="#fff"; ls.forEach((l,j)=>g.fillText(l,W/2,by+fs*0.3+lh*(j+0.75))); } }
+  }
+  frame(0);
+  await new Promise(r=>setTimeout(r,200));
+  const done=new Promise(r=>rec.onstop=r);
+  rec.start(1000);
+  const t0=a.currentTime+0.15; vSrc.start(t0); if(mSrc) mSrc.start(t0);
+  log(`Rendering ${Math.round(total)}s video (${mime.split(";")[0]})…`);
+  await new Promise(res=>{
+    function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+  });
+  rec.stop(); try{vSrc.stop(); mSrc&&mSrc.stop();}catch(e){} await done; if(wake) try{wake.release();}catch(e){}
+  $("rBar").style.width="100%";
+  const blob=new Blob(chunks,{type:mime.split(";")[0]});
+  const ext=mime.includes("mp4")?"mp4":"webm";
+  const name=(S.title||"documentary").replace(/[\\/:*?"<>|]/g,"").slice(0,60).trim()+"."+ext;
+  const url=URL.createObjectURL(blob);
+  $("outBox").innerHTML=`<video controls src="${url}"></video><div class="muted">${(blob.size/1048576).toFixed(1)} MB · ${ext.toUpperCase()}</div>
+   <button onclick="saveVideo()">💾 Save / Share (YouTube, Drive, Gallery)</button>
+   ${S.description?`<button class="sec" onclick="copyDesc()">📋 Copy YouTube description</button>`:""}`;
+  window._out={blob,name}; btn.disabled=false; log("Video ready ✅ "+name);
+}
+function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
+function blobPartToB64(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(b); }); }
+async function saveVideo(){
+  const {blob,name}=window._out||{}; if(!blob) return;
+  const C=window.Capacitor;
+  if(C&&C.isNativePlatform&&C.isNativePlatform()){
+    const FS=C.Plugins.Filesystem, SH=C.Plugins.Share;
+    try{
+      const CH=3*1024*1024; log("Saving…");
+      for(let o=0;o<blob.size;o+=CH){
+        const data=await blobPartToB64(blob.slice(o,o+CH));
+        if(o===0) await FS.writeFile({path:name,data,directory:"CACHE"}); else await FS.appendFile({path:name,data,directory:"CACHE"});
+      }
+      const {uri}=await FS.getUri({path:name,directory:"CACHE"});
+      await SH.share({title:S.title,text:S.title,url:uri,dialogTitle:"Save or upload video"});
+    }catch(e){ log("❌ Save: "+e.message); alert(e.message); }
+  }else{
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+</script>
+</body>
+</html>
