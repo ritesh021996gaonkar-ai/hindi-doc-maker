@@ -5,408 +5,620 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hindi Doc Maker</title>
 <style>
-:root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--text:#e8eaf0;--muted:#9aa3b2;--acc:#ff8a3d;--ok:#3ecf8e;--bad:#ff5d5d}
+:root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--text:#e8eaf0;--muted:#9aa3b2;--acc:#ff8a3d;--ok:#3ecf8e;--bad:#ff5d5d;--blue:#5b9dff}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans Devanagari",sans-serif;font-size:15px;padding:env(safe-area-inset-top) 0 40px}
-header{padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:18px;margin:0}
 main{padding:12px;max-width:820px;margin:auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
 .card h2{font-size:16px;margin:0 0 10px}
+h3{font-size:14px;margin:16px 0 4px;color:var(--acc)}
 label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
 input,select,textarea{width:100%;background:#0c0e12;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
-textarea{min-height:90px;resize:vertical}
-.row{display:flex;gap:10px}.row>*{flex:1}
-button{background:var(--acc);color:#111;border:0;border-radius:10px;padding:12px 14px;font-weight:700;font:inherit;font-weight:700;width:100%;margin-top:12px}
+textarea{min-height:80px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+button{background:var(--acc);color:#111;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:700;width:100%;margin-top:12px}
 button.sec{background:#2a2f3a;color:var(--text)}
+button.big{font-size:17px;padding:16px;background:linear-gradient(90deg,#ff8a3d,#ffb03d)}
 button.small{width:auto;padding:7px 10px;margin:6px 6px 0 0;font-size:13px}
-button:disabled{opacity:.5}
+button:disabled{opacity:.45}
 .muted{color:var(--muted);font-size:13px}
 .scene{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
-.scene .hd{display:flex;justify-content:space-between;align-items:center;font-weight:700}
-.thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;background:#0c0e12}
-.st{font-size:12px;padding:2px 8px;border-radius:20px;background:#2a2f3a}
-.st.ok{background:#173d2c;color:var(--ok)}.st.bad{background:#3d1717;color:var(--bad)}
+.scene .hd{display:flex;justify-content:space-between;align-items:center;font-weight:700;gap:6px;flex-wrap:wrap}
+.thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;background:#0c0e12;display:block}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.st{font-size:11px;padding:2px 8px;border-radius:20px;background:#2a2f3a;font-weight:600}
+.st.ok{background:#173d2c;color:var(--ok)}.st.bad{background:#3d1717;color:var(--bad)}.st.run{background:#1c2a44;color:var(--blue)}
 .bar{height:10px;background:#0c0e12;border-radius:10px;overflow:hidden;margin-top:10px}
 .bar>div{height:100%;width:0;background:var(--acc);transition:width .2s}
-#log{font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:140px;overflow:auto;margin-top:8px}
+#log{font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:180px;overflow:auto;margin-top:8px;background:#0c0e12;border-radius:8px;padding:8px}
 video,canvas{width:100%;border-radius:8px;margin-top:10px;background:#000}
 details summary{cursor:pointer;font-weight:700}
-.chk{display:flex;align-items:center;gap:8px;margin-top:10px}.chk input{width:auto}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px}.chk input{width:auto}.chk label{margin:0}
+.cost{background:#0c0e12;border:1px dashed var(--line);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;line-height:1.6}
+.cost b{color:var(--acc)}
+.err{color:var(--bad);font-size:12px;margin-top:4px;word-break:break-word}
+#status{font-weight:700;margin-top:8px}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.0</span></header>
 <main>
 
 <details class="card" id="setBox">
-<summary>⚙️ Settings (API key, voice, models)</summary>
-<label>Gemini API key (aistudio.google.com → Get API key)</label>
+<summary>⚙️ Settings — AI tools &amp; keys</summary>
+
+<h3>🧠 Google Gemini (script + pictures + Omni video)</h3>
+<label>Gemini API key — aistudio.google.com/apikey (billing on)</label>
 <input id="key" type="password" placeholder="AIza...">
-<div class="row">
- <div><label>Voice</label>
- <select id="voice">
-  <option>Charon</option><option>Orus</option><option>Fenrir</option><option>Algenib</option>
-  <option>Kore</option><option>Aoede</option><option>Leda</option><option>Achernar</option>
- </select></div>
- <div><label>Video format</label>
- <select id="format"><option value="16:9">Long video 16:9 (1920×1080)</option><option value="9:16">Short 9:16 (1080×1920)</option></select></div>
+
+<h3>🎙️ Voiceover</h3>
+<label>Voice engine</label>
+<select id="voiceEngine"><option value="eleven">ElevenLabs (best Hindi voices)</option><option value="gemini">Gemini voice (uses Gemini key)</option></select>
+<div id="elBox">
+ <label>ElevenLabs API key — elevenlabs.io → Developers → API keys</label>
+ <input id="elKey" type="password" placeholder="sk_...">
+ <div class="row">
+  <div><label>Voice</label><select id="elVoice"><option value="">— load voices —</option></select></div>
+  <div><label>Model</label><select id="elModel"><option value="eleven_multilingual_v2">Multilingual v2 (stable)</option><option value="eleven_v3">Eleven v3 (most expressive)</option><option value="eleven_flash_v2_5">Flash v2.5 (cheap, fast)</option></select></div>
+ </div>
+ <button class="small sec" onclick="loadVoices()">🔄 Load my ElevenLabs voices</button>
 </div>
-<label>Image source</label>
-<select id="imgSrc">
- <option value="gemini">Gemini image (paid, best quality)</option>
- <option value="pollinations">Pollinations (free, no key)</option>
+<div id="gvBox">
+ <label>Gemini voice</label>
+ <select id="voice"><option>Charon</option><option>Orus</option><option>Fenrir</option><option>Algenib</option><option>Kore</option><option>Aoede</option><option>Leda</option><option>Achernar</option></select>
+</div>
+
+<h3>🎥 Video clips</h3>
+<label>Video engine (turns each picture into a moving clip)</label>
+<select id="vidEngine">
+ <option value="omni">Google Gemini Omni Flash (Flow's model, Gemini key)</option>
+ <option value="grok">xAI Grok Imagine</option>
+ <option value="kling">Kling AI</option>
+ <option value="none">No AI video — pictures with camera motion (cheapest)</option>
 </select>
-<label>Voice style instruction</label>
-<input id="ttsStyle" value="एक गंभीर, रोचक डॉक्यूमेंट्री नैरेटर की आवाज़ में, साफ़ और मध्यम गति से पढ़ें">
 <div class="row">
- <div><label>Script model</label><input id="mText" value="auto"></div>
- <div><label>Voice model</label><input id="mTts" value="auto"></div>
+ <div><label>Clip quality</label><select id="vidRes"></select></div>
+ <div><label>AI video for</label><select id="vidRule">
+  <option value="all">Every scene</option><option value="alt">Every 2nd scene</option><option value="hook">First 3 scenes only</option></select></div>
 </div>
-<label>Image model</label><input id="mImg" value="auto">
-<label>Image style (added to every picture)</label>
-<input id="imgStyle" value="cinematic documentary photograph, dramatic lighting, highly detailed, 35mm, no text, no watermark">
-<p class="muted">Leave models on <b>auto</b> — the app picks the newest working model for your key.</p>
-<button class="sec" onclick="saveSettings()">Save settings</button>
+<div id="grokBox"><label>xAI API key — console.x.ai</label><input id="xaiKey" type="password" placeholder="xai-..."></div>
+<div id="klingBox">
+ <label>Kling Access Key (or API key) — app.klingai.com/global/dev</label><input id="klAk" type="password">
+ <label>Kling Secret Key (leave empty if you have a single API key)</label><input id="klSk" type="password">
+ <div class="row">
+  <div><label>Kling model</label><input id="klModel" value="kling-v2-6"></div>
+  <div><label>Mode</label><select id="klMode"><option value="std">Standard</option><option value="pro">Pro</option></select></div>
+ </div>
+ <label>Kling API server</label><input id="klBase" value="https://api-singapore.klingai.com">
+</div>
+
+<details style="margin-top:14px"><summary class="muted">Advanced</summary>
+ <div class="row">
+  <div><label>Script model</label><input id="mText" value="auto"></div>
+  <div><label>Picture model</label><input id="mImg" value="auto"></div>
+ </div>
+ <div class="row">
+  <div><label>Gemini voice model</label><input id="mTts" value="auto"></div>
+  <div><label>Omni video model</label><input id="mOmni" value="gemini-omni-1.1-flash"></div>
+ </div>
+ <label>Picture style (added to every picture)</label>
+ <input id="imgStyle" value="cinematic documentary photograph, dramatic natural lighting, highly detailed, 35mm film look, no text, no watermark">
+ <label>Gemini voice style</label>
+ <input id="ttsStyle" value="एक गंभीर, रोचक डॉक्यूमेंट्री नैरेटर की आवाज़ में, साफ़ और मध्यम गति से पढ़ें">
+ <label>Clips at the same time</label><input id="par" type="number" value="2" min="1" max="4">
+</details>
+<button onclick="saveSettings()">💾 Save settings</button>
 </details>
 
 <section class="card">
-<h2>1. Topic → Hindi script</h2>
+<h2>1. Topic</h2>
 <label>Documentary topic (Hindi or English)</label>
 <input id="topic" placeholder="e.g. हम्पी साम्राज्य का उदय और पतन">
 <div class="row">
- <div><label>Length (minutes)</label><input id="mins" type="number" value="5" min="1" max="20"></div>
- <div><label>Tone</label><select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select></div>
+ <div><label>Length (min)</label><input id="mins" type="number" value="3" min="1" max="20"></div>
+ <div><label>Format</label><select id="format"><option value="16:9">16:9 long video</option><option value="9:16">9:16 Short</option></select></div>
 </div>
-<button id="btnScript" onclick="makeScript()">✍️ Write script</button>
-<div id="scriptBox"></div>
+<label>Tone</label>
+<select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select>
+<button class="big" id="btnAuto" onclick="autoRun()">🚀 Make full video automatically</button>
+<p class="muted">Does everything: script → voiceover → pictures → video clips → final video → share. Or go step by step below.</p>
+<button class="sec" id="btnScript" onclick="makeScript()">✍️ Only write script (to review first)</button>
+<div id="costBox"></div>
+<div id="status"></div>
+<div class="bar"><div id="aBar"></div></div>
 </section>
 
-<section class="card">
-<h2>2. Voice + pictures</h2>
-<p class="muted">Makes a Hindi voiceover and an AI picture for every scene. You can redo any single picture.</p>
-<button id="btnMedia" onclick="makeAllMedia()" disabled>🎙️ Generate voice & images</button>
-<div class="bar"><div id="mBar"></div></div>
+<section class="card" id="scriptCard" style="display:none">
+<h2>2. Script &amp; scenes</h2>
+<div id="scriptBox"></div>
+<div class="row">
+ <button class="sec" onclick="runVoices()">🎙️ Voices</button>
+ <button class="sec" onclick="runImages()">🖼️ Pictures</button>
+ <button class="sec" onclick="runClips()">🎥 Clips</button>
+</div>
 <div id="mediaBox"></div>
 </section>
 
 <section class="card">
-<h2>3. Make the video</h2>
-<div class="chk"><input type="checkbox" id="subs" checked><label for="subs" style="margin:0">Hindi subtitles</label></div>
-<div class="chk"><input type="checkbox" id="titleCard" checked><label for="titleCard" style="margin:0">Title at start</label></div>
-<div class="chk"><input type="checkbox" id="monitor"><label for="monitor" style="margin:0">Play sound while rendering</label></div>
+<h2>3. Final video</h2>
+<div class="chk"><input type="checkbox" id="subs" checked><label for="subs">Hindi subtitles</label></div>
+<div class="chk"><input type="checkbox" id="titleCard" checked><label for="titleCard">Title at start</label></div>
+<div class="chk"><input type="checkbox" id="monitor"><label for="monitor">Play sound while rendering</label></div>
 <label>Background music (optional, from phone)</label>
 <input type="file" id="bgm" accept="audio/*">
-<label>Music volume</label><input type="range" id="bgmVol" min="0" max="40" value="12">
-<p class="muted">Rendering runs in real time (a 5-min video takes ~5 min). Keep the app open and the screen on.</p>
-<button id="btnRender" onclick="renderVideo()" disabled>🎬 Render video</button>
+<label>Music volume</label><input type="range" id="bgmVol" min="0" max="40" value="10">
+<p class="muted">Rendering runs in real time (3-min video ≈ 3 min). Keep the app open.</p>
+<button id="btnRender" onclick="renderVideo()">🎬 Render video</button>
 <div class="bar"><div id="rBar"></div></div>
 <canvas id="cv" width="1920" height="1080"></canvas>
 <div id="outBox"></div>
 </section>
 
-<div id="log"></div>
+<details class="card" open><summary>📋 Log</summary><div id="log"></div>
+<button class="small sec" onclick="newProject()">🗑️ Start new project</button></details>
 </main>
 
 <script>
 "use strict";
-const $ = id => document.getElementById(id);
-const S = { title: "", scenes: [] };      // scene: {narration, prompt, img, imgUrl, audio, status}
-let AC = null;                             // AudioContext
-const SET_IDS = ["key","voice","format","imgSrc","ttsStyle","mText","mTts","mImg","imgStyle"];
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const CH=NATIVE?(Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp):null;
+const GBASE="https://generativelanguage.googleapis.com/v1beta";
+const USD_INR=88;
+const S={title:"",description:"",topic:"",scenes:[]};
+let AC=null, BUSY=false;
 
-function log(m){ const l=$("log"); l.textContent += m+"\n"; l.scrollTop=l.scrollHeight; console.log(m); }
-function store(k,v){ try{ localStorage.setItem(k,v);}catch(e){} }
-function load(k){ try{ return localStorage.getItem(k);}catch(e){ return null; } }
-function saveSettings(){ MODELS=null; SET_IDS.forEach(id=>store("hdm_"+id,$(id).value)); log("Settings saved."); $("setBox").open=false; }
-SET_IDS.forEach(id=>{ const v=load("hdm_"+id); if(v!==null) $(id).value=v; });
-if(load("hdm_v")!=="1.2"){ ["mText","mTts","mImg"].forEach(id=>{$(id).value="auto";store("hdm_"+id,"auto");}); store("hdm_v","1.2"); }
-if(!$("key").value) $("setBox").open=true;
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); return AC; }
+function log(m){ const l=$("log"); l.textContent+=m+"\n"; l.scrollTop=l.scrollHeight; console.log(m); }
+function status(m){ $("status").textContent=m||""; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function ac(){ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); return AC; }
+function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+function blobToB64(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(b); }); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:Math.max(1,Math.min(n,items.length))},async()=>{ while(k<items.length){ const i=k++; await fn(items[i],i); } })); }
+function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
-/* ---------- Gemini API ---------- */
-async function gemini(model, body, tries=5){
-  const key=$("key").value.trim();
-  if(!key) throw new Error("Add your Gemini API key in Settings first.");
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+/* ---------- settings ---------- */
+const SET_IDS=["key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol"];
+function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
+function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
+function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
+function setV(id,v){ const e=$(id); if(e.type==="checkbox") e.checked=v==="1"; else { if(e.tagName==="SELECT"&&![...e.options].some(o=>o.value===v)) e.add(new Option(v,v)); e.value=v; } }
+function saveSettings(silent){ SET_IDS.forEach(id=>store("hdm2_"+id,getV(id))); MODELS=null; if(!silent){ log("Settings saved."); $("setBox").open=false; } updateCost(); }
+const RES={omni:[["720p","720p (recommended)"],["360p","360p (cheapest)"],["1080p","1080p"]],grok:[["720p","720p"],["480p","480p (cheaper)"]],kling:[["std","1080p (by mode)"]],none:[["-","—"]]};
+function refreshUI(){
+  const ve=$("vidEngine").value, cur=$("vidRes").value;
+  $("vidRes").innerHTML=RES[ve].map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
+  if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
+  $("grokBox").style.display=ve==="grok"?"":"none";
+  $("klingBox").style.display=ve==="kling"?"":"none";
+  $("vidRule").disabled=ve==="none";
+  const el=$("voiceEngine").value==="eleven";
+  $("elBox").style.display=el?"":"none"; $("gvBox").style.display=el?"none":"";
+  updateCost();
+}
+(function initSettings(){
+  // migrate v1 key
+  if(!load("hdm2_key")&&load("hdm_key")) store("hdm2_key",load("hdm_key"));
+  const vc=load("hdm2_elVoiceList"); if(vc){ try{ fillVoices(JSON.parse(vc)); }catch(e){} }
+  refreshUI();
+  SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); });
+  refreshUI();
+  ["vidEngine","voiceEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
+  ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
+  ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
+  if(!$("key").value) $("setBox").open=true;
+})();
+
+/* ---------- HTTP (native on phone = no CORS problems) ---------- */
+async function http(method,url,{headers={},json,blob=false,timeout=600000}={}){
+  const h={...headers}; if(json!==undefined) h["Content-Type"]="application/json";
+  if(CH){
+    const r=await CH.request({method,url,headers:h,data:json,responseType:blob?"blob":"json",connectTimeout:30000,readTimeout:timeout});
+    let d=r.data;
+    if(blob){ d=(typeof d==="string")?new Blob([b64ToBytes(d)]):(d instanceof Blob?d:new Blob([d])); }
+    else if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(e){} }
+    return {ok:r.status>=200&&r.status<300,status:r.status,data:d};
+  }
+  const r=await fetch(url,{method,headers:h,body:json!==undefined?JSON.stringify(json):undefined});
+  let d; if(blob&&r.ok) d=await r.blob(); else { const t=await r.text(); try{ d=JSON.parse(t);}catch(e){ d=t; } }
+  return {ok:r.ok,status:r.status,data:d};
+}
+
+/* ---------- saved project (IndexedDB) — paid results are never lost ---------- */
+const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
+  const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
+  return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
+function saveProj(){ return DB.put("proj",{title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,useVideo:s.useVideo}))}); }
+async function restore(){
+  const p=await DB.get("proj"); if(!p||!p.scenes) return;
+  Object.assign(S,{title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
+  S.scenes=p.scenes.map(s=>({...s,st:{}}));
+  for(const s of S.scenes){
+    try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false); }catch(e){}
+    try{ const im=await DB.get("i_"+s.id); if(im) await setImage(s,im,false); }catch(e){}
+    try{ const c=await DB.get("c_"+s.id); if(c) await setClip(s,c.blob,false); }catch(e){}
+  }
+  log(`Restored saved project: ${S.scenes.length} scenes.`); drawScript();
+}
+async function newProject(){ if(BUSY) return alert("Wait until the current job finishes."); if(!confirm("Delete the current project and start fresh?")) return; await DB.clear(); S.title=S.description="";S.scenes=[]; drawScript(); $("outBox").innerHTML=""; log("New project."); }
+
+/* ---------- Gemini ---------- */
+async function gemini(model,body,tries=4){
+  const key=$("key").value.trim(); if(!key) throw new Error("Add your Gemini API key in Settings.");
   for(let i=0;i<tries;i++){
-    let res;
-    try{
-      res = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body)});
-    }catch(e){ if(i===tries-1) throw e; await sleep(2000*(i+1)); continue; }
-    if(res.ok) return res.json();
-    const txt = await res.text();
-    const hard = res.status===429 && /limit: 0|per day|PerDay|retry in \d+h/i.test(txt);
-    if(!hard && [429,500,502,503,504].includes(res.status) && i<tries-1){ log(`API busy (${res.status}), retrying...`); await sleep(4000*(i+1)); continue; }
-    let msg=txt; try{ msg=JSON.parse(txt).error.message; }catch(e){}
-    if(hard) msg="Quota used up / not allowed on free tier (enable billing). "+msg;
-    const err=new Error(`${model}: ${res.status} ${msg}`); err.status=res.status; err.hard=hard; throw err;
+    let r; try{ r=await http("POST",`${GBASE}/models/${encodeURIComponent(model)}:generateContent`,{headers:{"x-goog-api-key":key},json:body}); }
+    catch(e){ if(i===tries-1) throw e; await sleep(3000*(i+1)); continue; }
+    if(r.ok) return r.data;
+    const msg=errMsg(r.data); const hard=r.status===429&&/limit: 0|per day|retry in \d+h/i.test(msg);
+    if(!hard&&[429,500,502,503,504].includes(r.status)&&i<tries-1){ log(`${model} busy (${r.status}), retrying…`); await sleep(5000*(i+1)); continue; }
+    const e=new Error(`${model}: ${r.status} ${hard?"Quota/billing needed. ":""}${msg}`); e.status=r.status; throw e;
   }
 }
-/* Ask Google which models this key can use, and pick the best ones automatically */
+const parts=j=>(j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[];
 let MODELS=null;
 async function listModels(){
   if(MODELS) return MODELS;
-  try{
-    const key=$("key").value.trim(); let out=[], tok="";
-    do{
-      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000${tok?"&pageToken="+tok:""}`,{headers:{"x-goog-api-key":key}});
-      if(!r.ok) break; const d=await r.json();
-      (d.models||[]).forEach(m=>{ if((m.supportedGenerationMethods||[]).includes("generateContent")) out.push(m.name.replace(/^models\//,"")); });
-      tok=d.nextPageToken||"";
-    }while(tok);
-    if(out.length){ MODELS=out; log(`Found ${out.length} models for your key.`); }
-  }catch(e){ log("Could not list models: "+e.message); }
+  try{ const r=await http("GET",`${GBASE}/models?pageSize=1000`,{headers:{"x-goog-api-key":$("key").value.trim()}});
+    if(r.ok&&r.data.models){ MODELS=r.data.models.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace(/^models\//,"")); } }catch(e){}
   return MODELS||[];
 }
 function ver(n){ const m=n.match(/gemini-(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):0; }
 function rank(list,kind){
-  const bad=/embed|live|audio-|native-audio|computer|robotics|gemma|aqa|learnlm|veo|imagen/;
+  const bad=/embed|live|native-audio|computer|robotics|gemma|aqa|learnlm|veo|imagen|omni|thinking/;
   let f;
   if(kind==="tts") f=list.filter(n=>/tts/.test(n));
   else if(kind==="image") f=list.filter(n=>/image/.test(n)&&!/tts/.test(n));
   else f=list.filter(n=>/^gemini/.test(n)&&!/tts|image/.test(n)&&!bad.test(n));
-  const score=n=>ver(n)*10 + (/flash/.test(n)?3:0) + (/lite/.test(n)?-1:0) + (/pro/.test(n)&&kind!=="text"?1:0) + (/latest/.test(n)?0.5:0) - (/exp/.test(n)?2:0);
-  return f.sort((a,b)=>score(b)-score(a));
+  const sc=n=>ver(n)*10+(/flash/.test(n)?3:0)-(/lite/.test(n)?1:0)+(/latest/.test(n)?0.5:0)-(/exp/.test(n)?2:0);
+  return f.sort((a,b)=>sc(b)-sc(a));
 }
-async function geminiAuto(kind,preferred,body){
-  const want=(preferred||"").replace(/\s+/g,"").replace(/^auto$/i,"");
+async function geminiAuto(kind,pref,body){
+  const want=(pref||"").replace(/\s+/g,"").replace(/^auto$/i,"");
   const avail=await listModels();
-  let cands=[];
-  if(want&&(!avail.length||avail.includes(want))) cands.push(want);
-  cands.push(...rank(avail,kind).slice(0,4));
-  if(!cands.length) cands.push(want);
-  cands=[...new Set(cands.filter(Boolean))];
-  let lastErr=null;
-  for(const m of cands){
-    try{ const j=await gemini(m,body,3); if(m!==want){ log(`Using model ${m}`); } return j; }
-    catch(e){ lastErr=e; log(`${m}: ${String(e.message).replace(/^[^:]+:\s*/,"").slice(0,90)} → trying next…`); }
-  }
-  throw lastErr||new Error("No working model found for your API key.");
+  let c=[]; if(want) c.push(want); c.push(...rank(avail,kind).slice(0,4)); c=[...new Set(c.filter(Boolean))];
+  if(!c.length) throw new Error("No Gemini model available for this key.");
+  let last; for(const m of c){ try{ return await gemini(m,body,3); }catch(e){ last=e; log(`${m} failed → trying next…`); if(/billing|Quota/i.test(e.message)&&kind!=="text") break; } }
+  throw last;
 }
-const parts = j => (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
 
 /* ---------- 1. Script ---------- */
+function applyRule(){ const r=$("vidRule").value, none=$("vidEngine").value==="none"; S.scenes.forEach((s,i)=>s.useVideo=!none&&(r==="all"||(r==="alt"&&i%2===0)||(r==="hook"&&i<3))); }
 async function makeScript(){
-  const topic=$("topic").value.trim(); if(!topic) return alert("Enter a topic");
-  const mins=Math.max(1,Math.min(20,+$("mins").value||5));
-  const n=Math.max(4,Math.round(mins*60/22));
-  const btn=$("btnScript"); btn.disabled=true; btn.textContent="Writing...";
+  const topic=$("topic").value.trim(); if(!topic){ alert("Enter a topic"); return false; }
+  const mins=Math.max(1,Math.min(20,+$("mins").value||3)), n=Math.max(4,Math.round(mins*60/9));
+  status("✍️ Writing script…"); $("btnScript").disabled=true;
   try{
     const prompt=`आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
 विषय: "${topic}"
 टोन: ${$("tone").value}
-लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें।
+लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें। हर दृश्य एक ही वीडियो शॉट (8-10 सेकंड) है।
 नियम:
-- हर दृश्य की "narration" शुद्ध, सरल, बोलचाल की हिंदी (देवनागरी) में 45-60 शब्दों की हो।
-- पहला दृश्य एक दमदार hook हो जो दर्शक को रोके रखे। आखिरी दृश्य में निष्कर्ष और दर्शकों से like/subscribe की छोटी अपील हो।
-- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" जैसे शब्दों से कहें।
-- हर दृश्य का "image_prompt" अंग्रेज़ी में हो: उस दृश्य का एक विस्तृत, सिनेमैटिक दृश्य-वर्णन (कोई टेक्स्ट नहीं, कोई असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
-- "title" एक आकर्षक हिंदी YouTube शीर्षक हो।
-केवल JSON लौटाएँ: {"title":"...","description":"YouTube description हिंदी में","scenes":[{"narration":"...","image_prompt":"..."}]}`;
-    const body={contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}};
-    const j=await geminiAuto("text",$("mText").value,body);
-    let t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```json|```$/g,"");
+- "narration": शुद्ध, सरल, बोलचाल की हिंदी (देवनागरी), हर दृश्य में 20-26 शब्द। अंक भी शब्दों में लिखें।
+- पहला दृश्य दमदार hook हो। आखिरी दृश्य में निष्कर्ष और like/subscribe की छोटी अपील।
+- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" से कहें।
+- "image_prompt": English में उस दृश्य की पहली फ्रेम का विस्तृत सिनेमैटिक वर्णन (कोई टेक्स्ट नहीं, किसी असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
+- "motion": English में उस शॉट की गति — कैमरा मूवमेंट और दृश्य में क्या हिलता है (1 वाक्य)।
+- "title": आकर्षक हिंदी YouTube शीर्षक। "description": हिंदी YouTube description। "tags": 10 tags।
+केवल JSON: {"title":"","description":"","tags":[],"scenes":[{"narration":"","image_prompt":"","motion":""}]}`;
+    const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
+    const t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```(json)?|```$/g,"");
     const d=JSON.parse(t);
-    S.title=d.title||topic; S.description=d.description||"";
-    S.scenes=(d.scenes||[]).map(s=>({narration:s.narration||"",prompt:s.image_prompt||"",status:"new"}));
-    store("hdm_script",JSON.stringify({title:S.title,description:S.description,scenes:S.scenes.map(s=>({narration:s.narration,prompt:s.prompt}))}));
-    log(`Script ready: ${S.scenes.length} scenes.`);
-    drawScript();
-  }catch(e){ log("❌ "+e.message); alert(e.message); }
-  btn.disabled=false; btn.textContent="✍️ Write script";
+    await DB.clear();
+    S.topic=topic; S.title=d.title||topic;
+    S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
+    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",st:{}}));
+    applyRule(); await saveProj(); drawScript();
+    log(`Script ready: ${S.scenes.length} scenes.`); status("✅ Script ready — check the cost below.");
+    return true;
+  }catch(e){ log("❌ Script: "+e.message); status("❌ "+e.message); return false; }
+  finally{ $("btnScript").disabled=false; }
 }
 function drawScript(){
-  const b=$("scriptBox");
-  b.innerHTML=`<label>Title</label><input id="ttl" value="${esc(S.title)}" oninput="S.title=this.value">
-  ${S.description?`<label>YouTube description</label><textarea oninput="S.description=this.value">${esc(S.description)}</textarea>`:""}
-  ${S.scenes.map((s,i)=>`<div class="scene"><div class="hd">Scene ${i+1}<button class="small sec" onclick="delScene(${i})">✕</button></div>
-   <label>Narration (Hindi)</label><textarea oninput="S.scenes[${i}].narration=this.value;S.scenes[${i}].audio=null">${esc(s.narration)}</textarea>
-   <label>Picture prompt</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value">${esc(s.prompt)}</textarea></div>`).join("")}
-  <button class="small sec" onclick="addScene()">+ Add scene</button>`;
-  $("btnMedia").disabled=!S.scenes.length;
-  drawMedia();
+  $("scriptCard").style.display=S.scenes.length?"":"none";
+  $("scriptBox").innerHTML=`<label>Title</label><input value="${esc(S.title)}" oninput="S.title=this.value;saveProj()">
+   <label>YouTube description</label><textarea oninput="S.description=this.value;saveProj()">${esc(S.description)}</textarea>`;
+  drawScenes(); updateCost();
 }
-function delScene(i){ S.scenes.splice(i,1); drawScript(); }
-function addScene(){ S.scenes.push({narration:"",prompt:"",status:"new"}); drawScript(); }
-(function restore(){ const v=load("hdm_script"); if(!v) return; try{ const d=JSON.parse(v); S.title=d.title; S.description=d.description; S.scenes=d.scenes.map(s=>({...s,status:"new"})); drawScript(); log("Restored last script."); }catch(e){} })();
-
-/* ---------- 2. Voice + images ---------- */
-function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
-
-async function makeVoice(s){
-  const j=await geminiAuto("tts",$("mTts").value,{
-    contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],
-    generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}
-  });
-  const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
-  const mime=p.inlineData.mimeType||""; const bytes=b64ToBytes(p.inlineData.data);
-  if(/wav|mp3|mpeg|ogg/.test(mime)){ s.audio=await ac().decodeAudioData(bytes.buffer); return; }
-  const rate=+((mime.match(/rate=(\d+)/)||[])[1]||24000);
-  const n=Math.floor(bytes.length/2); const dv=new DataView(bytes.buffer);
-  const buf=ac().createBuffer(1,n,rate); const ch=buf.getChannelData(0);
-  for(let i=0;i<n;i++) ch[i]=dv.getInt16(i*2,true)/32768;
-  s.audio=buf;
+function drawScenes(){
+  $("mediaBox").innerHTML=S.scenes.map((s,i)=>{
+    const chip=(k,name)=>{ const v=s.st[k]||(k==="v"?(s.voice?"ok":""):k==="i"?(s.img?"ok":""):(s.clip?"ok":"")); const cls=v==="ok"?"ok":v==="error"?"bad":v?"run":""; return `<span class="st ${cls}">${name}${v==="ok"?" ✓":v==="error"?" ✕":v?" …":""}</span>`; };
+    return `<div class="scene" id="sc_${s.id}"><div class="hd">Scene ${i+1}
+      <span class="chips">${chip("v","voice")}${chip("i","picture")}${s.useVideo?chip("c","clip"):""}</span></div>
+      ${s.clip?`<video class="thumb" src="${s.clip.url}" muted playsinline controls preload="metadata"></video>`:s.img?`<img class="thumb" src="${s.img.url}">`:""}
+      ${s.err?`<div class="err">${esc(s.err)}</div>`:""}
+      <label>Narration (Hindi)${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
+      <textarea oninput="editNarr(${i},this.value)">${esc(s.narration)}</textarea>
+      <details><summary class="muted">Picture &amp; motion prompts</summary>
+       <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
+       <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()"></details>
+      <div class="chk"><input type="checkbox" id="uv_${s.id}" ${s.useVideo?"checked":""} ${$("vidEngine").value==="none"?"disabled":""} onchange="S.scenes[${i}].useVideo=this.checked;saveProj();drawScenes();updateCost()"><label for="uv_${s.id}">🎥 AI video clip for this scene</label></div>
+      <button class="small sec" onclick="one(${i},'v')">🎙️ Redo voice</button>
+      <button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>
+      ${s.useVideo?`<button class="small sec" onclick="one(${i},'c')">🎥 New clip</button>`:""}
+      ${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}
+      <button class="small sec" onclick="delScene(${i})">✕ Delete</button></div>`;}).join("")
+   +`<button class="small sec" onclick="addScene()">+ Add scene</button>`;
 }
-function dims(){ return $("format").value==="9:16"?[1080,1920]:[1920,1080]; }
-
-async function makeImage(s,i){
-  const full=`${s.prompt}. ${$("imgStyle").value}`;
-  let blob;
-  const polli=async()=>{
-    const [w,h]=dims();
-    const r=await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=${w}&height=${h}&nologo=true&seed=${Date.now()%100000+i}`);
-    if(!r.ok) throw new Error("Pollinations "+r.status);
-    return r.blob();
-  };
-  if($("imgSrc").value==="pollinations" || window._noGeminiImg){
-    blob=await polli();
-  }else try{
-    const j=await geminiAuto("image",$("mImg").value,{
-      contents:[{parts:[{text:"Generate an image: "+full}]}],
-      generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}
-    });
-    const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No image returned (prompt may be blocked — edit it)");
-    blob=new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"});
-  }catch(e){
-    if(e.status!==429 && !/billing|quota|limit/i.test(e.message)) throw e;
-    window._noGeminiImg=true;
-    log("Gemini pictures need billing on your key — switching to free Pollinations pictures.");
-    blob=await polli();
-  }
-  if(s.imgUrl) URL.revokeObjectURL(s.imgUrl);
-  s.imgUrl=URL.createObjectURL(blob);
-  s.img=await createImageBitmap(blob);
-}
-
-async function doScene(i,force){
-  const s=S.scenes[i];
-  try{
-    s.status="voice…"; drawMedia();
-    if(!s.audio||force==="voice") await makeVoice(s);
-    s.status="picture…"; drawMedia();
-    if(!s.img||force==="img") await makeImage(s,i);
-    s.status="ok";
-  }catch(e){ s.status="error"; s.err=e.message; log(`❌ Scene ${i+1}: ${e.message}`); }
-  drawMedia();
-}
-async function makeAllMedia(){
-  ac(); const btn=$("btnMedia"); btn.disabled=true;
-  for(let i=0;i<S.scenes.length;i++){
-    $("mBar").style.width=(i/S.scenes.length*100)+"%";
-    if(S.scenes[i].status!=="ok") await doScene(i);
-  }
-  $("mBar").style.width="100%"; btn.disabled=false;
-  const bad=S.scenes.filter(s=>s.status!=="ok").length;
-  log(bad?`${bad} scene(s) failed — tap Retry on them.`:"All scenes ready ✅");
-}
-function drawMedia(){
-  $("mediaBox").innerHTML=S.scenes.map((s,i)=>`<div class="scene"><div class="hd">Scene ${i+1}
-   <span class="st ${s.status==="ok"?"ok":s.status==="error"?"bad":""}">${s.status==="ok"?(s.audio?s.audio.duration.toFixed(1)+"s":"ok"):esc(s.status||"new")}</span></div>
-   ${s.imgUrl?`<img class="thumb" src="${s.imgUrl}">`:""}
-   ${s.status==="error"?`<div class="muted">${esc(String(s.err||"").slice(0,180))}${String(s.err||"").length>180?"…":""}</div>`:""}
-   <button class="small sec" onclick="doScene(${i},'img')">🖼️ New picture</button>
-   <button class="small sec" onclick="doScene(${i},'voice')">🎙️ Redo voice</button>
-   ${s.audio?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}</div>`).join("");
-  $("btnRender").disabled=!(S.scenes.length&&S.scenes.every(s=>s.status==="ok"));
-}
+function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
+function delScene(i){ const s=S.scenes[i]; ["a_","i_","c_"].forEach(p=>DB.del(p+s.id)); S.scenes.splice(i,1); saveProj(); drawScript(); }
+function addScene(){ S.scenes.push({id:uid(),narration:"",prompt:"",motion:"slow cinematic camera push in",useVideo:false,st:{}}); saveProj(); drawScript(); }
 let playing=null;
-function playScene(i){ if(playing){try{playing.stop();}catch(e){}} const src=ac().createBufferSource(); src.buffer=S.scenes[i].audio; src.connect(ac().destination); src.start(); playing=src; }
+function playScene(i){ if(playing) try{playing.stop();}catch(e){} const src=ac().createBufferSource(); src.buffer=S.scenes[i].voice.buf; src.connect(ac().destination); src.start(); playing=src; }
+
+/* ---------- cost estimate ---------- */
+function sceneSecs(s){ return s.voice?s.voice.buf.duration:Math.max(4,s.narration.split(/\s+/).filter(Boolean).length/2.4); }
+function clipSecs(s){ const v=sceneSecs(s), e=$("vidEngine").value; if(e==="omni") return Math.min(10,Math.max(4,Math.ceil(v))); if(e==="grok") return Math.min(15,Math.max(3,Math.ceil(v))); if(e==="kling") return v>6?10:5; return 0; }
+function priceSec(){ const e=$("vidEngine").value,r=$("vidRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; if(e==="kling") return $("klMode").value==="pro"?0.112:0.084; return 0; }
+function updateCost(){
+  const box=$("costBox"); let sc=S.scenes;
+  if(!sc.length){ const mins=+$("mins").value||3, n=Math.max(4,Math.round(mins*60/9)); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat(22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
+  const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
+  const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
+  const vCost=vSecs*priceSec(), iCost=sc.length*0.06;
+  const chars=S.scenes.length?S.scenes.reduce((a,s)=>a+s.narration.length,0):Math.round(secs*14);
+  const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
+  const tot=vCost+iCost;
+  box.innerHTML=`<div class="cost">📊 <b>Estimate</b> for ${sc.length} scenes · ~${Math.round(secs/60*10)/10} min<br>
+   🖼️ Pictures (Gemini): ≈ $${iCost.toFixed(2)}<br>
+   🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
+   🎙️ ${voiceTxt}<br>
+   <b>Total ≈ $${tot.toFixed(2)} (≈ ₹${Math.round(tot*USD_INR).toLocaleString("en-IN")})</b> <span class="muted">+ voice plan · rough estimate</span></div>`;
+}
+
+/* ---------- 2a. Voice ---------- */
+function fillVoices(v){ const sel=$("elVoice"), cur=sel.value||load("hdm2_elVoice"); sel.innerHTML=v.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join(""); if(cur&&v.some(x=>x.id===cur)) sel.value=cur; }
+async function loadVoices(){
+  const key=$("elKey").value.trim(); if(!key) return alert("Paste your ElevenLabs API key first");
+  const r=await http("GET","https://api.elevenlabs.io/v1/voices",{headers:{"xi-api-key":key}});
+  if(!r.ok) return alert("ElevenLabs: "+r.status+" "+errMsg(r.data));
+  const v=(r.data.voices||[]).map(x=>({id:x.voice_id,name:`${x.name}${x.labels&&x.labels.accent?" · "+x.labels.accent:""}${x.labels&&x.labels.gender?" · "+x.labels.gender:""}`}));
+  store("hdm2_elVoiceList",JSON.stringify(v)); fillVoices(v); log(`Loaded ${v.length} ElevenLabs voices. Tip: add a Hindi voice from the Voice Library on elevenlabs.io, then reload.`);
+}
+async function setVoice(s,blob,align,save=true){
+  const buf=await ac().decodeAudioData(await blob.arrayBuffer());
+  s.voice={blob,align,buf}; if(save) await DB.put("a_"+s.id,{blob,align});
+}
+function pcmToWav(bytes,rate){ const h=new ArrayBuffer(44), v=new DataView(h), w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+  w(0,"RIFF");v.setUint32(4,36+bytes.length,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,bytes.length,true);
+  return new Blob([h,bytes],{type:"audio/wav"}); }
+async function makeVoice(s){
+  if($("voiceEngine").value==="eleven"){
+    const key=$("elKey").value.trim(); if(!key) throw new Error("Add ElevenLabs key in Settings (or switch voice engine to Gemini).");
+    if(!$("elVoice").value) await loadVoices();
+    const vid=$("elVoice").value; if(!vid) throw new Error("Pick an ElevenLabs voice in Settings.");
+    const model=$("elModel").value;
+    const body={text:s.narration,model_id:model}; if(model!=="eleven_multilingual_v2") body.language_code="hi";
+    let r;
+    for(let t=0;t<3;t++){ r=await http("POST",`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}/with-timestamps?output_format=mp3_44100_128`,{headers:{"xi-api-key":key},json:body});
+      if(r.ok||![429,500,502,503].includes(r.status)) break; await sleep(4000*(t+1)); }
+    if(!r.ok) throw new Error(`ElevenLabs ${r.status}: ${errMsg(r.data)}`);
+    await setVoice(s,new Blob([b64ToBytes(r.data.audio_base64)],{type:"audio/mpeg"}),r.data.alignment||r.data.normalized_alignment||null);
+  }else{
+    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}});
+    const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
+    const mime=p.inlineData.mimeType||"", bytes=b64ToBytes(p.inlineData.data);
+    const blob=/wav|mp3|mpeg|ogg/.test(mime)?new Blob([bytes],{type:mime}):pcmToWav(bytes,+((mime.match(/rate=(\d+)/)||[])[1]||24000));
+    await setVoice(s,blob,null);
+  }
+}
+
+/* ---------- 2b. Pictures (Gemini) ---------- */
+function dims(){ return $("format").value==="9:16"?[1080,1920]:[1920,1080]; }
+async function setImage(s,blob,save=true){
+  if(s.img&&s.img.url) URL.revokeObjectURL(s.img.url);
+  s.img={blob,url:URL.createObjectURL(blob),bmp:await createImageBitmap(blob)};
+  if(save) await DB.put("i_"+s.id,blob);
+}
+async function makeImage(s){
+  const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${s.prompt}. ${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
+  const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No picture returned (prompt blocked? edit it and retry)");
+  await setImage(s,new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}));
+  if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
+}
+async function toJpeg(blob){ const bm=await createImageBitmap(blob); const sc=Math.min(1,1920/Math.max(bm.width,bm.height)); const c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); c.getContext("2d").drawImage(bm,0,0,c.width,c.height); return new Promise(r=>c.toBlob(r,"image/jpeg",0.9)); }
+
+/* ---------- 2c. Video clips ---------- */
+function videoDur(url){ return new Promise(res=>{ const v=document.createElement("video"); v.preload="metadata"; v.muted=true; v.onloadedmetadata=()=>res(isFinite(v.duration)?v.duration:8); v.onerror=()=>res(8); v.src=url; setTimeout(()=>res(8),15000); }); }
+async function setClip(s,blob,save=true){
+  if(s.clip&&s.clip.url) URL.revokeObjectURL(s.clip.url);
+  const url=URL.createObjectURL(blob.type?blob:new Blob([blob],{type:"video/mp4"}));
+  s.clip={blob,url,dur:await videoDur(url)};
+  if(save) await DB.put("c_"+s.id,{blob});
+}
+function motionPrompt(s,secs){ return `${s.motion}. Continue naturally from this exact image as a ${secs}-second cinematic documentary shot. Smooth, realistic motion. No on-screen text, no subtitles, nobody talking to camera, no music.`; }
+function findMedia(o,depth=0){ if(!o||typeof o!=="object"||depth>8) return null;
+  if((o.type==="video"||/^video\//.test(o.mime_type||o.mimeType||""))&&(o.data||o.uri)) return o;
+  for(const k in o){ const r=findMedia(o[k],depth+1); if(r) return r; } return null; }
+async function clipOmni(s,secs){
+  const key=$("key").value.trim(); if(!key) throw new Error("Add Gemini key.");
+  const jpg=await toJpeg(s.img.blob);
+  const body={model:$("mOmni").value.trim()||"gemini-omni-1.1-flash",
+    input:[{type:"image",data:await blobToB64(jpg),mime_type:"image/jpeg"},{type:"text",text:motionPrompt(s,secs)}],
+    generation_config:{video_config:{task:"image_to_video"}},
+    response_format:{type:"video",aspect_ratio:$("format").value,resolution:$("vidRes").value},
+    background:false,store:false,stream:false};
+  let r;
+  for(let t=0;t<3;t++){ r=await http("POST",`${GBASE}/interactions`,{headers:{"x-goog-api-key":key},json:body,timeout:900000});
+    if(r.ok||![429,500,502,503,504].includes(r.status)||/limit: 0|billing/i.test(errMsg(r.data))) break; log("Omni busy, retrying…"); await sleep(8000*(t+1)); }
+  if(!r.ok) throw new Error(`Omni ${r.status}: ${errMsg(r.data)}`);
+  const m=findMedia(r.data); if(!m) throw new Error("Omni returned no video (prompt may be blocked — edit the motion and retry).");
+  if(m.data) return new Blob([b64ToBytes(m.data)],{type:m.mime_type||"video/mp4"});
+  const id=String(m.uri).split("/files/").pop().split(/[/:?]/)[0];
+  for(let t=0;t<120;t++){ const f=await http("GET",`${GBASE}/files/${id}`,{headers:{"x-goog-api-key":key}}); const stt=f.data&&f.data.state;
+    if(stt==="ACTIVE") break; if(stt==="FAILED") throw new Error("Omni file failed"); await sleep(5000); }
+  const d=await http("GET",`${GBASE}/files/${id}:download?alt=media`,{headers:{"x-goog-api-key":key},blob:true});
+  if(!d.ok) throw new Error("Omni download "+d.status); return d.data;
+}
+async function clipGrok(s,secs){
+  const key=$("xaiKey").value.trim(); if(!key) throw new Error("Add xAI key in Settings.");
+  const jpg=await toJpeg(s.img.blob);
+  const r=await http("POST","https://api.x.ai/v1/videos/generations",{headers:{Authorization:"Bearer "+key},json:{model:"grok-imagine-video",prompt:motionPrompt(s,secs),image:{url:"data:image/jpeg;base64,"+await blobToB64(jpg)},duration:secs,resolution:$("vidRes").value,aspect_ratio:$("format").value}});
+  if(!r.ok) throw new Error(`Grok ${r.status}: ${errMsg(r.data)}`);
+  const id=r.data.request_id||r.data.id; if(!id) throw new Error("Grok: no request id");
+  for(let t=0;t<200;t++){ await sleep(6000);
+    const g=await http("GET",`https://api.x.ai/v1/videos/${id}`,{headers:{Authorization:"Bearer "+key}}); const d=g.data||{};
+    const url=(d.video&&d.video.url)||d.url||(d.data&&d.data[0]&&d.data[0].url);
+    const st=String(d.status||"").toLowerCase();
+    if(url&&(!st||/done|complete|succe/.test(st))){ const v=await http("GET",url,{blob:true}); if(!v.ok) throw new Error("Grok download "+v.status); return v.data; }
+    if(/fail|expired|error|reject/.test(st)||(!g.ok&&g.status!==429&&g.status<500)) throw new Error("Grok: "+(errMsg(d)||st||g.status));
+  }
+  throw new Error("Grok timed out");
+}
+function b64url(u8){ let s=""; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+async function klingAuth(){
+  const ak=$("klAk").value.trim(), sk=$("klSk").value.trim(); if(!ak) throw new Error("Add Kling key in Settings.");
+  if(!sk) return "Bearer "+ak;
+  const te=new TextEncoder(), enc=o=>b64url(te.encode(JSON.stringify(o))), now=Math.floor(Date.now()/1000);
+  const data=enc({alg:"HS256",typ:"JWT"})+"."+enc({iss:ak,exp:now+1800,nbf:now-5});
+  const k=await crypto.subtle.importKey("raw",te.encode(sk),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return "Bearer "+data+"."+b64url(new Uint8Array(await crypto.subtle.sign("HMAC",k,te.encode(data))));
+}
+async function clipKling(s,secs){
+  const base=$("klBase").value.trim().replace(/\/+$/,"");
+  const jpg=await toJpeg(s.img.blob);
+  const r=await http("POST",`${base}/v1/videos/image2video`,{headers:{Authorization:await klingAuth()},json:{model_name:$("klModel").value.trim()||"kling-v2-6",image:await blobToB64(jpg),prompt:motionPrompt(s,secs),negative_prompt:"text, watermark, subtitles, distorted faces, blurry",duration:String(secs),mode:$("klMode").value}});
+  const d=r.data||{}; if(!r.ok||(d.code&&d.code!==0)) throw new Error(`Kling ${r.status}: ${d.message||errMsg(d)}`);
+  const id=d.data&&d.data.task_id; if(!id) throw new Error("Kling: no task id");
+  for(let t=0;t<240;t++){ await sleep(8000);
+    const g=await http("GET",`${base}/v1/videos/image2video/${id}`,{headers:{Authorization:await klingAuth()}}); const q=(g.data&&g.data.data)||{};
+    if(q.task_status==="succeed"||q.task_status==="succeeded"){ const url=q.task_result.videos[0].url; const v=await http("GET",url,{blob:true}); if(!v.ok) throw new Error("Kling download "+v.status); return v.data; }
+    if(q.task_status==="failed") throw new Error("Kling: "+(q.task_status_msg||"failed"));
+  }
+  throw new Error("Kling timed out");
+}
+async function makeClip(s){
+  if(!s.img) await makeImage(s);
+  const secs=clipSecs(s), e=$("vidEngine").value;
+  const blob=e==="omni"?await clipOmni(s,secs):e==="grok"?await clipGrok(s,secs):await clipKling(s,secs);
+  await setClip(s,blob);
+}
+
+/* ---------- runners ---------- */
+async function doStep(s,k){
+  s.st[k]="run"; s.err=""; drawScenes();
+  try{ if(k==="v") await makeVoice(s); else if(k==="i") await makeImage(s); else await makeClip(s); s.st[k]="ok"; return true; }
+  catch(e){ s.st[k]="error"; s.err=e.message; log(`❌ Scene ${S.scenes.indexOf(s)+1} ${k==="v"?"voice":k==="i"?"picture":"clip"}: ${e.message}`); return false; }
+  finally{ drawScenes(); updateCost(); }
+}
+async function one(i,k){ ac(); await doStep(S.scenes[i],k); }
+async function runStep(k,label,n){
+  const todo=S.scenes.filter(s=>k==="v"?!s.voice:k==="i"?!s.img:(s.useVideo&&!s.clip));
+  if(!todo.length) return 0;
+  let done=0,fail=0; status(`${label} 0/${todo.length}`);
+  await pool(todo,n,async s=>{ const ok=await doStep(s,k); ok?done++:fail++; status(`${label} ${done}/${todo.length}${fail?` · ${fail} failed`:""}`); $("aBar").style.width=((done+fail)/todo.length*100)+"%"; });
+  return fail;
+}
+async function guard(fn){ if(BUSY){ alert("Already working…"); return; } BUSY=true; ac(); let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} try{ return await fn(); }finally{ BUSY=false; if(wake) try{wake.release();}catch(e){} } }
+const runVoices=()=>guard(()=>runStep("v","🎙️ Voices",3));
+const runImages=()=>guard(()=>runStep("i","🖼️ Pictures",2));
+const runClips=()=>guard(async()=>{ await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); return runStep("c","🎥 Clips",+$("par").value||2); });
+async function autoRun(){
+  saveSettings(true);
+  await guard(async()=>{
+    if(!S.scenes.length||(S.topic!==$("topic").value.trim()&&$("topic").value.trim())){ if(!(await makeScript())) return; }
+    let f=await runStep("v","🎙️ Voices",3);
+    f+=await runStep("i","🖼️ Pictures",2);
+    if($("vidEngine").value!=="none") f+=await runStep("c","🎥 Clips",+$("par").value||2);
+    if(f){ status(`⚠️ ${f} item(s) failed — fix/retry them in step 2, then tap Render.`); return; }
+    status("🎬 Rendering final video…");
+    BUSY=false; await renderVideo(true);
+  });
+}
 
 /* ---------- 3. Render ---------- */
-function pickMime(){
-  const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
-  return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||"";
-}
-function splitSubs(text){
-  const raw=text.replace(/\s+/g," ").split(/(?<=[।.!?,;])\s+/); const out=[];
-  raw.forEach(p=>{ while(p.length>70){ let k=p.lastIndexOf(" ",70); if(k<20)k=70; out.push(p.slice(0,k)); p=p.slice(k).trim(); } if(p) out.push(p); });
-  return out;
-}
-function wrap(ctx,text,maxW){ const w=text.split(" "),lines=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(ctx.measureText(t).width>maxW&&l){lines.push(l);l=x;}else l=t; }); if(l)lines.push(l); return lines; }
+function pickMime(){ const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]; return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||""; }
+function splitSubs(text){ const out=[]; let off=0;
+  text.split(/(?<=[।.!?,;])\s+/).forEach(p=>{ const at=text.indexOf(p,off); off=at+p.length; let pos=at;
+    while(p.length>60){ let k=p.lastIndexOf(" ",60); if(k<20) k=60; out.push({t:p.slice(0,k),o:pos,l:k}); const rest=p.slice(k); const trim=rest.length-rest.trimStart().length; pos+=k+trim; p=rest.trim(); }
+    if(p) out.push({t:p,o:pos,l:p.length}); });
+  return out; }
+function subTimes(s){ const subs=splitSubs(s.narration), d=s.voice.buf.duration, al=s.voice.align;
+  if(al&&al.character_start_times_seconds&&al.character_start_times_seconds.length>=s.narration.length*0.9){
+    const st=al.character_start_times_seconds, en=al.character_end_times_seconds;
+    return subs.map((x,i)=>({text:x.t,a:st[Math.min(x.o,st.length-1)]||0,b:i<subs.length-1?(st[Math.min(subs[i+1].o,st.length-1)]||d):d})); }
+  const tot=subs.reduce((a,x)=>a+x.t.length,0)||1; let c=0; return subs.map(x=>{ const dd=d*x.t.length/tot, o={text:x.t,a:c,b:c+dd}; c+=dd; return o; }); }
+function wrap(g,text,maxW){ const w=text.split(" "),L=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(g.measureText(t).width>maxW&&l){L.push(l);l=x;}else l=t; }); if(l)L.push(l); return L; }
 
-async function renderVideo(){
-  const btn=$("btnRender"); btn.disabled=true; $("outBox").innerHTML="";
-  const a=ac(); const [W,H]=dims(); const cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
-  const LEAD=0.6, GAP=0.5, FADE=0.8;
-  // timeline
-  let t=LEAD; const tl=S.scenes.map(s=>{ const st=t; t+=s.audio.duration+GAP; const subs=splitSubs(s.narration); const tot=subs.reduce((x,y)=>x+y.length,0)||1; let c=st; return {s,start:st,vend:t,subs:subs.map(x=>{const d=s.audio.duration*x.length/tot; const o={text:x,a:c,b:c+d}; c+=d; return o;})}; });
+async function renderVideo(auto){
+  if(BUSY&&!auto) return alert("Already working…");
+  const miss=S.scenes.filter(s=>!s.voice||!s.img); if(!S.scenes.length||miss.length){ alert("Every scene needs a voice and a picture first."); return; }
+  BUSY=true; $("btnRender").disabled=true; $("outBox").innerHTML="";
+  let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
+  try{
+  const a=ac(), [W,H]=dims(), cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
+  const LEAD=0.6, GAP=0.45, FADE=0.7;
+  let t=LEAD; const tl=S.scenes.map((s,i)=>{ const st=t; t+=s.voice.buf.duration+GAP; return {s,i,start:st,vend:t,subs:subTimes(s).map(x=>({text:x.text,a:x.a+st,b:x.b+st}))}; });
   const total=t+0.8;
-  // voice track
-  const rate=S.scenes[0].audio.sampleRate;
-  const full=a.createBuffer(1,Math.ceil(total*rate),rate); const fd=full.getChannelData(0);
-  tl.forEach(x=>{ let src=x.s.audio.getChannelData(0); if(x.s.audio.sampleRate!==rate){ log("Sample-rate mismatch; redo voice for consistency."); } fd.set(src.subarray(0,Math.min(src.length,fd.length-Math.floor(x.start*rate))),Math.floor(x.start*rate)); });
-  const dest=a.createMediaStreamDestination();
-  const vSrc=a.createBufferSource(); vSrc.buffer=full; vSrc.connect(dest); if($("monitor").checked) vSrc.connect(a.destination);
-  let mSrc=null;
-  const f=$("bgm").files[0];
-  if(f){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; const mg=a.createGain(); mg.gain.value=(+$("bgmVol").value)/100; mSrc.connect(mg); mg.connect(dest); if($("monitor").checked) mg.connect(a.destination);}catch(e){ log("Music file could not be read: "+e.message); } }
+  const dest=a.createMediaStreamDestination(), mon=$("monitor").checked, srcs=[];
+  let mSrc=null; const f=$("bgm").files[0];
+  if(f){ try{ const mb=await a.decodeAudioData(await f.arrayBuffer()); mSrc=a.createBufferSource(); mSrc.buffer=mb; mSrc.loop=true; const mg=a.createGain(); mg.gain.value=(+$("bgmVol").value)/100; mSrc.connect(mg); mg.connect(dest); if(mon) mg.connect(a.destination); }catch(e){ log("Music not readable: "+e.message); } }
   const stream=cv.captureStream(30); dest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr));
-  const mime=pickMime(); if(!mime){ alert("This phone can't record video (MediaRecorder missing)."); btn.disabled=false; return; }
+  const mime=pickMime(); if(!mime) throw new Error("This phone can't record video (no MediaRecorder).");
   const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:W>H?8e6:6e6,audioBitsPerSecond:160000});
   const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-  let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
-  const fs=Math.round(Math.min(W,H)*0.048);
-  function drawImg(x,idx,p,alpha){
-    const im=x.s.img; const k=idx%4; const z=(k%2===0)?1.06+0.10*p:1.16-0.10*p;
-    const sc=Math.max(W/im.width,H/im.height)*z; const dw=im.width*sc, dh=im.height*sc;
-    const px=(k<2?-1:1)*(p-0.5)*(dw-W)*0.5, py=(k===1||k===2?1:-1)*(p-0.5)*(dh-H)*0.3;
-    g.globalAlpha=alpha; g.drawImage(im,(W-dw)/2+px,(H-dh)/2+py,dw,dh); g.globalAlpha=1;
+  const fs=Math.round(Math.min(W,H)*0.046);
+  // clip players, created just in time (phones have few video decoders)
+  const vids={};
+  const playStart=j=>j===0?0:tl[j].start-FADE;
+  function prep(j){ const x=tl[j]; if(!x||!x.s.useVideo||!x.s.clip||vids[j]) return; const el=document.createElement("video"); el.muted=true; el.playsInline=true; el.preload="auto"; el.src=x.s.clip.url; el.load(); vids[j]={el,started:false}; }
+  function release(j){ const v=vids[j]; if(!v) return; try{ v.el.pause(); v.el.removeAttribute("src"); v.el.load(); }catch(e){} delete vids[j]; }
+  function cover(src,sw,sh,z,px,py,alpha){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha; g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5,(H-dh)/2+py*(dh-H)*0.5,dw,dh); g.globalAlpha=1; }
+  function drawScene(x,T,alpha){
+    const j=x.i, p=Math.min(1,Math.max(0,(T-playStart(j))/(x.vend-playStart(j))));
+    const v=vids[j];
+    if(v&&v.el.readyState>=2&&v.started){ const el=v.el; const z=el.ended?1+0.04*p:1; cover(el,el.videoWidth||W,el.videoHeight||H,z,0,0,alpha); return; }
+    const im=x.s.img.bmp, k=j%4, z=(k%2===0)?1.05+0.10*p:1.15-0.10*p;
+    cover(im,im.width,im.height,z,(k<2?-1:1)*(p-0.5),(k===1||k===2?1:-1)*(p-0.5)*0.6,alpha);
   }
   function frame(T){
     g.fillStyle="#000"; g.fillRect(0,0,W,H);
     let i=tl.findIndex(x=>T<x.vend); if(i<0) i=tl.length-1;
-    const x=tl[i]; const vs=i===0?0:x.start, ve=x.vend;
-    drawImg(x,i,Math.min(1,Math.max(0,(T-vs)/(ve-vs))),1);
-    if(i<tl.length-1&&T>ve-FADE){ const n=tl[i+1]; drawImg(n,i+1,0,(T-(ve-FADE))/FADE); }
-    // vignette
-    const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.35,W/2,H/2,Math.max(W,H)*0.75); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.55)"); g.fillStyle=vg; g.fillRect(0,0,W,H);
-    if($("titleCard").checked&&T<4.5){ const al=T<3.5?1:(4.5-T); g.globalAlpha=al; g.fillStyle="rgba(0,0,0,0.45)"; g.fillRect(0,0,W,H); g.fillStyle="#fff"; g.textAlign="center"; g.font=`800 ${fs*1.6}px "Noto Sans Devanagari",sans-serif`; const ls=wrap(g,S.title,W*0.85); ls.forEach((l,j)=>g.fillText(l,W/2,H/2+(j-(ls.length-1)/2)*fs*2)); g.globalAlpha=1; }
-    else if($("subs").checked){ const sb=x.subs.find(q=>T>=q.a&&T<q.b); if(sb){ g.font=`700 ${fs}px "Noto Sans Devanagari",sans-serif`; g.textAlign="center"; const ls=wrap(g,sb.text,W*0.86); const lh=fs*1.45, bh=ls.length*lh+fs*0.6, by=H*(W>H?0.90:0.80)-bh; g.fillStyle="rgba(0,0,0,0.6)"; const bw=Math.min(W*0.92,Math.max(...ls.map(l=>g.measureText(l).width))+fs*1.2); g.fillRect((W-bw)/2,by,bw,bh); g.fillStyle="#fff"; ls.forEach((l,j)=>g.fillText(l,W/2,by+fs*0.3+lh*(j+0.75))); } }
+    prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i) release(+k); });
+    [i,i+1].forEach(j=>{ const v=vids[j]; if(v&&!v.started&&T>=playStart(j)&&v.el.readyState>=2){ const span=tl[j].vend-playStart(j); v.el.playbackRate=Math.max(0.6,Math.min(1,(x=>x)(tl[j].s.clip.dur/span))); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
+    drawScene(tl[i],T,1);
+    if(i<tl.length-1&&T>tl[i].vend-FADE) drawScene(tl[i+1],T,(T-(tl[i].vend-FADE))/FADE);
+    const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.4,W/2,H/2,Math.max(W,H)*0.78); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.5)"); g.fillStyle=vg; g.fillRect(0,0,W,H);
+    if($("titleCard").checked&&T<4.2){ const al=T<3.2?1:(4.2-T); g.globalAlpha=al; g.fillStyle="rgba(0,0,0,0.45)"; g.fillRect(0,0,W,H); g.fillStyle="#fff"; g.textAlign="center"; g.font=`800 ${fs*1.6}px "Noto Sans Devanagari",sans-serif`; const ls=wrap(g,S.title,W*0.85); ls.forEach((l,j)=>g.fillText(l,W/2,H/2+(j-(ls.length-1)/2)*fs*2)); g.globalAlpha=1; }
+    else if($("subs").checked){ const sb=tl[i].subs.find(q=>T>=q.a&&T<q.b); if(sb){ g.font=`700 ${fs}px "Noto Sans Devanagari",sans-serif`; g.textAlign="center"; const ls=wrap(g,sb.text,W*0.86), lh=fs*1.45, bh=ls.length*lh+fs*0.6, by=H*(W>H?0.91:0.80)-bh; const bw=Math.min(W*0.92,Math.max(...ls.map(l=>g.measureText(l).width))+fs*1.2); g.fillStyle="rgba(0,0,0,0.6)"; g.fillRect((W-bw)/2,by,bw,bh); g.fillStyle="#fff"; ls.forEach((l,j)=>g.fillText(l,W/2,by+fs*0.3+lh*(j+0.75))); } }
   }
-  frame(0);
-  await new Promise(r=>setTimeout(r,200));
+  prep(0); prep(1); await sleep(600); frame(0);
   const done=new Promise(r=>rec.onstop=r);
   rec.start(1000);
-  const t0=a.currentTime+0.15; vSrc.start(t0); if(mSrc) mSrc.start(t0);
-  log(`Rendering ${Math.round(total)}s video (${mime.split(";")[0]})…`);
-  await new Promise(res=>{
-    function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; requestAnimationFrame(loop); }
-    requestAnimationFrame(loop);
-  });
-  rec.stop(); try{vSrc.stop(); mSrc&&mSrc.stop();}catch(e){} await done; if(wake) try{wake.release();}catch(e){}
+  const t0=a.currentTime+0.2;
+  tl.forEach(x=>{ const src=a.createBufferSource(); src.buffer=x.s.voice.buf; src.connect(dest); if(mon) src.connect(a.destination); src.start(t0+x.start); srcs.push(src); });
+  if(mSrc) mSrc.start(t0);
+  log(`Rendering ${Math.round(total)}s (${mime.split(";")[0]})…`);
+  await new Promise(res=>{ (function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; status(`🎬 Rendering ${Math.max(0,Math.round(T))}/${Math.round(total)}s — keep app open`); requestAnimationFrame(loop); })(); });
+  rec.stop(); srcs.forEach(s=>{try{s.stop();}catch(e){}}); try{mSrc&&mSrc.stop();}catch(e){} Object.keys(vids).forEach(k=>release(+k)); await done;
   $("rBar").style.width="100%";
-  const blob=new Blob(chunks,{type:mime.split(";")[0]});
-  const ext=mime.includes("mp4")?"mp4":"webm";
+  const blob=new Blob(chunks,{type:mime.split(";")[0]}), ext=mime.includes("mp4")?"mp4":"webm";
   const name=(S.title||"documentary").replace(/[\\/:*?"<>|]/g,"").slice(0,60).trim()+"."+ext;
-  const url=URL.createObjectURL(blob);
-  $("outBox").innerHTML=`<video controls src="${url}"></video><div class="muted">${(blob.size/1048576).toFixed(1)} MB · ${ext.toUpperCase()}</div>
+  window._out={blob,name};
+  $("outBox").innerHTML=`<video controls src="${URL.createObjectURL(blob)}"></video><div class="muted">${(blob.size/1048576).toFixed(1)} MB · ${ext.toUpperCase()}</div>
    <button onclick="saveVideo()">💾 Save / Share (YouTube, Drive, Gallery)</button>
-   ${S.description?`<button class="sec" onclick="copyDesc()">📋 Copy YouTube description</button>`:""}`;
-  window._out={blob,name}; btn.disabled=false; log("Video ready ✅ "+name);
+   <button class="sec" onclick="copyDesc()">📋 Copy title + description</button>`;
+  log("✅ Video ready: "+name); status("✅ Video ready!");
+  if(auto) saveVideo();
+  }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
+  finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
 function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
-function blobPartToB64(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(b); }); }
 async function saveVideo(){
   const {blob,name}=window._out||{}; if(!blob) return;
-  const C=window.Capacitor;
-  if(C&&C.isNativePlatform&&C.isNativePlatform()){
-    const FS=C.Plugins.Filesystem, SH=C.Plugins.Share;
-    try{
-      const CH=3*1024*1024; log("Saving…");
-      for(let o=0;o<blob.size;o+=CH){
-        const data=await blobPartToB64(blob.slice(o,o+CH));
-        if(o===0) await FS.writeFile({path:name,data,directory:"CACHE"}); else await FS.appendFile({path:name,data,directory:"CACHE"});
-      }
+  if(NATIVE){ const FS=Capacitor.Plugins.Filesystem, SH=Capacitor.Plugins.Share;
+    try{ const CHK=3*1024*1024;
+      for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path:name,data,directory:"CACHE"}); else await FS.appendFile({path:name,data,directory:"CACHE"}); }
       const {uri}=await FS.getUri({path:name,directory:"CACHE"});
       await SH.share({title:S.title,text:S.title,url:uri,dialogTitle:"Save or upload video"});
-    }catch(e){ log("❌ Save: "+e.message); alert(e.message); }
-  }else{
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
-  }
+    }catch(e){ log("Save: "+e.message); } }
+  else{ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); }
 }
+
+restore().then(updateCost);
 </script>
 </body>
 </html>
