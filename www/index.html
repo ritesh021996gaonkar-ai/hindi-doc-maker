@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -54,6 +54,11 @@ details summary{cursor:pointer;font-weight:700}
 <h3>🧠 Google Gemini (script + pictures + Omni video)</h3>
 <label>Gemini API key — aistudio.google.com/apikey (billing on)</label>
 <input id="key" type="password" placeholder="AIza...">
+
+<h3>✍️ Script writer</h3>
+<label>Script engine</label>
+<select id="txtEngine"><option value="cloudflare">Cloudflare Llama — FREE (uses Cloudflare keys below)</option><option value="gemini">Google Gemini (best Hindi; free key works)</option></select>
+<label>Cloudflare script model</label><input id="cfTxtModel" value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">
 
 <h3>🖼️ Pictures</h3>
 <label>Picture engine</label>
@@ -204,7 +209,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
+const SET_IDS=["txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","subs","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -216,7 +221,7 @@ function refreshUI(){
   $("vidRes").innerHTML=RES[ve].map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
   if(RES[ve].some(r=>r[0]===cur)) $("vidRes").value=cur;
   $("grokBox").style.display=ve==="grok"?"":"none";
-  $("cfBox").style.display=$("imgEngine").value==="cloudflare"?"":"none";
+  $("cfBox").style.display=($("imgEngine").value==="cloudflare"||$("txtEngine").value==="cloudflare")?"":"none";
   $("klingBox").style.display=ve==="kling"?"":"none";
   $("vidRule").disabled=ve==="none";
   const el=$("voiceEngine").value==="eleven";
@@ -230,7 +235,7 @@ function refreshUI(){
   refreshUI();
   SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); });
   refreshUI();
-  ["vidEngine","voiceEngine","imgEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
+  ["vidEngine","voiceEngine","imgEngine","txtEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
   ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
   ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
   if(!$("key").value) $("setBox").open=true;
@@ -329,9 +334,7 @@ async function makeScript(){
 - "screen_title": वीडियो की शुरुआत में बड़े अक्षरों में दिखाने के लिए 2-4 शब्दों का छोटा शीर्षक। "screen_subtitle": उसके नीचे एक छोटी पंक्ति (6-10 शब्द)।
 - "title": आकर्षक हिंदी YouTube शीर्षक। "description": हिंदी YouTube description। "tags": 10 tags।
 केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"scenes":[{"narration":"","image_prompt":"","motion":"","onscreen":""}]}`;
-    const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
-    const t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```(json)?|```$/g,"");
-    const d=JSON.parse(t);
+    const d=await writeScript(prompt);
     await DB.clear();
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
@@ -341,6 +344,32 @@ async function makeScript(){
     return true;
   }catch(e){ log("❌ Script: "+e.message); status("❌ "+e.message); return false; }
   finally{ $("btnScript").disabled=false; }
+}
+function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
+  try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error("Script was not valid JSON — tap again."); } }
+async function cfScript(prompt){
+  const acct=$("cfAcct").value.trim(), tok=$("cfToken").value.trim(); if(!acct||!tok) throw new Error("Add Cloudflare Account ID and API token in Settings.");
+  const models=[...new Set([$("cfTxtModel").value.trim(),"@cf/meta/llama-3.3-70b-instruct-fp8-fast","@cf/meta/llama-4-scout-17b-16e-instruct"].filter(Boolean))];
+  let last;
+  for(const m of models) for(const json of [true,false]){
+    const body={messages:[{role:"system",content:"You are an expert Hindi documentary scriptwriter. Reply with ONE valid JSON object only. Write narration in pure Devanagari Hindi."},{role:"user",content:prompt}],max_tokens:7000,temperature:0.8};
+    if(json) body.response_format={type:"json_object"};
+    try{
+      const r=await http("POST",`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(acct)}/ai/run/${m}`,{headers:{Authorization:"Bearer "+tok},json:body});
+      const d=r.data||{};
+      if(!r.ok||!d.result){ throw new Error(`Cloudflare ${r.status}: ${(d.errors&&d.errors[0]&&d.errors[0].message)||errMsg(d)}`); }
+      const out=parseJSON(d.result.response!==undefined?d.result.response:(d.result.choices&&d.result.choices[0].message.content));
+      if(!out.scenes||!out.scenes.length) throw new Error("Script came back without scenes");
+      if(m!==models[0]) log("Used script model "+m);
+      return out;
+    }catch(e){ last=e; log(`${m.split("/").pop()}${json?"":" (plain)"}: ${e.message.slice(0,120)}`); if(/401|403|Authentication/i.test(e.message)) throw e; }
+  }
+  throw last;
+}
+async function writeScript(prompt){
+  if($("txtEngine").value==="cloudflare") return cfScript(prompt);
+  const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
+  return parseJSON(parts(j).map(p=>p.text||"").join(""));
 }
 function drawScript(){
   $("scriptCard").style.display=S.scenes.length?"":"none";
@@ -391,6 +420,7 @@ function updateCost(){
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
   box.innerHTML=`<div class="cost">📊 <b>Estimate</b> for ${sc.length} scenes · ~${Math.round(secs/60*10)/10} min<br>
+   ✍️ Script (${$("txtEngine").value==="cloudflare"?"Cloudflare":"Gemini"}): ${$("txtEngine").value==="cloudflare"?"FREE":"≈ $0.01"}<br>
    🖼️ Pictures (${$("imgEngine").value==="cloudflare"?"Cloudflare FLUX":"Gemini"}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
    🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
    🎙️ ${voiceTxt}<br>
