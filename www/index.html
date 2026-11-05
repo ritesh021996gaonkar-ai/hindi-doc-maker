@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.7</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v2.8</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -99,6 +99,7 @@ details summary{cursor:pointer;font-weight:700}
  <option value="omni">Google Gemini Omni Flash (Flow's model, Gemini key)</option>
  <option value="grok">xAI Grok Imagine</option>
  <option value="kling">Kling AI</option>
+ <option value="manual">My own clips — GenV, FlixGen or any app (you import)</option>
  <option value="none">No AI video — pictures with camera motion (cheapest)</option>
 </select>
 <div class="row">
@@ -164,6 +165,7 @@ details summary{cursor:pointer;font-weight:700}
 <section class="card" id="scriptCard" style="display:none">
 <h2>2. Script &amp; scenes</h2>
 <div id="scriptBox"></div>
+<button class="small sec" onclick="exportAll()">📤 Save all pictures + prompts to phone (for GenV/FlixGen)</button>
 <div class="row">
  <button class="sec" onclick="runVoices()">🎙️ Voices</button>
  <button class="sec" onclick="runImages()">🖼️ Pictures</button>
@@ -231,7 +233,7 @@ function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
 function setV(id,v){ const e=$(id); if(e.type==="checkbox") e.checked=v==="1"; else { if(e.tagName==="SELECT"&&![...e.options].some(o=>o.value===v)) e.add(new Option(v,v)); e.value=v; } }
 function saveSettings(silent){ SET_IDS.forEach(id=>store("hdm2_"+id,getV(id))); MODELS=null; if(!silent){ log("Settings saved."); $("setBox").open=false; } updateCost(); }
-const RES={omni:[["720p","720p (recommended)"],["360p","360p (cheapest)"],["1080p","1080p"]],grok:[["720p","720p"],["480p","480p (cheaper)"]],kling:[["std","1080p (by mode)"]],none:[["-","—"]]};
+const RES={omni:[["720p","720p (recommended)"],["360p","360p (cheapest)"],["1080p","1080p"]],grok:[["720p","720p"],["480p","480p (cheaper)"]],kling:[["std","1080p (by mode)"]],none:[["-","—"]],manual:[["-","—"]]};
 function refreshUI(){
   const ve=$("vidEngine").value, cur=$("vidRes").value;
   $("vidRes").innerHTML=RES[ve].map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
@@ -253,6 +255,7 @@ function refreshUI(){
   SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); });
   refreshUI();
   ["vidEngine","voiceEngine","imgEngine","txtEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
+  $("vidEngine").addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); });
   ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
   ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
   if(!$("key").value) $("setBox").open=true;
@@ -440,7 +443,8 @@ function drawScenes(){
       <div class="chk"><input type="checkbox" id="uv_${s.id}" ${s.useVideo?"checked":""} ${$("vidEngine").value==="none"?"disabled":""} onchange="S.scenes[${i}].useVideo=this.checked;saveProj();drawScenes();updateCost()"><label for="uv_${s.id}">🎥 AI video clip for this scene</label></div>
       <button class="small sec" onclick="one(${i},'v')">🎙️ Redo voice</button>
       <button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>
-      ${s.useVideo?`<button class="small sec" onclick="one(${i},'c')">🎥 New clip</button>`:""}
+      ${s.useVideo&&$("vidEngine").value!=="manual"?`<button class="small sec" onclick="one(${i},'c')">🎥 New clip</button>`:""}
+      ${s.useVideo&&$("vidEngine").value==="manual"?`${s.img?`<button class="small" onclick="sendToApp(${i})">📤 Send to GenV/FlixGen</button>`:""}<button class="small" onclick="pickClip(${i})">📥 Import clip</button>`:""}
       ${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}
       <button class="small sec" onclick="delScene(${i})">✕ Delete</button></div>`;}).join("")
    +`<button class="small sec" onclick="addScene()">+ Add scene</button>`;
@@ -453,7 +457,7 @@ function playScene(i){ if(playing) try{playing.stop();}catch(e){} const src=ac()
 
 /* ---------- cost estimate ---------- */
 function sceneSecs(s){ return s.voice?s.voice.buf.duration:Math.max(4,s.narration.split(/\s+/).filter(Boolean).length/2.4); }
-function clipSecs(s){ const v=sceneSecs(s), e=$("vidEngine").value; if(e==="omni") return Math.min(10,Math.max(4,Math.ceil(v))); if(e==="grok") return Math.min(15,Math.max(3,Math.ceil(v))); if(e==="kling") return v>6?10:5; return 0; }
+function clipSecs(s){ const v=sceneSecs(s), e=$("vidEngine").value; if(e==="omni") return Math.min(10,Math.max(4,Math.ceil(v))); if(e==="grok") return Math.min(15,Math.max(3,Math.ceil(v))); if(e==="kling") return v>6?10:5; if(e==="manual") return Math.min(10,Math.max(5,Math.ceil(v))); return 0; }
 function priceSec(){ const e=$("vidEngine").value,r=$("vidRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; if(e==="kling") return $("klMode").value==="pro"?0.112:0.084; return 0; }
 function updateCost(){
   const box=$("costBox"); let sc=S.scenes;
@@ -636,14 +640,16 @@ async function runStep(k,label,n){
 async function guard(fn){ if(BUSY){ alert("Already working…"); return; } BUSY=true; ac(); let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} try{ return await fn(); }finally{ BUSY=false; if(wake) try{wake.release();}catch(e){} } }
 const runVoices=()=>guard(()=>runStep("v","🎙️ Voices",3));
 const runImages=()=>guard(()=>runStep("i","🖼️ Pictures",2));
-const runClips=()=>guard(async()=>{ await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); return runStep("c","🎥 Clips",+$("par").value||2); });
+const runClips=()=>guard(async()=>{ await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); if($("vidEngine").value==="manual"){ manualHint(); return 0; } return runStep("c","🎥 Clips",+$("par").value||2); });
+function manualHint(){ const n=S.scenes.filter(s=>s.useVideo&&!s.clip).length; status(n?`📥 ${n} scene(s) need your clip: tap 📤 Send → make the clip in GenV/FlixGen → 📥 Import clip. Then tap Render.`:"✅ All clips imported — tap Render."); $("mediaBox").scrollIntoView({behavior:"smooth"}); }
 async function autoRun(){
   saveSettings(true);
   await guard(async()=>{
     if(!S.scenes.length||(S.topic!==$("topic").value.trim()&&$("topic").value.trim())){ if(!(await makeScript())) return; }
     let f=await runStep("v","🎙️ Voices",3);
     f+=await runStep("i","🖼️ Pictures",2);
-    if($("vidEngine").value!=="none") f+=await runStep("c","🎥 Clips",+$("par").value||2);
+    if($("vidEngine").value==="manual"){ if(f){ status(`⚠️ ${f} item(s) failed — retry them in step 2.`); return; } if(S.scenes.some(s=>s.useVideo&&!s.clip)){ manualHint(); return; } }
+    else if($("vidEngine").value!=="none") f+=await runStep("c","🎥 Clips",+$("par").value||2);
     if(f){ status(`⚠️ ${f} item(s) failed — fix/retry them in step 2, then tap Render.`); return; }
     status("🎬 Rendering final video…");
     BUSY=false; await renderVideo(true);
@@ -841,6 +847,36 @@ async function renderVideo(auto,PV){
   finally{ BUSY=false; $("btnRender").disabled=false; if(wake) try{wake.release();}catch(e){} }
 }
 function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
+/* ---------- my own clips (GenV / FlixGen / any app) ---------- */
+function clipPrompt(s){ return `${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
+async function sendToApp(i){
+  const s=S.scenes[i]; if(!s.img) return alert("Make the picture first.");
+  const pr=clipPrompt(s);
+  try{ await navigator.clipboard.writeText(pr); }catch(e){}
+  if(!NATIVE){ alert("Prompt copied:\n\n"+pr); return; }
+  try{
+    const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
+    const uri=await writeFile(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`,"DOCUMENTS");
+    status(`📋 Motion prompt copied. Pick GenV or FlixGen, choose "Image to video", paste the prompt.`);
+    await Capacitor.Plugins.Share.share({title:`Scene ${i+1}`,text:pr,files:[uri],dialogTitle:"Open in GenV / FlixGen"});
+  }catch(e){ if(/cancel/i.test(e.message)) return; log("Send: "+e.message); alert("Picture saved in Files › Documents › HindiDocMaker › pictures. Prompt copied:\n\n"+pr); }
+}
+function pickClip(i){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const s=S.scenes[i];
+    s.st.c="run"; drawScenes(); try{ await setClip(s,f); s.st.c="ok"; log(`Scene ${i+1}: imported clip (${s.clip.dur.toFixed(1)}s).`); }catch(e){ s.st.c="error"; s.err="Import: "+e.message; }
+    drawScenes(); if($("vidEngine").value==="manual") manualHint(); };
+  inp.click();
+}
+async function exportAll(){
+  if(!S.scenes.length) return;
+  let txt=`${S.title}\n\n`; let k=0;
+  for(const [i,s] of S.scenes.entries()){ if(!s.img) continue; const name=`scene_${String(i+1).padStart(2,"0")}.jpg`;
+    if(NATIVE) await writeFile(await toJpeg(s.img.blob),`HindiDocMaker/pictures/${name}`,"DOCUMENTS"); k++;
+    txt+=`${name}${s.useVideo?"":" (no clip needed)"}\n${clipPrompt(s)}\n\n`; }
+  if(NATIVE) await writeFile(new Blob([txt],{type:"text/plain"}),"HindiDocMaker/pictures/prompts.txt","DOCUMENTS");
+  status(`✅ ${k} pictures + prompts.txt saved: Files › Documents › HindiDocMaker › pictures`);
+}
 let SAVED=null, SHARING=false;
 async function writeFile(blob,path,dir){ const FS=Capacitor.Plugins.Filesystem, CHK=3*1024*1024;
   for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path,data,directory:dir,recursive:true}); else await FS.appendFile({path,data,directory:dir});
