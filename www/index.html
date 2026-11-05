@@ -36,7 +36,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -138,9 +138,11 @@ async function gemini(model, body, tries=5){
     }catch(e){ if(i===tries-1) throw e; await sleep(2000*(i+1)); continue; }
     if(res.ok) return res.json();
     const txt = await res.text();
-    if([429,500,502,503,504].includes(res.status) && i<tries-1){ log(`API busy (${res.status}), retrying...`); await sleep(4000*(i+1)); continue; }
+    const hard = res.status===429 && /limit: 0|per day|PerDay|retry in \d+h/i.test(txt);
+    if(!hard && [429,500,502,503,504].includes(res.status) && i<tries-1){ log(`API busy (${res.status}), retrying...`); await sleep(4000*(i+1)); continue; }
     let msg=txt; try{ msg=JSON.parse(txt).error.message; }catch(e){}
-    throw new Error(`${model}: ${res.status} ${msg}`);
+    if(hard) msg="Quota used up / not allowed on free tier (enable billing). "+msg;
+    const err=new Error(`${model}: ${res.status} ${msg}`); err.status=res.status; err.hard=hard; throw err;
   }
 }
 /* Ask Google which models this key can use, and pick the best ones automatically */
@@ -253,18 +255,26 @@ function dims(){ return $("format").value==="9:16"?[1080,1920]:[1920,1080]; }
 async function makeImage(s,i){
   const full=`${s.prompt}. ${$("imgStyle").value}`;
   let blob;
-  if($("imgSrc").value==="pollinations"){
+  const polli=async()=>{
     const [w,h]=dims();
     const r=await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=${w}&height=${h}&nologo=true&seed=${Date.now()%100000+i}`);
     if(!r.ok) throw new Error("Pollinations "+r.status);
-    blob=await r.blob();
-  }else{
+    return r.blob();
+  };
+  if($("imgSrc").value==="pollinations" || window._noGeminiImg){
+    blob=await polli();
+  }else try{
     const j=await geminiAuto("image",$("mImg").value,{
       contents:[{parts:[{text:"Generate an image: "+full}]}],
       generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}
     });
     const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No image returned (prompt may be blocked — edit it)");
     blob=new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"});
+  }catch(e){
+    if(e.status!==429 && !/billing|quota|limit/i.test(e.message)) throw e;
+    window._noGeminiImg=true;
+    log("Gemini pictures need billing on your key — switching to free Pollinations pictures.");
+    blob=await polli();
   }
   if(s.imgUrl) URL.revokeObjectURL(s.imgUrl);
   s.imgUrl=URL.createObjectURL(blob);
@@ -296,7 +306,7 @@ function drawMedia(){
   $("mediaBox").innerHTML=S.scenes.map((s,i)=>`<div class="scene"><div class="hd">Scene ${i+1}
    <span class="st ${s.status==="ok"?"ok":s.status==="error"?"bad":""}">${s.status==="ok"?(s.audio?s.audio.duration.toFixed(1)+"s":"ok"):esc(s.status||"new")}</span></div>
    ${s.imgUrl?`<img class="thumb" src="${s.imgUrl}">`:""}
-   ${s.status==="error"?`<div class="muted">${esc(s.err||"")}</div>`:""}
+   ${s.status==="error"?`<div class="muted">${esc(String(s.err||"").slice(0,180))}${String(s.err||"").length>180?"…":""}</div>`:""}
    <button class="small sec" onclick="doScene(${i},'img')">🖼️ New picture</button>
    <button class="small sec" onclick="doScene(${i},'voice')">🎙️ Redo voice</button>
    ${s.audio?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}</div>`).join("");
