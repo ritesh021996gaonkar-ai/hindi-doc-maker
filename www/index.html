@@ -36,7 +36,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted" id="ver">v1.1</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -162,7 +162,14 @@ async function makeScript(){
 - हर दृश्य का "image_prompt" अंग्रेज़ी में हो: उस दृश्य का एक विस्तृत, सिनेमैटिक दृश्य-वर्णन (कोई टेक्स्ट नहीं, कोई असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
 - "title" एक आकर्षक हिंदी YouTube शीर्षक हो।
 केवल JSON लौटाएँ: {"title":"...","description":"YouTube description हिंदी में","scenes":[{"narration":"...","image_prompt":"..."}]}`;
-    const j=await gemini($("mText").value.trim(),{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
+    const body={contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}};
+    const models=[...new Set([$("mText").value.trim(),"gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.5-pro"])];
+    let j=null,lastErr=null;
+    for(const m of models){
+      try{ j=await gemini(m,body,2); if(m!==models[0]) log(`Used backup model ${m}`); break; }
+      catch(e){ lastErr=e; log(`${m} not available, trying next model…`); }
+    }
+    if(!j) throw lastErr;
     let t=parts(j).map(p=>p.text||"").join("").trim().replace(/^```json|```$/g,"");
     const d=JSON.parse(t);
     S.title=d.title||topic; S.description=d.description||"";
@@ -191,8 +198,13 @@ function addScene(){ S.scenes.push({narration:"",prompt:"",status:"new"}); drawS
 /* ---------- 2. Voice + images ---------- */
 function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 
+async function geminiFallback(list,body){
+  let lastErr=null;
+  for(const m of [...new Set(list)]){ try{ return await gemini(m,body,3); }catch(e){ lastErr=e; log(`${m} busy/unavailable, trying next…`); } }
+  throw lastErr;
+}
 async function makeVoice(s){
-  const j=await gemini($("mTts").value.trim(),{
+  const j=await geminiFallback([$("mTts").value.trim(),"gemini-2.5-flash-preview-tts","gemini-2.5-pro-preview-tts"],{
     contents:[{parts:[{text:`${$("ttsStyle").value}:\n${s.narration}`}]}],
     generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}
   });
@@ -216,7 +228,7 @@ async function makeImage(s,i){
     if(!r.ok) throw new Error("Pollinations "+r.status);
     blob=await r.blob();
   }else{
-    const j=await gemini($("mImg").value.trim(),{
+    const j=await geminiFallback([$("mImg").value.trim(),"gemini-3.1-flash-image","gemini-2.5-flash-image"],{
       contents:[{parts:[{text:"Generate an image: "+full}]}],
       generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}
     });
