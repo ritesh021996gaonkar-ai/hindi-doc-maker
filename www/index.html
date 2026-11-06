@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.4</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.0</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -198,7 +198,7 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>Format</label><select id="format"><option value="16:9">16:9 long video</option><option value="9:16">9:16 Short</option></select></div>
 </div>
 <div class="row">
- <div><label>Video type</label><select id="genre"><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
+ <div><label>Video type</label><select id="genre"><option value="cartoon">🎨 Cartoon horror (dialogue, like animated stories)</option><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
  <div><label>Pacing</label><select id="pacing"><option value="fast">Fast — new picture every ~4 s</option><option value="normal">Normal — ~9 s per picture</option></select></div>
 </div>
 <label>YouTube title, description, tags, on-screen text &amp; chapters</label>
@@ -236,6 +236,8 @@ details summary{cursor:pointer;font-weight:700}
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
 <button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
+<button class="small sec" onclick="copyAllMotion()">📋 Copy all motion prompts (for GenV/FlixGen)</button>
+<button class="small" onclick="bulkImport()">📥 Import all my clips at once</button>
 <div class="row">
  <button class="sec" onclick="runVoices()">🎙️ Voices</button>
  <button class="sec" onclick="runImages()">🖼️ Pictures</button>
@@ -248,7 +250,7 @@ details summary{cursor:pointer;font-weight:700}
 <h2>3. Final video</h2>
 <h3>✨ Style &amp; effects</h3>
 <div class="row">
- <div><label>Quick preset</label><select id="preset" onchange="applyPreset(this.value)"><option value="">— choose —</option><option value="story">🎙️ Story / true crime (SR PAY style)</option><option value="doc">🎞️ Cinematic documentary</option><option value="viral">🔥 Viral / high retention</option><option value="mystery">🕵️ Mystery thriller</option><option value="history">📜 Old history</option><option value="clean">✨ Clean &amp; minimal</option></select></div>
+ <div><label>Quick preset</label><select id="preset" onchange="applyPreset(this.value)"><option value="">— choose —</option><option value="cartoon">🎨 Cartoon horror story</option><option value="story">🎙️ Story / true crime (SR PAY style)</option><option value="doc">🎞️ Cinematic documentary</option><option value="viral">🔥 Viral / high retention</option><option value="mystery">🕵️ Mystery thriller</option><option value="history">📜 Old history</option><option value="clean">✨ Clean &amp; minimal</option></select></div>
  <div><label>Channel name</label><input id="channel" placeholder="e.g. MinuteVerse"></div>
 </div>
 <div class="row">
@@ -274,6 +276,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="chk"><input type="checkbox" id="grain" checked><label for="grain">🌫️ Film grain</label></div>
 <div class="chk"><input type="checkbox" id="leaks" checked><label for="leaks">🌅 Light leaks</label></div>
 <div class="chk"><input type="checkbox" id="sfx" checked><label for="sfx">🔊 Boom, whoosh &amp; transition sounds</label></div>
+<div class="chk"><input type="checkbox" id="ambience"><label for="ambience">🌫️ Horror ambience (low drone + wind under the voice)</label></div>
 <div class="chk"><input type="checkbox" id="endScreen" checked><label for="endScreen">🔔 Subscribe end screen (6 s)</label></div>
 <div class="chk"><input type="checkbox" id="monitor"><label for="monitor">Play sound while rendering</label></div>
 <button class="small sec" onclick="preview()">👁️ Preview style (hook, title, subtitles, end)</button>
@@ -313,7 +316,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -378,10 +381,11 @@ async function http1(method,url,{headers={},json,blob=false,text=false,timeout=6
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{chars:S.chars||[],screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
+  for(const c of (S.chars||[])){ if(c.hasSheet){ try{ const b=await DB.get("cs_"+c.name); if(b) c.sheet={blob:b,url:URL.createObjectURL(b)}; }catch(e){} } }
   S.scenes=p.scenes.map(s=>({...s,st:{}}));
   for(const s of S.scenes){
     try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false,a.text); }catch(e){}
@@ -456,6 +460,13 @@ const LANG={
  hinglish:"Hinglish — आम बोलचाल जिसमें काफ़ी अंग्रेज़ी शब्द हों (जैसे 'ये सच में एक बड़ी मिस्ट्री है, साइंटिस्ट्स भी कन्फ़्यूज़ हैं')। फिर भी पूरी लाइन देवनागरी में लिखें।",
  pure:"शुद्ध पर सरल हिंदी।"};
 const GENRE={
+ cartoon:{who:"लोकप्रिय हिंदी animated horror-story लेखक",kind:"animated horror कहानी (किरदारों के संवाद के साथ)",
+  rules:`- पूरी तरह ORIGINAL कहानी, किरदार और जगहें बनाइए — किसी मौजूदा YouTube चैनल या फ़िल्म की कहानी/किरदार/नाम मत लीजिए।
+- कहानी ज़्यादातर किरदारों के संवाद (dialogue) से आगे बढ़े (~60-70% दृश्य), बीच-बीच में छोटे narrator वाक्य। हर दृश्य = एक शॉट = एक ही बोलने वाला ("speaker": "Narrator" या किसी character का English नाम)।
+- रोज़मर्रा की भारतीय जगहें (हाईवे ढाबा, गाँव, पुराना बंगला, रात की बस…), धीरे-धीरे बढ़ता डर, अजीब संकेत, एक बड़ा twist, और डरावना climax। अंत में दर्शकों से सवाल। Gore नहीं।
+- संवाद असली बोलचाल वाले हों — छोटे, भावनाओं से भरे (डर, मज़ाक, गुस्सा)। हर किरदार की अपनी आवाज़/अंदाज़।
+- "motion" (English): बोलने वाला character बात करते हुए मुँह हिलाए और हाथ से इशारा करे; बाकी characters सुनें, पलकें झपकाएँ; हल्की कैमरा मूवमेंट (जैसे "Rahul talks nervously with hand gestures, Old man listens and blinks, slow push in")।`,
+  img:`"image_prompt": English में उस शॉट का वर्णन — कौन-कौन से characters (English नाम) फ्रेम में हैं, कहाँ खड़े/बैठे हैं, बोलने वाले के चेहरे का भाव और हाथ का इशारा, पीछे की जगह (detailed background), रोशनी (लालटेन, चाँदनी, धुंध)। 2D cartoon shot। कोई टेक्स्ट नहीं।`},
  doc:{who:"बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक",kind:"डॉक्यूमेंट्री",rules:`- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" से कहें।`,img:`"image_prompt": English में उस दृश्य का विस्तृत सिनेमैटिक, photorealistic वर्णन (कोई टेक्स्ट नहीं, किसी असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।`},
  crime:{who:"SR PAY जैसे लोकप्रिय हिंदी mystery और true-crime storyteller",kind:"mystery / true-crime कहानी",
   rules:`- स्टाइल: जैसे कोई दोस्त सामने बैठकर केस सुना रहा हो। Mystery-reveal structure: शुरुआत सबसे चौंकाने वाले पल से, फिर "पर ये कहानी शुरू होती है…" से पीछे जाकर क्रम से घटनाएँ, बीच में सुराग़ और twists, आखिर में सच का खुलासा और सबक।
@@ -488,7 +499,7 @@ function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
 ${scriptRules(n)}
 - "characters": कहानी के मुख्य किरदार (2-5) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English में स्थायी रूप: उम्र, चेहरा, बाल, कपड़े — हर तस्वीर में यही रहेगा)।
 - "screen_title": 2-4 शब्दों का छोटा शीर्षक, "screen_subtitle": 6-10 शब्द। "title": clickable हिंदी YouTube title। "description": हिंदी description। "tags": 10 tags।
-केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"scenes":[{"chapter":"","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":"","gender":"male/female","age":"","voice":"voice style in English"}],"scenes":[{"chapter":"","speaker":"Narrator","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
 function engineForLong(){ const te=$("txtEngine").value; return te==="paste"?ideaEngine():te; }
 async function longScript(topic,mins,n){
   const G=GENRE[$("genre").value]||GENRE.doc, eng=engineForLong(); if(!eng) throw new Error("Long videos need an automatic script engine (Claude, ChatGPT, Gemini or Cloudflare) in Settings.");
@@ -499,7 +510,7 @@ ${G.rules}
 हर अध्याय: "title" (2-5 शब्द हिंदी) और "summary" (4-6 वाक्य: इस अध्याय में क्या-क्या होता है, कौन से सुराग़/twists, अगला अध्याय किस सवाल पर जाता है)। पहला अध्याय hook से शुरू हो, आखिरी में खुलासा और अंत।
 "characters": मुख्य किरदार (2-6) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
 "title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।${metaRule().replace('"chapter"','chapters का "title"')}
-केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"chapters":[{"title":"","summary":""}]}`,eng,"chapters");
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":"","gender":"male/female","age":"","voice":"voice style in English"}],"chapters":[{"title":"","summary":""}]}`,eng,"chapters");
   const ch=outline.chapters.slice(0,nCh), per=Math.max(3,Math.round(n/ch.length)), scenes=[];
   const cast=(outline.characters||[]).map(c=>`${c.name}: ${c.look}`).join("; ");
   for(let i=0;i<ch.length;i++){
@@ -511,7 +522,7 @@ ${ch.map((c,k)=>`${k+1}. ${c.title} — ${c.summary}`).join("\n")}
 अभी सिर्फ़ अध्याय ${i+1} "${ch[i].title}" के लिए ठीक ${per} दृश्य लिखें।${prev?`\nपिछले दृश्यों की आखिरी लाइनें (वहीं से आगे बढ़ें, दोहराएँ नहीं): ${prev}`:""}
 ${i===0?"पहला दृश्य दमदार hook हो।":""}${i===ch.length-1?"आखिरी दृश्य में निष्कर्ष और like/subscribe की छोटी अपील।":"अध्याय के आखिरी दृश्य में अगले अध्याय के लिए curiosity छोड़ें।"}
 ${scriptRules(per)}
-केवल JSON: {"scenes":[{"narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`,eng,"scenes");
+केवल JSON: {"scenes":[{"speaker":"Narrator","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`,eng,"scenes");
     (d.scenes||[]).forEach((s,k)=>{ s.chapter=k===0?ch[i].title:""; scenes.push(s); });
   }
   $("aBar").style.width="100%";
@@ -521,9 +532,10 @@ async function applyScript(d,topic){
     await DB.clear();
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
-    S.chars=(d.characters||[]).filter(c=>c&&c.name).map(c=>({name:String(c.name).trim(),look:String(c.look||"").trim()}));
-    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",who:Array.isArray(s.who)?s.who:(s.who?[s.who]:[]),chapter:s.chapter||"",st:{}}));
-    if(S.scenes.length&&!S.scenes[0].chapter&&S.scenes.some(s=>s.chapter)) S.scenes[0].chapter="शुरुआत";
+    S.chars=(d.characters||[]).filter(c=>c&&c.name).map(c=>({name:String(c.name).trim(),look:String(c.look||"").trim(),gender:/f|woman|girl|महिला|स्त्री/i.test(c.gender||"")?"female":"male",age:String(c.age||""),vdesc:String(c.voice||"")})); autoVoices();
+    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",who:Array.isArray(s.who)?s.who:(s.who?[s.who]:[]),speaker:s.speaker&&!/narrat|कथावाचक/i.test(s.speaker)?String(s.speaker).trim():"",chapter:s.chapter||"",st:{}}));
+    S.scenes.forEach(s=>{ if(s.speaker&&!s.who.includes(s.speaker)) s.who.push(s.speaker); });
+    if(S.scenes.length&&!S.scenes[0].chapter&&S.scenes.some(s=>s.chapter)) S.scenes[0].chapter="Intro";
     applyRule(); await saveProj(); drawScript();
     log(`Script ready: ${S.scenes.length} scenes${S.chars.length?`, ${S.chars.length} characters`:""}.`); status("✅ Script ready — check the cost below.");
 }
@@ -572,8 +584,8 @@ function drawScript(){
    <label>YouTube description</label><textarea oninput="S.description=this.value;saveProj()">${esc(S.description)}</textarea>
    <button class="small sec" onclick="translateMeta('en')">🔤 Make title, description, text &amp; chapters English</button><button class="small sec" onclick="translateMeta('hinglish')">🔤 Hinglish (English letters)</button>
    <label>👥 Characters (same look in every picture) — one per line: <i>name: look in English</i></label>
-   <textarea style="min-height:70px" placeholder="राहुल: 28-year-old Indian man, short black hair, light beard, navy blue checked shirt, black backpack" oninput="setChars(this.value)">${esc((S.chars||[]).map(c=>c.name+": "+c.look).join("\n"))}</textarea>`;
-  drawScenes(); updateCost();
+   <textarea style="min-height:70px" placeholder="Rahul: 28-year-old Indian man, short black hair, light beard, navy blue checked shirt, black backpack" oninput="setChars(this.value)">${esc((S.chars||[]).map(c=>c.name+": "+c.look).join("\n"))}</textarea><div id="charTools"></div>`;
+  drawCharTools(); drawScenes(); updateCost();
 }
 function drawScenes(){
   $("mediaBox").innerHTML=S.scenes.map((s,i)=>{
@@ -582,7 +594,8 @@ function drawScenes(){
       <span class="chips">${chip("v","voice")}${chip("i","picture")}${s.useVideo?chip("c","clip"):""}</span></div>
       ${s.clip?`<video class="thumb" src="${s.clip.url}" muted playsinline controls preload="metadata"></video>`:s.img?`<img class="thumb" src="${s.img.url}">`:""}
       ${s.err?`<div class="err">${esc(s.err)}</div>`:""}
-      <label>Narration (Hindi)${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
+      ${(S.chars||[]).length?`<label>🗣️ Who speaks</label><select onchange="setSpeaker(${i},this.value)"><option value="">Narrator</option>${S.chars.map(c=>`<option ${c.name===s.speaker?"selected":""}>${esc(c.name)}</option>`).join("")}</select>`:""}
+      <label>${s.speaker?"💬 "+esc(s.speaker)+" says (Hindi)":"Narration (Hindi)"}${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
       <textarea oninput="editNarr(${i},this.value)">${esc(s.narration)}</textarea>
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
@@ -619,7 +632,47 @@ items: ${JSON.stringify(idx.map(i=>({i,chapter:S.scenes[i].chapter||"",onscreen:
     await saveProj(); drawScript(); status("✅ Title, description, on-screen text & chapters updated. Voiceover stays Hindi.");
   }catch(e){ log("❌ Translate: "+e.message); status("❌ "+e.message); }
 }
-function setChars(t){ S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); return k>0?{name:l.slice(0,k).trim(),look:l.slice(k+1).trim()}:null; }).filter(c=>c&&c.name); saveProj(); }
+const GVOICES={male:["Charon","Orus","Fenrir","Algenib","Puck"],female:["Kore","Aoede","Leda","Achernar","Zephyr"]};
+function elList(){ try{ return JSON.parse(load("hdm2_elVoiceList")||"[]"); }catch(e){ return []; } }
+function autoVoices(){ const L=elList(), used=new Set([$("elVoice").value]); let gi={male:0,female:0};
+  (S.chars||[]).forEach(c=>{ const g=c.gender==="female"?"female":"male";
+    if(!c.gvoice){ c.gvoice=GVOICES[g][gi[g]++%GVOICES[g].length]; }
+    if(!c.voice&&L.length){ const old=/old|elder|बूढ़|60|70|80/i.test(c.age+" "+c.look+" "+c.vdesc);
+      const pick=L.find(v=>!used.has(v.id)&&new RegExp(g,"i").test(v.name)&&(!old||/old|mature|deep|elder/i.test(v.name)))||L.find(v=>!used.has(v.id)&&new RegExp(g,"i").test(v.name))||L.find(v=>!used.has(v.id));
+      if(pick){ c.voice=pick.id; used.add(pick.id); } } }); }
+function drawCharTools(){ const box=$("charTools"); if(!box) return; const C=S.chars||[]; if(!C.length){ box.innerHTML=""; return; }
+  const el=$("voiceEngine").value==="eleven", L=elList();
+  box.innerHTML=`<div class="cost"><b>👥 Characters</b> — picture sheet keeps faces the same (ChatGPT pictures) · each has its own voice<br>
+   ${C.map((c,k)=>`<div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+     ${c.sheet?`<img src="${c.sheet.url}" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:`<div style="width:64px;height:64px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center">👤</div>`}
+     <div style="flex:1;min-width:0"><b>${esc(c.name)}</b> <span class="muted">${esc(c.gender||"")}${c.vdesc?" · "+esc(c.vdesc):""}</span>
+     <select style="margin-top:4px" onchange="setCharVoice(${k},this.value)">${el?(L.length?L.map(v=>`<option value="${esc(v.id)}" ${v.id===c.voice?"selected":""}>${esc(v.name)}</option>`).join(""):`<option>Load ElevenLabs voices in Settings first</option>`):[...GVOICES.male,...GVOICES.female].map(v=>`<option ${v===c.gvoice?"selected":""}>${v}</option>`).join("")}</select></div></div>`).join("")}
+   <button class="small" onclick="makeSheets(true)">🎨 ${C.some(c=>c.sheet)?"Remake":"Make"} character sheets (ChatGPT, ≈ ₹3.5 each)</button></div>`; }
+function setCharVoice(k,v){ const c=S.chars[k]; if($("voiceEngine").value==="eleven") c.voice=v; else c.gvoice=v; saveProj();
+  S.scenes.forEach(s=>{ if(s.speaker===c.name&&s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } }); drawScenes(); status(`🎙️ ${c.name}'s voice changed — tap 🎙️ Voices to redo their lines.`); }
+async function oaImage(prompt,refs){ const k=$("oaKey").value.trim(); if(!k) throw new Error("Add your OpenAI API key in Settings.");
+  const vert=$("format").value==="9:16", model=$("oaImgModel").value.trim()||"gpt-image-2", size=vert?"1024x1536":"1536x1024", q=$("oaImgQ").value;
+  let r;
+  if(refs&&refs.length){ const url="https://api.openai.com/v1/images/edits";
+    if(CH){ const B="----HDM"+Math.random().toString(36).slice(2), data=[{key:"model",value:model,type:"string"},{key:"prompt",value:prompt,type:"string"},{key:"size",value:size,type:"string"},{key:"quality",value:q,type:"string"}];
+      for(let i=0;i<refs.length;i++) data.push({key:"image[]",value:await blobToB64(refs[i]),type:"base64File",fileName:`ref${i}.png`,contentType:refs[i].type||"image/png"});
+      const x=await CH.request({method:"POST",url,headers:{Authorization:"Bearer "+k,"Content-Type":"multipart/form-data; boundary="+B},data,dataType:"formData",responseType:"json",connectTimeout:30000,readTimeout:300000});
+      let d=x.data; if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(e){} } r={ok:x.status>=200&&x.status<300,status:x.status,data:d}; }
+    else { const fd=new FormData(); fd.append("model",model); fd.append("prompt",prompt); fd.append("size",size); fd.append("quality",q); refs.forEach((b,i)=>fd.append("image[]",b,`ref${i}.png`));
+      const x=await fetch(url,{method:"POST",headers:{Authorization:"Bearer "+k},body:fd}); const t=await x.text(); let d; try{ d=JSON.parse(t); }catch(e){ d=t; } r={ok:x.ok,status:x.status,data:d}; } }
+  else r=await http("POST","https://api.openai.com/v1/images/generations",{headers:{Authorization:"Bearer "+k},json:{model,prompt,size,quality:q,n:1},timeout:300000});
+  if(!r.ok) throw new Error(`ChatGPT image ${r.status}: ${errMsg(r.data)}${/verif/i.test(errMsg(r.data))?" — verify your organization at platform.openai.com → Settings → Organization.":""}`);
+  const b64=r.data&&r.data.data&&r.data.data[0]&&r.data.data[0].b64_json; if(!b64) throw new Error("ChatGPT returned no image");
+  return new Blob([b64ToBytes(b64)],{type:"image/png"}); }
+async function makeSheets(force){
+  const C=S.chars||[]; if(!C.length) return; if(!$("oaKey").value.trim()){ if(force) alert("Character sheets use ChatGPT pictures — add your OpenAI key in Settings."); return; }
+  for(const c of C){ if(c.sheet&&!force) continue; status(`🎨 Character sheet: ${c.name}…`);
+    try{ const blob=await oaImage(`Character reference sheet of ONE original character, full body, standing, front view, plain neutral grey background, no text. ${c.look}. ${$("imgStyle").value}`);
+      c.sheet={blob,url:URL.createObjectURL(blob)}; await DB.put("cs_"+c.name,blob); drawCharTools(); }
+    catch(e){ log(`❌ Sheet ${c.name}: ${e.message}`); if(force) status("❌ "+e.message); break; } }
+  saveProj(); status("✅ Character sheets ready — new pictures will keep these faces."); }
+function setSpeaker(i,v){ const s=S.scenes[i]; s.speaker=v; if(v&&!(s.who||[]).includes(v)) (s.who=s.who||[]).push(v); if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); drawScenes(); }
+function setChars(t){ const old=Object.fromEntries((S.chars||[]).map(c=>[c.name,c])); S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); if(k<=0) return null; const name=l.slice(0,k).trim(); return {...(old[name]||{}),name,look:l.slice(k+1).trim()}; }).filter(c=>c&&c.name); saveProj(); drawCharTools(); }
 function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
 function delScene(i){ const s=S.scenes[i]; ["a_","i_","c_"].forEach(p=>DB.del(p+s.id)); S.scenes.splice(i,1); saveProj(); drawScript(); }
 function addScene(){ S.scenes.push({id:uid(),narration:"",prompt:"",motion:"slow cinematic camera push in",useVideo:false,st:{}}); saveProj(); drawScript(); }
@@ -693,7 +746,7 @@ async function makeVoice(s){
   if($("voiceEngine").value==="eleven"){
     const key=$("elKey").value.trim(); if(!key) throw new Error("Add ElevenLabs key in Settings (or switch voice engine to Gemini).");
     if(!$("elVoice").value) await loadVoices();
-    const vid=$("elVoice").value; if(!vid) throw new Error("Pick an ElevenLabs voice in Settings.");
+    const ch=s.speaker&&(S.chars||[]).find(c=>c.name===s.speaker), vid=(ch&&ch.voice)||$("elVoice").value; if(!vid) throw new Error("Pick an ElevenLabs voice in Settings.");
     const text=speakable(s.narration), i=S.scenes.indexOf(s);
     const st=$("elStyle").value, spd=+$("elSpeed").value||1;
     const call=async model=>{
@@ -711,7 +764,7 @@ async function makeVoice(s){
     if(!r.ok) throw new Error(`ElevenLabs ${r.status}: ${errMsg(r.data)}`);
     await setVoice(s,new Blob([b64ToBytes(r.data.audio_base64)],{type:"audio/mpeg"}),r.data.alignment||r.data.normalized_alignment||null,true,text);
   }else{
-    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${speakable(s.narration)}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:$("voice").value}}}}});
+    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${speakable(s.narration)}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:((s.speaker&&(S.chars||[]).find(c=>c.name===s.speaker))||{}).gvoice||$("voice").value}}}}});
     const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
     const mime=p.inlineData.mimeType||"", bytes=b64ToBytes(p.inlineData.data);
     const blob=/wav|mp3|mpeg|ogg/.test(mime)?new Blob([bytes],{type:mime}):pcmToWav(bytes,+((mime.match(/rate=(\d+)/)||[])[1]||24000));
@@ -793,14 +846,15 @@ async function makeImageHorde(s){
   throw new Error("AI Horde timed out — try again later");
 }
 async function makeImageOA(s){
-  const k=$("oaKey").value.trim(); if(!k) throw new Error("Add your OpenAI API key in Settings (✍️ Script writer or 🖼️ Pictures).");
-  const vert=$("format").value==="9:16";
-  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.openai.com/v1/images/generations",{headers:{Authorization:"Bearer "+k},json:{model:$("oaImgModel").value.trim()||"gpt-image-2",prompt:`${vert?"Vertical 9:16":"Wide 16:9"} cinematic image. ${fullPrompt(s)}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}`.slice(0,3900),size:vert?"1024x1536":"1536x1024",quality:$("oaImgQ").value,n:1},timeout:300000});
-    if(r.ok||![429,500,502,503].includes(r.status)||/quota|billing|verif/i.test(errMsg(r.data))) break; log("ChatGPT images busy, retrying…"); await sleep(8000*(t+1)); }
-  if(!r.ok) throw new Error(`ChatGPT image ${r.status}: ${errMsg(r.data)}${/verif/i.test(errMsg(r.data))?" — verify your organization at platform.openai.com → Settings → Organization.":""}`);
-  const b64=r.data.data&&r.data.data[0]&&r.data.data[0].b64_json; if(!b64) throw new Error("ChatGPT returned no image");
-  await setImage(s,await cropTo(new Blob([b64ToBytes(b64)],{type:"image/png"}),$("format").value));
-  if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
+  const vert=$("format").value==="9:16", cartoon=/cartoon|2D|animation/i.test($("imgStyle").value);
+  const refsC=(s.who||[]).map(n=>(S.chars||[]).find(c=>c.name===n)).filter(c=>c&&c.sheet).slice(0,4);
+  const base=`${vert?"Vertical 9:16":"Wide 16:9"} ${cartoon?"":"cinematic "}image. ${fullPrompt(s)}. ${$("realism").checked&&!cartoon?REAL+". ":""}${$("imgStyle").value}`.slice(0,3900);
+  let blob;
+  if(refsC.length){ try{ blob=await oaImage(`Use the reference image(s) ONLY for these characters' exact face, hair, body and clothes (${refsC.map((c,i)=>`image ${i+1} = ${c.name}`).join(", ")}) — keep them identical. Create a NEW scene: ${base}`.slice(0,3900),refsC.map(c=>c.sheet.blob)); }
+    catch(e){ log(`Reference picture failed (${String(e.message).slice(0,80)}) → normal picture`); } }
+  if(!blob){ let last; for(let t=0;t<3&&!blob;t++){ try{ blob=await oaImage(base); }catch(e){ last=e; if(!/429|500|502|503|busy/i.test(e.message)||/quota|billing|verif/i.test(e.message)) break; await sleep(8000*(t+1)); } } if(!blob) throw last; }
+  await setImage(s,await cropTo(blob,$("format").value));
+  if(s.clip&&!s.own){ s.clip=null; DB.del("c_"+s.id); }
 }
 function picPrompt(s){ return `Create a ${$("format").value==="9:16"?"vertical 9:16":"wide 16:9 landscape"} cinematic photo (no watermark, no captions): ${fullPrompt(s)}. ${$("imgStyle").value}`; }
 async function copyPicPrompt(i){ const t=picPrompt(S.scenes[i]); try{ await navigator.clipboard.writeText(t); status(`📋 Scene ${i+1} picture prompt copied — paste it in ChatGPT, save the image, then 📥 Import picture.`); }catch(e){ prompt("Copy:",t); } }
@@ -994,7 +1048,6 @@ function autoEngines(){
   if($("imgEngine").value==="openai"&&!has("oaKey")) setSel("imgEngine",cf?"cloudflare":"horde","Pictures: no OpenAI key → free engine");
   $("hordeAuto").checked=true;
   const ve=$("vidEngine").value;
-  if(ve==="manual") setSel("vidEngine",has("key")?"omni":has("xaiKey")?"grok":"none","Clips: automatic (no manual import in full auto)");
   if(ve==="omni"&&!has("key")) setSel("vidEngine","none","Clips: no Gemini key → pictures with motion");
   if(ve==="grok"&&!has("xaiKey")) setSel("vidEngine","none","Clips: no xAI key → pictures with motion");
   if(ve==="kling"&&!has("klAk")) setSel("vidEngine","none","Clips: no Kling key → pictures with motion");
@@ -1033,6 +1086,7 @@ async function autoRun(){
       let f=await runStep("v","🎙️ Voices",3);
       if(f&&AUTO&&$("voiceEngine").value==="eleven"&&$("key").value.trim()){ log("⚡ Some ElevenLabs voices failed → trying Gemini voice for those"); setV("voiceEngine","gemini"); try{ f=await runStep("v","🎙️ Voices (backup)",3); } finally{ setV("voiceEngine","eleven"); } }
       if(S.scenes.some(s=>!s.voice)){ status(`⚠️ ${S.scenes.filter(s=>!s.voice).length} voice(s) failed — check the voice key, then tap 🚀 again (finished parts are kept).`); return; }
+      if(($("genre").value==="cartoon"||(S.chars||[]).length)&&$("imgEngine").value==="openai"&&(S.chars||[]).some(c=>!c.sheet)) await makeSheets(false);
       // pictures (fallback: AI Horde, then reuse neighbour picture)
       if($("imgEngine").value==="chatgptapp"){ if(S.scenes.some(s=>!s.img&&!s.own)){ picHint(); return; } }
       else { f=await runStep("i","🖼️ Pictures",2);
@@ -1040,7 +1094,7 @@ async function autoRun(){
         if(AUTO) for(let i=0;i<S.scenes.length;i++){ const s=S.scenes[i]; if(!s.img&&!s.own){ const nb=S.scenes.slice(0,i).reverse().find(x=>x.img)||S.scenes.slice(i+1).find(x=>x.img); if(nb){ await setImage(s,nb.img.blob); s.st.i="ok"; s.err=""; log(`⚡ Scene ${i+1}: reused a nearby picture`); } } }
         if(S.scenes.some(s=>!s.img&&!s.own)){ status("⚠️ Some pictures failed — tap 🖼️ Pictures to retry."); return; } }
       // clips (failures are fine — picture with motion is used)
-      if($("vidEngine").value==="manual"){ if(!AUTO&&S.scenes.some(s=>s.useVideo&&!s.clip)){ manualHint(); return; } }
+      if($("vidEngine").value==="manual"){ if(S.scenes.some(s=>s.useVideo&&!s.clip&&!s.own)){ manualHint(); status("✅ Script, voices & pictures ready. Now: 📋 Copy all motion prompts → make clips in GenV/FlixGen → 📥 Import all my clips → 🎬 Render. (Or tap 🎬 Render now — missing clips use the picture.)"); try{ navigator.vibrate&&navigator.vibrate([200,100,200]); }catch(e){} return; } }
       else if($("vidEngine").value!=="none"){ f=await runStep("c","🎥 Clips",+$("par").value||2); if(f) log(`⚡ ${f} clip(s) failed — those scenes use the picture with camera motion.`); }
       status("🎬 Rendering final video…"); drawScenes();
       BUSY=false; await renderVideo(true);
@@ -1307,6 +1361,11 @@ async function renderVideo(auto,PV){
     if(TITLE) boom(a,out,t0+titleStart+0.3);
     tl.forEach((x,j)=>{ if(j>0&&tk(j)!=="fade"&&tk(j)!=="cut"&&!(after&&j===1)) whoosh(a,out,t0+x.vs-0.2,tk(j)==="push"?0.12:0.2,0.8); if(on("onscreen")&&(x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25,0.25); });
     if(on("endScreen")) whoosh(a,out,t0+BODY_END+0.2); }
+  if(on("ambience")){ try{
+    const n=a.createBuffer(1,a.sampleRate*4,a.sampleRate), d=n.getChannelData(0); let last=0; for(let i=0;i<d.length;i++){ last=(last+0.02*(Math.random()*2-1))/1.02; d[i]=last*3.5; }
+    const ns=a.createBufferSource(); ns.buffer=n; ns.loop=true; const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=500; const ng=a.createGain(); ng.gain.value=0.06; ns.connect(lp); lp.connect(ng); ng.connect(out); ns.start(t0); ns.stop(t0+total); srcs.push(ns);
+    [55,55.7,82.4].forEach((fq,k)=>{ const o=a.createOscillator(), og=a.createGain(), l=a.createOscillator(), lg=a.createGain(); o.type="sine"; o.frequency.value=fq; og.gain.value=k===2?0.012:0.025; l.frequency.value=0.07+k*0.03; lg.gain.value=0.012; l.connect(lg); lg.connect(og.gain); o.connect(og); og.connect(out); o.start(t0); l.start(t0); o.stop(t0+total); l.stop(t0+total); });
+  }catch(e){ log("Ambience: "+e.message); } }
   if(mSrc){ const v=(+$("bgmVol").value)/100, G=mGain.gain, hi=Math.min(0.8,v*2.5); let c=t0;
     const set=(tt,val,ramp)=>{ tt=Math.max(tt,c+0.01); if(ramp) G.linearRampToValueAtTime(val,tt); else G.setValueAtTime(val,tt); c=tt; };
     G.setValueAtTime(TITLE&&titleStart===0?hi:v,t0);
@@ -1498,6 +1557,8 @@ function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollInt
 (function(){ try{ const t=JSON.parse(localStorage.getItem("hdm_trends")||"null"); if(t&&t.ideas&&Date.now()-t.at<20*3600e3){ TRENDS=t; drawIdeas(); drawRaw(); } }catch(e){} })();
 
 const PRESETS={
+ cartoon:{look:"mystery",trans:"story",subStyle:"box",subPos:"bottom",titleCard:1,titleStyle:"glitch",titlePos:"after",factStyle:"pop",onscreen:1,kwHL:1,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,ambience:1,endScreen:1,pacing:"normal",realism:0,
+   imgStyle:"2D Indian cartoon animation style, clean bold outlines, flat cel shading, expressive faces, detailed painted background, moody cinematic night lighting, warm lantern glow, high quality animated-series look"},
  story:{look:"natural",trans:"story",subStyle:"none",titleCard:0,factStyle:"underline",onscreen:1,kwHL:0,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,endScreen:1,pacing:"fast",realism:1,
    imgStyle:"ultra-realistic candid photograph of everyday India, true-to-life warm natural light, real-looking people and places, shallow depth of field, cinematic composition"},
  doc:{look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
@@ -1508,7 +1569,7 @@ const PRESETS={
 function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
 function copyDesc(){ const t=S.title+"\n\n"+S.description+(window._chapters?"\n\n⏱️ Chapters\n"+window._chapters:""); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
 /* ---------- my own clips (GenV / FlixGen / any app) ---------- */
-function clipPrompt(s){ return `${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
+function clipPrompt(s){ const cartoon=/cartoon|2D|animation/i.test($("imgStyle").value); return cartoon?`${s.motion}. 2D cartoon animation, keep the characters and art style exactly as in the picture, natural mouth movement while speaking, subtle idle motion, ${clipSecs(s)} seconds, no text.`:`${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
 async function sendToApp(i){
   const s=S.scenes[i]; if(!s.img) return alert("Make the picture first.");
   const pr=clipPrompt(s);
@@ -1532,6 +1593,21 @@ function pickSelfClip(i){
     drawScenes(); updateCost(); };
   inp.click(); }
 async function dropSelf(i){ const s=S.scenes[i]; s.own=false; s.voice=null; s.clip=null; s.useVideo=false; await DB.del("a_"+s.id); await DB.del("c_"+s.id); await saveProj(); drawScenes(); }
+async function copyAllMotion(){ const L=S.scenes.map((s,i)=>s.useVideo&&!s.clip&&!s.own?`Scene ${i+1} (picture scene_${String(i+1).padStart(2,"0")}): ${clipPrompt(s)}`:null).filter(Boolean);
+  if(!L.length) return alert("No scenes need clips. Tick 🎥 AI video clip on the scenes you want to animate.");
+  const t=L.join("\n\n"); try{ await navigator.clipboard.writeText(t); status(`📋 ${L.length} motion prompts copied — make the clips in GenV/FlixGen in this order, then 📥 Import all my clips.`); }catch(e){ prompt("Copy:",t); } }
+function bulkImport(){
+  const todo=S.scenes.filter(s=>s.useVideo&&!s.clip&&!s.own); if(!todo.length) return alert("No scenes are waiting for a clip.");
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*"; inp.multiple=true;
+  inp.onchange=async()=>{ const files=[...(inp.files||[])]; if(!files.length) return;
+    const num=f=>{ const m=f.name.match(/scene[_\s-]?(\d+)/i)||f.name.match(/(\d+)/); return m?+m[1]:null; };
+    const byName=files.every(f=>num(f)!=null&&/scene/i.test(f.name));
+    files.sort((x,y)=>byName?num(x)-num(y):(x.lastModified-y.lastModified)||x.name.localeCompare(y.name));
+    let k=0;
+    for(const f of files){ let s=byName?S.scenes[num(f)-1]:todo[k++]; if(!s) continue; s.st.c="run"; drawScenes();
+      try{ await setClip(s,f); s.useVideo=true; s.st.c="ok"; s.err=""; }catch(e){ s.st.c="error"; s.err="Import: "+e.message; } }
+    await saveProj(); drawScenes(); updateCost(); status(`📥 Imported ${files.length} clip(s)${byName?" by scene number":" in order (oldest first)"}. ${S.scenes.filter(s=>s.useVideo&&!s.clip&&!s.own).length} still waiting.`); };
+  inp.click(); }
 function pickClip(i){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const s=S.scenes[i];
