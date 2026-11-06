@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.4</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -83,6 +83,7 @@ details summary{cursor:pointer;font-weight:700}
  <select id="hordeModel"><option value="Juggernaut XL|RealVisXL|AlbedoBase XL (SDXL)">Realistic SDXL (Juggernaut / RealVis)</option><option value="Flux.1-Schnell fp8 (Compact)|AlbedoBase XL (SDXL)">FLUX schnell</option><option value="AlbedoBase XL (SDXL)|Juggernaut XL">AlbedoBase XL (all-round)</option></select>
  <label>AI Horde key (optional — free at aihorde.net/register, makes it faster)</label><input id="hordeKey" type="password" placeholder="leave empty to use anonymous">
  <p class="muted">Free volunteer GPUs. Each picture takes ~30 s – 3 min. No daily limit.</p></div>
+<div class="chk"><input type="checkbox" id="hordeAuto" checked><label for="hordeAuto">🔁 When Cloudflare's free limit runs out, continue with AI Horde automatically</label></div>
 <div class="chk"><input type="checkbox" id="realism" checked><label for="realism">📷 Extra photo-realism (adds camera &amp; lighting details to every picture)</label></div>
 <div id="cfBox">
  <label>Cloudflare Account ID — dash.cloudflare.com → Workers AI</label><input id="cfAcct" placeholder="32-character ID">
@@ -292,7 +293,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -726,6 +727,7 @@ async function makeImageCF(s){
       await setImage(s,await cropTo(blob,$("format").value)); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } return; }
     catch(e){ last=e; log(e.message.slice(0,140)); if(e.limit){ (window._cfDone=window._cfDone||{})[k]=new Date().toDateString(); continue; } if(k===order[order.length-1]) break; }
   }
+  if(last&&last.limit&&$("hordeAuto").checked){ if(!window._hordeNote){ window._hordeNote=1; log("☁️ Cloudflare free pictures used up for today → switching to 🆓 AI Horde automatically (slower, unlimited)."); } return makeImageHorde(s); }
   throw new Error(last.message+(last.limit?" — free daily limit used up (resets 5:30 AM IST). Try 🆓 AI Horde.":""));
 }
 /* AI Horde: free community GPUs, realistic SDXL models */
