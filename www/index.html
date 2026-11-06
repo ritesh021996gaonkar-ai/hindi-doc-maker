@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -329,7 +329,14 @@ function refreshUI(){
 })();
 
 /* ---------- HTTP (native on phone = no CORS problems) ---------- */
-async function http(method,url,{headers={},json,blob=false,text=false,timeout=600000}={}){
+const NETERR=/resolve host|UnknownHost|timed? ?out|failed to connect|Connection (reset|refused|abort)|network|SocketException|ECONN|EAI_AGAIN|Failed to fetch|Software caused/i;
+async function http(method,url,opts={}){
+  for(let t=0;;t++){
+    try{ return await http1(method,url,opts); }
+    catch(e){ if(t<4&&NETERR.test(String(e&&e.message))){ log(`🌐 Network hiccup (${url.split("/")[2]}), retrying in ${3*(t+1)}s…`); await sleep(3000*(t+1)); continue; }
+      if(NETERR.test(String(e&&e.message))) throw new Error("No internet connection to "+url.split("/")[2]+" — check your network (turn off VPN/ad-blocker, Private DNS → Automatic) and tap again.");
+      throw e; } } }
+async function http1(method,url,{headers={},json,blob=false,text=false,timeout=600000}={}){
   const h={...headers}; if(json!==undefined) h["Content-Type"]="application/json";
   if(CH){
     const r=await CH.request({method,url,headers:h,data:json,responseType:blob?"blob":text?"text":"json",connectTimeout:30000,readTimeout:timeout});
@@ -690,7 +697,8 @@ function imgWH(){ return $("format").value==="9:16"?[576,1024]:[1024,576]; }
 async function httpMultipart(url,headers,fields){
   if(CH){ const B="----HDM"+Math.random().toString(36).slice(2);
     const body=Object.entries(fields).map(([k,v])=>`--${B}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`).join("")+`--${B}--\r\n`;
-    const r=await CH.request({method:"POST",url,headers:{...headers,"Content-Type":"multipart/form-data; boundary="+B},data:body,responseType:"json",connectTimeout:30000,readTimeout:300000});
+    let r; for(let t=0;;t++){ try{ r=await CH.request({method:"POST",url,headers:{...headers,"Content-Type":"multipart/form-data; boundary="+B},data:body,responseType:"json",connectTimeout:30000,readTimeout:300000}); break; }
+      catch(e){ if(t<4&&NETERR.test(String(e&&e.message))){ log("🌐 Network hiccup, retrying…"); await sleep(3000*(t+1)); continue; } throw e; } }
     let d=r.data; if(typeof d==="string"){ try{ d=JSON.parse(d); }catch(e){} } return {ok:r.status>=200&&r.status<300,status:r.status,data:d}; }
   const fd=new FormData(); Object.entries(fields).forEach(([k,v])=>fd.append(k,String(v)));
   const r=await fetch(url,{method:"POST",headers,body:fd}); const t=await r.text(); let d; try{ d=JSON.parse(t); }catch(e){ d=t; } return {ok:r.ok,status:r.status,data:d}; }
