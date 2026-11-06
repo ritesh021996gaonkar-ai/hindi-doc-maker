@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.5</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.0</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -197,6 +197,11 @@ details summary{cursor:pointer;font-weight:700}
 <select id="lang"><option value="modern">Modern Hindi — everyday words like YouTubers speak</option><option value="hinglish">Hinglish — more English words</option><option value="pure">Pure (shuddh) Hindi</option></select>
 <label>Tone</label>
 <select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select>
+<div class="cost" id="autoBox">
+ <div class="chk"><input type="checkbox" id="fullAuto" checked><label for="fullAuto"><b>⚡ Full auto</b> — app picks the best engines for your budget, fixes errors itself and never stops to ask</label></div>
+ <div class="row"><div><label>Max budget per video (₹)</label><input id="budget" type="number" value="200" min="0" step="50"></div>
+ <div><div class="chk" style="margin-top:28px"><input type="checkbox" id="autoTopic" checked><label for="autoTopic">Empty topic → today's best trending idea</label></div></div></div>
+</div>
 <button class="big" id="btnAuto" onclick="autoRun()">🚀 Make full video automatically</button>
 <p class="muted">Does everything: script → voiceover → pictures → video clips → final video → share. Or go step by step below.</p>
 <button class="sec" id="btnScript" onclick="makeScript()">✍️ Only write script (to review first)</button>
@@ -295,7 +300,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -617,9 +622,15 @@ function playScene(i){ if(playing) try{playing.stop();}catch(e){} const src=ac()
 function sceneSecs(s){ return s.voice?s.voice.buf.duration:Math.max(4,s.narration.split(/\s+/).filter(Boolean).length/2.4); }
 function clipSecs(s){ const v=sceneSecs(s), e=$("vidEngine").value; if(e==="omni") return Math.min(10,Math.max(4,Math.ceil(v))); if(e==="grok") return Math.min(15,Math.max(3,Math.ceil(v))); if(e==="kling") return v>6?10:5; if(e==="manual") return Math.min(10,Math.max(5,Math.ceil(v))); return 0; }
 function priceSec(){ const e=$("vidEngine").value,r=$("vidRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; if(e==="kling") return $("klMode").value==="pro"?0.112:0.084; return 0; }
+function estCost(){ let sc=S.scenes;
+  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
+  const vids=sc.filter(s=>s.useVideo&&!s.own), vSecs=vids.filter(s=>!s.clip).reduce((a,s)=>a+clipSecs(s),0), ie=$("imgEngine").value;
+  const vCost=$("vidEngine").value==="manual"?0:vSecs*priceSec(), iCost=sc.filter(s=>!s.img&&!s.own).length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
+  const chars=sc.reduce((a,s)=>a+(s.narration||"").length,0), vc=$("voiceEngine").value==="gemini"?chars*0.00006:0, tc={paste:0,cloudflare:0,gemini:0.01,claude:0.06,openai:0.02}[$("txtEngine").value]||0;
+  return {usd:vCost+iCost+vc+(S.scenes.length?0:tc),inr:Math.round((vCost+iCost+vc+(S.scenes.length?0:tc))*USD_INR)}; }
 function updateCost(){
   const box=$("costBox"); let sc=S.scenes;
-  if(!sc.length){ const mins=+$("mins").value||3, n=Math.max(4,Math.round(mins*60/9)); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat(22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
+  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
   const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
@@ -631,7 +642,7 @@ function updateCost(){
    🖼️ Pictures (${$("imgEngine").selectedOptions[0].text.split(/ [—(]/)[0]}): ${iCost?"≈ $"+iCost.toFixed(2):"FREE"}<br>
    🎥 Clips: ${vids.length} × ~${vids.length?Math.round(vSecs/vids.length):0}s (${$("vidEngine").selectedOptions[0].text.split(" (")[0]}) ≈ $${vCost.toFixed(2)}<br>
    🎙️ ${voiceTxt}<br>
-   <b>Total ≈ $${tot.toFixed(2)} (≈ ₹${Math.round(tot*USD_INR).toLocaleString("en-IN")})</b> <span class="muted">+ voice plan · rough estimate</span></div>`;
+   <b>Total ≈ $${tot.toFixed(2)} (≈ ₹${Math.round(tot*USD_INR).toLocaleString("en-IN")})</b> <span class="muted">+ voice plan · rough estimate</span>${$("fullAuto").checked?`<br>⚡ Full auto keeps it under <b>₹${+$("budget").value||200}</b>`:""}</div>`;
 }
 
 /* ---------- 2a. Voice ---------- */
@@ -902,17 +913,69 @@ const runVoices=()=>guard(()=>runStep("v","🎙️ Voices",3));
 const runImages=()=>guard(async()=>{ if($("imgEngine").value==="chatgptapp"){ picHint(); return 0; } return runStep("i","🖼️ Pictures",2); });
 const runClips=()=>guard(async()=>{ if($("imgEngine").value!=="chatgptapp") await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); if($("vidEngine").value==="manual"){ manualHint(); return 0; } return runStep("c","🎥 Clips",+$("par").value||2); });
 function manualHint(){ const n=S.scenes.filter(s=>s.useVideo&&!s.clip).length; status(n?`📥 ${n} scene(s) need your clip: tap 📤 Send → make the clip in GenV/FlixGen → 📥 Import clip. Then tap Render.`:"✅ All clips imported — tap Render."); $("mediaBox").scrollIntoView({behavior:"smooth"}); }
+/* ---------- ⚡ full automation ---------- */
+function setSel(id,v,why){ if($(id).value!==v){ setV(id,v); log(`⚡ ${why}`); } }
+function autoEngines(){
+  const has=id=>!!$(id).value.trim(), cf=has("cfAcct")&&has("cfToken");
+  if($("txtEngine").value==="paste"){ const e=has("oaKey")?"openai":has("claudeKey")?"claude":cf?"cloudflare":has("key")?"gemini":null; if(!e) throw new Error("Full auto needs one AI key for the script (ChatGPT, Claude, Cloudflare or Gemini) in Settings."); setSel("txtEngine",e,`Script: ${e} (automatic instead of copy-paste)`); }
+  if($("imgEngine").value==="chatgptapp"){ setSel("imgEngine",cf?"cloudflare":has("oaKey")?"openai":"horde","Pictures: automatic engine instead of ChatGPT app"); }
+  if($("imgEngine").value==="cloudflare"&&!cf) setSel("imgEngine",has("oaKey")?"openai":"horde","Pictures: no Cloudflare keys → "+(has("oaKey")?"ChatGPT":"AI Horde"));
+  if($("imgEngine").value==="openai"&&!has("oaKey")) setSel("imgEngine",cf?"cloudflare":"horde","Pictures: no OpenAI key → free engine");
+  $("hordeAuto").checked=true;
+  const ve=$("vidEngine").value;
+  if(ve==="manual") setSel("vidEngine",has("key")?"omni":has("xaiKey")?"grok":"none","Clips: automatic (no manual import in full auto)");
+  if(ve==="omni"&&!has("key")) setSel("vidEngine","none","Clips: no Gemini key → pictures with motion");
+  if(ve==="grok"&&!has("xaiKey")) setSel("vidEngine","none","Clips: no xAI key → pictures with motion");
+  if(ve==="kling"&&!has("klAk")) setSel("vidEngine","none","Clips: no Kling key → pictures with motion");
+  if($("voiceEngine").value==="eleven"&&!has("elKey")) setSel("voiceEngine","gemini","Voice: no ElevenLabs key → Gemini voice");
+  refreshUI(); }
+function fitBudget(){
+  const B=Math.max(0,+$("budget").value||200), ok=()=>estCost().inr<=B, ve=$("vidEngine").value;
+  const steps=[
+    ()=>{ if(ve==="omni"&&$("vidRes").value!=="360p"){ setV("vidRes","360p"); return "clips → 360p"; } if(ve==="grok"&&$("vidRes").value!=="480p"){ setV("vidRes","480p"); return "clips → 480p"; } if(ve==="kling"&&$("klMode").value!=="std"){ setV("klMode","std"); return "Kling → standard"; } },
+    ()=>{ if($("imgEngine").value==="openai"&&$("oaImgQ").value==="high"){ setV("oaImgQ","medium"); return "pictures → medium"; } },
+    ()=>{ if($("vidRule").value==="all"){ setV("vidRule","alt"); applyRule(); return "AI clips → every 2nd scene"; } },
+    ()=>{ if($("imgEngine").value==="openai"&&$("oaImgQ").value==="medium"){ setV("oaImgQ","low"); return "pictures → low quality"; } },
+    ()=>{ if($("vidRule").value==="alt"){ setV("vidRule","hook"); applyRule(); return "AI clips → first 3 scenes only"; } },
+    ()=>{ if($("imgEngine").value==="openai"&&($("cfAcct").value.trim())){ setV("imgEngine","cloudflare"); return "pictures → free Cloudflare"; } },
+    ()=>{ if($("vidEngine").value!=="none"){ const keep=S.scenes.filter(s=>s.useVideo&&!s.clip&&!s.own); for(let k=keep.length-1;k>=0&&!ok();k--) keep[k].useVideo=false; return "fewer AI clips"; } },
+  ];
+  for(const st of steps){ if(ok()) break; const m=st(); if(m) log(`⚡ Budget ₹${B}: ${m}`); }
+  // spend leftover budget on extra AI clips: chapter openings first, then every 4th scene
+  if(S.scenes.length&&$("vidEngine").value!=="none"&&$("vidEngine").value!=="manual"){
+    const order=[...S.scenes.map((s,i)=>[s,i]).filter(([s])=>s.chapter), ...S.scenes.map((s,i)=>[s,i]).filter(([s,i])=>i%4===0)];
+    let added=0; for(const [s] of order){ if(s.useVideo||s.own||s.clip) continue; s.useVideo=true; if(estCost().inr>B*0.92){ s.useVideo=false; break; } added++; }
+    if(added) log(`⚡ Budget ₹${B}: +${added} extra AI clips on key scenes`); }
+  if(S.scenes.length) applyRuleKeep(); saveProj(); refreshUI(); drawScenes();
+  const c=estCost().inr; log(`⚡ Estimated cost: ₹${c} (budget ₹${B})`); return c; }
+function applyRuleKeep(){ /* keep manual per-scene choices made by fitBudget */ }
 async function autoRun(){
   saveSettings(true);
   await guard(async()=>{
-    if(!S.scenes.length||(S.topic!==$("topic").value.trim()&&$("topic").value.trim())){ if(!(await makeScript())) return; }
-    let f=await runStep("v","🎙️ Voices",3);
-    if($("imgEngine").value==="chatgptapp"){ if(S.scenes.some(s=>!s.img)){ picHint(); return; } } else f+=await runStep("i","🖼️ Pictures",2);
-    if($("vidEngine").value==="manual"){ if(f){ status(`⚠️ ${f} item(s) failed — retry them in step 2.`); return; } if(S.scenes.some(s=>s.useVideo&&!s.clip)){ manualHint(); return; } }
-    else if($("vidEngine").value!=="none") f+=await runStep("c","🎥 Clips",+$("par").value||2);
-    if(f){ status(`⚠️ ${f} item(s) failed — fix/retry them in step 2, then tap Render.`); return; }
-    status("🎬 Rendering final video…");
-    BUSY=false; await renderVideo(true);
+    const AUTO=$("fullAuto").checked; let wakeT=Date.now();
+    try{
+      if(AUTO) autoEngines();
+      if(AUTO&&!$("topic").value.trim()&&$("autoTopic").checked){ status("🔥 Finding today's best trending topic…"); await findTrends(); if(TRENDS.ideas&&TRENDS.ideas[0]) useIdea(0); else throw new Error("Couldn't find a trending topic — type one."); }
+      if(!S.scenes.length||(S.topic!==$("topic").value.trim()&&$("topic").value.trim())){ if(!(await makeScript())) return; }
+      if(AUTO) fitBudget();
+      // voices (fallback: Gemini voice)
+      let f=await runStep("v","🎙️ Voices",3);
+      if(f&&AUTO&&$("voiceEngine").value==="eleven"&&$("key").value.trim()){ log("⚡ Some ElevenLabs voices failed → trying Gemini voice for those"); setV("voiceEngine","gemini"); try{ f=await runStep("v","🎙️ Voices (backup)",3); } finally{ setV("voiceEngine","eleven"); } }
+      if(S.scenes.some(s=>!s.voice)){ status(`⚠️ ${S.scenes.filter(s=>!s.voice).length} voice(s) failed — check the voice key, then tap 🚀 again (finished parts are kept).`); return; }
+      // pictures (fallback: AI Horde, then reuse neighbour picture)
+      if($("imgEngine").value==="chatgptapp"){ if(S.scenes.some(s=>!s.img&&!s.own)){ picHint(); return; } }
+      else { f=await runStep("i","🖼️ Pictures",2);
+        if(f&&AUTO&&$("imgEngine").value!=="horde"){ log("⚡ Some pictures failed → trying AI Horde"); const old=$("imgEngine").value; setV("imgEngine","horde"); try{ await runStep("i","🖼️ Pictures (backup)",3); } finally{ setV("imgEngine",old); } }
+        if(AUTO) for(let i=0;i<S.scenes.length;i++){ const s=S.scenes[i]; if(!s.img&&!s.own){ const nb=S.scenes.slice(0,i).reverse().find(x=>x.img)||S.scenes.slice(i+1).find(x=>x.img); if(nb){ await setImage(s,nb.img.blob); s.st.i="ok"; s.err=""; log(`⚡ Scene ${i+1}: reused a nearby picture`); } } }
+        if(S.scenes.some(s=>!s.img&&!s.own)){ status("⚠️ Some pictures failed — tap 🖼️ Pictures to retry."); return; } }
+      // clips (failures are fine — picture with motion is used)
+      if($("vidEngine").value==="manual"){ if(!AUTO&&S.scenes.some(s=>s.useVideo&&!s.clip)){ manualHint(); return; } }
+      else if($("vidEngine").value!=="none"){ f=await runStep("c","🎥 Clips",+$("par").value||2); if(f) log(`⚡ ${f} clip(s) failed — those scenes use the picture with camera motion.`); }
+      status("🎬 Rendering final video…"); drawScenes();
+      BUSY=false; await renderVideo(true);
+      try{ navigator.vibrate&&navigator.vibrate([300,150,300]); }catch(e){}
+      log(`⏱️ Total time: ${Math.round((Date.now()-wakeT)/60000)} min`);
+    }catch(e){ log("❌ "+e.message); status("❌ "+e.message); }
   });
 }
 
