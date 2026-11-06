@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v3.5</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.0</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -174,8 +174,12 @@ details summary{cursor:pointer;font-weight:700}
 <label>Documentary topic (Hindi or English)</label>
 <input id="topic" placeholder="e.g. हम्पी साम्राज्य का उदय और पतन">
 <div class="row">
- <div><label>Length (min)</label><input id="mins" type="number" value="3" min="1" max="20"></div>
+ <div><label>Length (min)</label><input id="mins" type="number" value="3" min="1" max="40"></div>
  <div><label>Format</label><select id="format"><option value="16:9">16:9 long video</option><option value="9:16">9:16 Short</option></select></div>
+</div>
+<div class="row">
+ <div><label>Video type</label><select id="genre"><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
+ <div><label>Pacing</label><select id="pacing"><option value="fast">Fast — new picture every ~4 s</option><option value="normal">Normal — ~9 s per picture</option></select></div>
 </div>
 <label>Language style</label>
 <select id="lang"><option value="modern">Modern Hindi — everyday words like YouTubers speak</option><option value="hinglish">Hinglish — more English words</option><option value="pure">Pure (shuddh) Hindi</option></select>
@@ -214,12 +218,12 @@ details summary{cursor:pointer;font-weight:700}
 <h2>3. Final video</h2>
 <h3>✨ Style &amp; effects</h3>
 <div class="row">
- <div><label>Quick preset</label><select id="preset" onchange="applyPreset(this.value)"><option value="">— choose —</option><option value="doc">🎞️ Cinematic documentary</option><option value="viral">🔥 Viral / high retention</option><option value="mystery">🕵️ Mystery thriller</option><option value="history">📜 Old history</option><option value="clean">✨ Clean &amp; minimal</option></select></div>
+ <div><label>Quick preset</label><select id="preset" onchange="applyPreset(this.value)"><option value="">— choose —</option><option value="story">🎙️ Story / true crime (SR PAY style)</option><option value="doc">🎞️ Cinematic documentary</option><option value="viral">🔥 Viral / high retention</option><option value="mystery">🕵️ Mystery thriller</option><option value="history">📜 Old history</option><option value="clean">✨ Clean &amp; minimal</option></select></div>
  <div><label>Channel name</label><input id="channel" placeholder="e.g. MinuteVerse"></div>
 </div>
 <div class="row">
  <div><label>🎨 Look / filter</label><select id="look"><option value="warm">Cinematic teal-orange</option><option value="golden">Golden hour</option><option value="mystery">Dark mystery</option><option value="vintage">Vintage film</option><option value="bleach">Gritty (bleach bypass)</option><option value="neon">Neon night</option><option value="bw">Black &amp; white</option><option value="natural">Natural</option></select></div>
- <div><label>🔀 Transitions</label><select id="trans"><option value="mix">Mixed (auto variety)</option><option value="zoom">Zoom punch</option><option value="whip">Whip pan</option><option value="flash">Flash</option><option value="glitch">Glitch</option><option value="fade">Smooth fade</option></select></div>
+ <div><label>🔀 Transitions</label><select id="trans"><option value="story">Story mix — cuts + push (SR PAY style)</option><option value="mix">Mixed (auto variety)</option><option value="push">Push / slide</option><option value="cut">Hard cut</option><option value="zoom">Zoom punch</option><option value="whip">Whip pan</option><option value="flash">Flash</option><option value="glitch">Glitch</option><option value="fade">Smooth fade</option></select></div>
 </div>
 <div class="row">
  <div><label>💬 Subtitle style</label><select id="subStyle"><option value="karaoke">Word-by-word highlight</option><option value="pop">Big pop words (Shorts style)</option><option value="box">Classic box</option><option value="type">Typewriter</option><option value="minimal">Minimal shadow</option><option value="none">No subtitles</option></select></div>
@@ -279,7 +283,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -335,10 +339,10 @@ async function http(method,url,{headers={},json,blob=false,text=false,timeout=60
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:S.chars||[],screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
-  Object.assign(S,{screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
+  Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
   S.scenes=p.scenes.map(s=>({...s,st:{}}));
   for(const s of S.scenes){
     try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false,a.text); }catch(e){}
@@ -390,14 +394,16 @@ async function geminiAuto(kind,pref,body){
 
 /* ---------- 1. Script ---------- */
 function applyRule(){ const r=$("vidRule").value, none=$("vidEngine").value==="none"; S.scenes.forEach((s,i)=>s.useVideo=!none&&(r==="all"||(r==="alt"&&i%2===0)||(r==="hook"&&i<3))); }
+function sceneCount(mins){ return Math.max(4,Math.round(mins*60/($("pacing").value==="fast"?4.6:9))); }
 async function makeScript(){
   const topic=$("topic").value.trim(); if(!topic){ alert("Enter a topic"); return false; }
-  const mins=Math.max(1,Math.min(20,+$("mins").value||3)), n=Math.max(4,Math.round(mins*60/9));
-  const prompt=buildPrompt(topic,mins,n);
-  if($("txtEngine").value==="paste"){ PROMPT=prompt; PTOPIC=topic; $("pasteBox").style.display=""; $("pasteBox").scrollIntoView({behavior:"smooth",block:"center"}); status("📋 Copy the prompt → ChatGPT/Claude → paste the reply below."); return false; }
+  const mins=Math.max(1,Math.min(40,+$("mins").value||3)); let n=sceneCount(mins);
+  const paste=$("txtEngine").value==="paste";
+  if(paste&&n>40){ n=40; log("Copy-paste mode can do up to 40 scenes in one go — for longer videos pick an automatic script engine (Claude, ChatGPT, Gemini or Cloudflare)."); }
+  if(paste){ PROMPT=buildPrompt(topic,mins,n); PTOPIC=topic; $("pasteBox").style.display=""; $("pasteBox").scrollIntoView({behavior:"smooth",block:"center"}); status("📋 Copy the prompt → ChatGPT/Claude → paste the reply below."); return false; }
   status("✍️ Writing script…"); $("btnScript").disabled=true;
   try{
-    const d=await writeScript(prompt);
+    const d=n>36?await longScript(topic,mins,n):await writeScript(buildPrompt(topic,mins,n));
     await applyScript(d,topic);
     return true;
   }catch(e){ log("❌ Script: "+e.message); status("❌ "+e.message); return false; }
@@ -410,33 +416,74 @@ const LANG={
  modern:"आज की आसान, बोलचाल वाली modern हिंदी — जैसी लोकप्रिय YouTube चैनल बोलते हैं। भारी संस्कृत/शुद्ध शब्द बिल्कुल नहीं (जैसे 'अद्भुत'→'कमाल का', 'संरचना'→'बनावट', 'प्राचीन'→'पुराना', 'रहस्यमयी'→'रहस्य से भरा', 'तत्पश्चात'→'उसके बाद')। रोज़ इस्तेमाल होने वाले अंग्रेज़ी शब्द चलेंगे (मिस्ट्री, टेक्नोलॉजी, साइंस, प्लान)।",
  hinglish:"Hinglish — आम बोलचाल जिसमें काफ़ी अंग्रेज़ी शब्द हों (जैसे 'ये सच में एक बड़ी मिस्ट्री है, साइंटिस्ट्स भी कन्फ़्यूज़ हैं')। फिर भी पूरी लाइन देवनागरी में लिखें।",
  pure:"शुद्ध पर सरल हिंदी।"};
-function buildPrompt(topic,mins,n){
-    return `आप एक बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक हैं।
-विषय: "${topic}"
+const GENRE={
+ doc:{who:"बेहतरीन हिंदी YouTube डॉक्यूमेंट्री लेखक",kind:"डॉक्यूमेंट्री",rules:`- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" से कहें।`,img:`"image_prompt": English में उस दृश्य का विस्तृत सिनेमैटिक, photorealistic वर्णन (कोई टेक्स्ट नहीं, किसी असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।`},
+ crime:{who:"SR PAY जैसे लोकप्रिय हिंदी mystery और true-crime storyteller",kind:"mystery / true-crime कहानी",
+  rules:`- स्टाइल: जैसे कोई दोस्त सामने बैठकर केस सुना रहा हो। Mystery-reveal structure: शुरुआत सबसे चौंकाने वाले पल से, फिर "पर ये कहानी शुरू होती है…" से पीछे जाकर क्रम से घटनाएँ, बीच में सुराग़ और twists, आखिर में सच का खुलासा और सबक।
+- सुरक्षा (ज़रूरी): सिर्फ़ सार्वजनिक रूप से रिपोर्ट हुए तथ्य, अपनी तरफ़ से नए आरोप नहीं; जिन पर आरोप है उन्हें "आरोपी" कहें जब तक अदालत दोषी न ठहराए; नाबालिगों और पीड़ितों के परिवार के असली नाम नहीं (बदले हुए नाम लें और एक बार बता दें कि नाम बदले गए हैं); हिंसा या अपराध का graphic वर्णन नहीं, इशारों में बताएँ; किसी जाति, धर्म या समुदाय पर टिप्पणी नहीं।`,
+  img:`"image_prompt": English में उस पल की ultra-realistic candid photo का वर्णन — रोज़मर्रा का भारत, असली लगने वाले लोग, जगहें और चीज़ें; दुकानों/बोर्ड/गाड़ियों पर नाम लिखे हों तो वही नाम लिखें (काल्पनिक नाम)। कोई हिंसा, खून या लाश नहीं — डर और तनाव को माहौल, चेहरों और छाया से दिखाएँ। असली प्रसिद्ध व्यक्ति नहीं।`},
+ horror:{who:"SR PAY STORIES जैसे लोकप्रिय हिंदी horror storyteller",kind:"horror कहानी",
+  rules:`- स्टाइल: "ये कहानी हमें हमारे एक दर्शक ने भेजी है…" जैसी शुरुआत, फिर पहले व्यक्ति (मैं) में कहानी। रोज़मर्रा की असली लगने वाली जगहें, दोस्त, सफ़र; धीरे-धीरे बढ़ता डर, छोटी अजीब बातें, climax में सबसे डरावना पल। आखिर में दर्शकों से सवाल ("आपके साथ कभी ऐसा हुआ है? कमेंट में बताइए")।
+- कहानी सुनी-सुनाई/काल्पनिक है — किसी असली व्यक्ति, होटल या जगह पर आरोप न लगाएँ (नाम काल्पनिक रखें)। Gore नहीं।`,
+  img:`"image_prompt": English में उस पल की ultra-realistic candid photo का वर्णन — रोज़मर्रा का भारत, असली लगने वाले लोग और जगहें, डरावने पलों में अँधेरा, धुंध, परछाइयाँ; बोर्ड/साइनबोर्ड पर काल्पनिक नाम लिखें। कोई gore नहीं।`}};
+function scriptRules(n,perScene){ const G=GENRE[$("genre").value]||GENRE.doc, fast=$("pacing").value==="fast";
+  return `भाषा: ${LANG[$("lang").value]}
 टोन: ${$("tone").value}
-लगभग ${mins} मिनट की डॉक्यूमेंट्री के लिए ठीक ${n} दृश्य (scenes) लिखें। हर दृश्य एक ही वीडियो शॉट (8-10 सेकंड) है।
-भाषा: ${LANG[$("lang").value]}
 नियम:
-- "narration": हर दृश्य में 20-26 शब्द, सिर्फ़ देवनागरी लिपि में (अंग्रेज़ी शब्द भी देवनागरी में, जैसे "टेक्नोलॉजी", "इंजीनियरिंग")। छोटे, पंच वाले वाक्य — जैसे कोई दोस्त कहानी सुना रहा हो।
-- उच्चारण के लिए: अंक/साल हमेशा शब्दों में (1336 → "तेरह सौ छत्तीस", 2.5 → "ढाई"); कोई abbreviation, symbol, %, & या ब्रैकेट नहीं; "ई.पू." की जगह "ईसा पूर्व"; नुक़्ता सही लगाएँ (ज़, फ़)।
-- Retention: पहले दृश्य की पहली लाइन में सबसे चौंकाने वाली बात या सवाल (hook)। बीच-बीच में curiosity बनाए रखें ("लेकिन असली राज़ अभी बाकी है…", "और यहीं से कहानी पलटती है…")। हर 3-4 दृश्यों में नया twist या fact। दर्शक से सीधे बात करें ("सोचिए…", "क्या आप जानते हैं…")।
-- आखिरी दृश्य में दमदार निष्कर्ष और like/subscribe की छोटी अपील।
-- "keyword": उस दृश्य की narration से सबसे ज़रूरी 1 शब्द (बिल्कुल वैसा ही जैसा narration में लिखा है) — स्क्रीन पर highlight होगा।
-- तथ्य सही रखें; अनिश्चित बातों को "माना जाता है" से कहें।
-- "image_prompt": English में उस दृश्य की पहली फ्रेम का विस्तृत सिनेमैटिक वर्णन (कोई टेक्स्ट नहीं, किसी असली प्रसिद्ध व्यक्ति का चेहरा नहीं)।
-- "motion": English में उस शॉट की गति — कैमरा मूवमेंट और दृश्य में क्या हिलता है (1 वाक्य)।
-- "onscreen": लगभग हर तीसरे दृश्य में स्क्रीन पर दिखाने के लिए 2-5 शब्दों का छोटा टेक्स्ट — कोई तारीख/वर्ष, जगह का नाम या मुख्य तथ्य (जैसे "1336 ई. — विजयनगर की स्थापना"); बाकी दृश्यों में ""।
-- "screen_title": वीडियो की शुरुआत में बड़े अक्षरों में दिखाने के लिए 2-4 शब्दों का छोटा शीर्षक। "screen_subtitle": उसके नीचे एक छोटी पंक्ति (6-10 शब्द)।
-- "title": आकर्षक हिंदी YouTube शीर्षक। "description": हिंदी YouTube description। "tags": 10 tags।
-केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"scenes":[{"narration":"","keyword":"","image_prompt":"","motion":"","onscreen":""}]}`;
+- "narration": हर दृश्य में ${fast?"10-16":"20-26"} शब्द (${fast?"4-5":"8-10"} सेकंड बोलने लायक), सिर्फ़ देवनागरी में (अंग्रेज़ी शब्द भी देवनागरी में)। दृश्य एक-दूसरे से जुड़कर एक लगातार कहानी बनें — हर दृश्य एक नई तस्वीर/शॉट है।
+- उच्चारण: अंक/साल हमेशा शब्दों में (1336 → "तेरह सौ छत्तीस", 2.5 → "ढाई"); कोई abbreviation, symbol, %, & या ब्रैकेट नहीं; नुक़्ता सही (ज़, फ़)।
+- Retention: पहले दृश्य में सबसे चौंकाने वाली बात या सवाल (hook)। बीच-बीच में curiosity ("लेकिन असली राज़ अभी बाकी है…", "और यहीं से कहानी पलटती है…")। दर्शक से सीधे बात करें।
+${G.rules}
+- "keyword": उस दृश्य की narration का सबसे ज़रूरी 1 शब्द (बिल्कुल वैसा ही)।
+- ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
+- "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
+- "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
+- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम (हिंदी), बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।`; }
+function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
+  return `आप एक ${G.who} हैं।
+विषय: "${topic}"
+लगभग ${mins} मिनट की ${G.kind} के लिए ठीक ${n} दृश्य (scenes) लिखें।
+${scriptRules(n)}
+- "characters": कहानी के मुख्य किरदार (2-5) — "name" (हिंदी नाम, जैसा narration में) और "look" (English में स्थायी रूप: उम्र, चेहरा, बाल, कपड़े — हर तस्वीर में यही रहेगा)।
+- "screen_title": 2-4 शब्दों का छोटा शीर्षक, "screen_subtitle": 6-10 शब्द। "title": clickable हिंदी YouTube title। "description": हिंदी description। "tags": 10 tags।
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"scenes":[{"chapter":"","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
+function engineForLong(){ const te=$("txtEngine").value; return te==="paste"?ideaEngine():te; }
+async function longScript(topic,mins,n){
+  const G=GENRE[$("genre").value]||GENRE.doc, eng=engineForLong(); if(!eng) throw new Error("Long videos need an automatic script engine (Claude, ChatGPT, Gemini or Cloudflare) in Settings.");
+  const nCh=Math.max(4,Math.min(10,Math.round(mins/3.5)));
+  status("✍️ Planning the story (chapters & characters)…");
+  const outline=await llmJSON(`आप एक ${G.who} हैं। विषय: "${topic}"। लगभग ${mins} मिनट की ${G.kind} की पूरी योजना बनाइए — ${nCh} अध्याय (chapters)।
+${G.rules}
+हर अध्याय: "title" (2-5 शब्द हिंदी) और "summary" (4-6 वाक्य: इस अध्याय में क्या-क्या होता है, कौन से सुराग़/twists, अगला अध्याय किस सवाल पर जाता है)। पहला अध्याय hook से शुरू हो, आखिरी में खुलासा और अंत।
+"characters": मुख्य किरदार (2-6) — "name" (हिंदी) और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
+"title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"chapters":[{"title":"","summary":""}]}`,eng,"chapters");
+  const ch=outline.chapters.slice(0,nCh), per=Math.max(3,Math.round(n/ch.length)), scenes=[];
+  const cast=(outline.characters||[]).map(c=>`${c.name}: ${c.look}`).join("; ");
+  for(let i=0;i<ch.length;i++){
+    status(`✍️ Writing chapter ${i+1}/${ch.length}: ${ch[i].title}…`); $("aBar").style.width=((i)/ch.length*100)+"%";
+    const prev=scenes.slice(-3).map(s=>s.narration).join(" ");
+    const d=await llmJSON(`आप एक ${G.who} हैं। विषय: "${topic}"। पूरी कहानी के अध्याय:
+${ch.map((c,k)=>`${k+1}. ${c.title} — ${c.summary}`).join("\n")}
+किरदार: ${cast||"—"}
+अभी सिर्फ़ अध्याय ${i+1} "${ch[i].title}" के लिए ठीक ${per} दृश्य लिखें।${prev?`\nपिछले दृश्यों की आखिरी लाइनें (वहीं से आगे बढ़ें, दोहराएँ नहीं): ${prev}`:""}
+${i===0?"पहला दृश्य दमदार hook हो।":""}${i===ch.length-1?"आखिरी दृश्य में निष्कर्ष और like/subscribe की छोटी अपील।":"अध्याय के आखिरी दृश्य में अगले अध्याय के लिए curiosity छोड़ें।"}
+${scriptRules(per)}
+केवल JSON: {"scenes":[{"narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`,eng,"scenes");
+    (d.scenes||[]).forEach((s,k)=>{ s.chapter=k===0?ch[i].title:""; scenes.push(s); });
+  }
+  $("aBar").style.width="100%";
+  return {...outline,scenes};
 }
 async function applyScript(d,topic){
     await DB.clear();
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
-    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",st:{}}));
+    S.chars=(d.characters||[]).filter(c=>c&&c.name).map(c=>({name:String(c.name).trim(),look:String(c.look||"").trim()}));
+    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",who:Array.isArray(s.who)?s.who:(s.who?[s.who]:[]),chapter:s.chapter||"",st:{}}));
+    if(S.scenes.length&&!S.scenes[0].chapter&&S.scenes.some(s=>s.chapter)) S.scenes[0].chapter="शुरुआत";
     applyRule(); await saveProj(); drawScript();
-    log(`Script ready: ${S.scenes.length} scenes.`); status("✅ Script ready — check the cost below.");
+    log(`Script ready: ${S.scenes.length} scenes${S.chars.length?`, ${S.chars.length} characters`:""}.`); status("✅ Script ready — check the cost below.");
 }
 function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```$/,"").trim();
   try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error("Script was not valid JSON — tap again."); } }
@@ -487,7 +534,9 @@ function drawScript(){
   $("scriptBox").innerHTML=`<div class="row"><div><label>🎬 Big title on screen</label><input value="${esc(S.screenTitle||"")}" placeholder="auto from title" oninput="S.screenTitle=this.value;saveProj()"></div>
    <div><label>Line under it</label><input value="${esc(S.screenSub||"")}" oninput="S.screenSub=this.value;saveProj()"></div></div>
    <label>YouTube title</label><input value="${esc(S.title)}" oninput="S.title=this.value;saveProj()">
-   <label>YouTube description</label><textarea oninput="S.description=this.value;saveProj()">${esc(S.description)}</textarea>`;
+   <label>YouTube description</label><textarea oninput="S.description=this.value;saveProj()">${esc(S.description)}</textarea>
+   <label>👥 Characters (same look in every picture) — one per line: <i>name: look in English</i></label>
+   <textarea style="min-height:70px" placeholder="राहुल: 28-year-old Indian man, short black hair, light beard, navy blue checked shirt, black backpack" oninput="setChars(this.value)">${esc((S.chars||[]).map(c=>c.name+": "+c.look).join("\n"))}</textarea>`;
   drawScenes(); updateCost();
 }
 function drawScenes(){
@@ -502,19 +551,23 @@ function drawScenes(){
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
        <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()"></details>
+      <div class="row"><div><label>📑 Chapter (starts here)</label><input value="${esc(s.chapter||"")}" placeholder="—" oninput="S.scenes[${i}].chapter=this.value;saveProj()"></div>
+      <div><label>👥 Who is in the picture</label><input value="${esc((s.who||[]).join(", "))}" placeholder="names" oninput="S.scenes[${i}].who=this.value.split(/[,،]/).map(x=>x.trim()).filter(Boolean);saveProj()"></div></div>
       <div class="row"><div><label>📍 On-screen text</label><input value="${esc(s.onscreen||"")}" placeholder="e.g. 1336 ई. — विजयनगर" oninput="S.scenes[${i}].onscreen=this.value;saveProj()"></div>
       <div><label>🟡 Highlight word</label><input value="${esc(s.keyword||"")}" placeholder="key word" oninput="S.scenes[${i}].keyword=this.value;saveProj()"></div></div>
       <div class="chk"><input type="checkbox" id="uv_${s.id}" ${s.useVideo?"checked":""} ${$("vidEngine").value==="none"?"disabled":""} onchange="S.scenes[${i}].useVideo=this.checked;saveProj();drawScenes();updateCost()"><label for="uv_${s.id}">🎥 AI video clip for this scene</label></div>
       <button class="small sec" onclick="one(${i},'v')">🎙️ Redo voice</button>
       ${$("imgEngine").value==="chatgptapp"?`<button class="small" onclick="copyPicPrompt(${i})">📋 Copy picture prompt</button>`:`<button class="small sec" onclick="one(${i},'i')">🖼️ New picture</button>`}
       <button class="small sec" onclick="pickPicture(${i})">📥 Import picture</button>
+      <button class="small sec" onclick="pickSelfClip(${i})">🎤 ${s.own?"Replace":"Use"} my talking video</button>${s.own?`<button class="small sec" onclick="dropSelf(${i})">✕ Remove my video</button>`:""}
       ${s.useVideo&&$("vidEngine").value!=="manual"?`<button class="small sec" onclick="one(${i},'c')">🎥 New clip</button>`:""}
       ${s.useVideo&&$("vidEngine").value==="manual"?`${s.img?`<button class="small" onclick="sendToApp(${i})">📤 Send to GenV/FlixGen</button>`:""}<button class="small" onclick="pickClip(${i})">📥 Import clip</button>`:""}
       ${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}
       <button class="small sec" onclick="delScene(${i})">✕ Delete</button></div>`;}).join("")
    +`<button class="small sec" onclick="addScene()">+ Add scene</button>`;
 }
-function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
+function setChars(t){ S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); return k>0?{name:l.slice(0,k).trim(),look:l.slice(k+1).trim()}:null; }).filter(c=>c&&c.name); saveProj(); }
+function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
 function delScene(i){ const s=S.scenes[i]; ["a_","i_","c_"].forEach(p=>DB.del(p+s.id)); S.scenes.splice(i,1); saveProj(); drawScript(); }
 function addScene(){ S.scenes.push({id:uid(),narration:"",prompt:"",motion:"slow cinematic camera push in",useVideo:false,st:{}}); saveProj(); drawScript(); }
 let playing=null;
@@ -619,8 +672,11 @@ async function cropTo(blob,ar){ const bm=await createImageBitmap(blob); const [r
   const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bm,(bm.width-w)/2,(bm.height-h)/2,w,h,0,0,w,h);
   return new Promise(r=>c.toBlob(r,"image/jpeg",0.93)); }
 function cfCheck(acct){ if(!/^[0-9a-f]{32}$/i.test(acct)) throw new Error("Cloudflare Account ID looks wrong. It must be 32 letters/numbers (0-9, a-f) — you may have pasted the API token (cfut_…) there. Copy the Account ID from dash.cloudflare.com → Workers AI → Use REST API."); }
-const REAL="photorealistic, shot on a full-frame DSLR, 35mm lens, natural light, realistic textures and skin, film grain, high dynamic range, sharp focus, no text, no watermark, not illustration, not cartoon, not CGI";
-function imgPromptText(s,max=2000){ return `${s.prompt}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,max); }
+const REAL="photorealistic, shot on a full-frame DSLR, 35mm lens, natural light, realistic textures and skin, high dynamic range, sharp focus, no watermark, no captions, not illustration, not cartoon, not CGI";
+function castText(s){ const C=S.chars||[]; if(!C.length) return ""; const who=new Set((s.who||[]).map(x=>String(x).trim()));
+  C.forEach(c=>{ if(c.name&&(s.prompt||"").includes(c.name)) who.add(c.name); }); const L=C.filter(c=>who.has(c.name)&&c.look); return L.length?"People in this shot — "+L.map(c=>`${c.name}: ${c.look}`).join("; ")+". Keep them looking exactly like this.":""; }
+function fullPrompt(s){ const c=castText(s); return (c?c+" ":"")+s.prompt; }
+function imgPromptText(s,max=2000){ return `${fullPrompt(s)}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}. ${$("format").value==="9:16"?"vertical composition":"wide landscape composition"}, main subject in the center`.slice(0,max); }
 function imgWH(){ return $("format").value==="9:16"?[576,1024]:[1024,576]; }
 async function httpMultipart(url,headers,fields){
   if(CH){ const B="----HDM"+Math.random().toString(36).slice(2);
@@ -678,14 +734,14 @@ async function makeImageHorde(s){
 async function makeImageOA(s){
   const k=$("oaKey").value.trim(); if(!k) throw new Error("Add your OpenAI API key in Settings (✍️ Script writer or 🖼️ Pictures).");
   const vert=$("format").value==="9:16";
-  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.openai.com/v1/images/generations",{headers:{Authorization:"Bearer "+k},json:{model:$("oaImgModel").value.trim()||"gpt-image-2",prompt:`${vert?"Vertical 9:16":"Wide 16:9"} cinematic documentary image. ${s.prompt}. ${$("imgStyle").value}`.slice(0,3900),size:vert?"1024x1536":"1536x1024",quality:$("oaImgQ").value,n:1},timeout:300000});
+  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.openai.com/v1/images/generations",{headers:{Authorization:"Bearer "+k},json:{model:$("oaImgModel").value.trim()||"gpt-image-2",prompt:`${vert?"Vertical 9:16":"Wide 16:9"} cinematic image. ${fullPrompt(s)}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}`.slice(0,3900),size:vert?"1024x1536":"1536x1024",quality:$("oaImgQ").value,n:1},timeout:300000});
     if(r.ok||![429,500,502,503].includes(r.status)||/quota|billing|verif/i.test(errMsg(r.data))) break; log("ChatGPT images busy, retrying…"); await sleep(8000*(t+1)); }
   if(!r.ok) throw new Error(`ChatGPT image ${r.status}: ${errMsg(r.data)}${/verif/i.test(errMsg(r.data))?" — verify your organization at platform.openai.com → Settings → Organization.":""}`);
   const b64=r.data.data&&r.data.data[0]&&r.data.data[0].b64_json; if(!b64) throw new Error("ChatGPT returned no image");
   await setImage(s,await cropTo(new Blob([b64ToBytes(b64)],{type:"image/png"}),$("format").value));
   if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
 }
-function picPrompt(s){ return `Create a ${$("format").value==="9:16"?"vertical 9:16":"wide 16:9 landscape"} cinematic documentary image (no text, no watermark): ${s.prompt}. ${$("imgStyle").value}`; }
+function picPrompt(s){ return `Create a ${$("format").value==="9:16"?"vertical 9:16":"wide 16:9 landscape"} cinematic photo (no watermark, no captions): ${fullPrompt(s)}. ${$("imgStyle").value}`; }
 async function copyPicPrompt(i){ const t=picPrompt(S.scenes[i]); try{ await navigator.clipboard.writeText(t); status(`📋 Scene ${i+1} picture prompt copied — paste it in ChatGPT, save the image, then 📥 Import picture.`); }catch(e){ prompt("Copy:",t); } }
 async function copyAllPicPrompts(){ const t=`Please create these ${S.scenes.length} images one by one (one image per message, same style for all). Wait for me to say "next" after each.\n\n`+S.scenes.map((s,i)=>`${i+1}. ${picPrompt(s)}`).join("\n\n"); try{ await navigator.clipboard.writeText(t); status("📋 All picture prompts copied — paste in ChatGPT, save each image, then 📥 Import picture on each scene."); }catch(e){ prompt("Copy:",t); } }
 function pickPicture(i){
@@ -701,7 +757,7 @@ async function makeImage(s){
   if(ie==="horde") return makeImageHorde(s);
   if(ie==="openai") return makeImageOA(s);
   if(ie==="chatgptapp") throw new Error("ChatGPT app mode: tap 📋 Copy picture prompt, make it in ChatGPT, then 📥 Import picture.");
-  const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${s.prompt}. ${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
+  const j=await geminiAuto("image",$("mImg").value,{contents:[{parts:[{text:`Generate an image: ${fullPrompt(s)}. ${$("realism").checked?REAL+". ":""}${$("imgStyle").value}`}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:$("format").value}}});
   const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No picture returned (prompt blocked? edit it and retry)");
   await setImage(s,new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}));
   if(s.clip){ s.clip=null; DB.del("c_"+s.id); }
@@ -793,7 +849,7 @@ async function doStep(s,k){
 }
 async function one(i,k){ ac(); await doStep(S.scenes[i],k); }
 async function runStep(k,label,n){
-  const todo=S.scenes.filter(s=>k==="v"?!s.voice:k==="i"?!s.img:(s.useVideo&&!s.clip));
+  const todo=S.scenes.filter(s=>k==="v"?!s.voice:k==="i"?(!s.img&&!s.own):(s.useVideo&&!s.clip&&!s.own));
   if(!todo.length) return 0;
   let done=0,fail=0; status(`${label} 0/${todo.length}`);
   await pool(todo,n,async s=>{ const ok=await doStep(s,k); ok?done++:fail++; status(`${label} ${done}/${todo.length}${fail?` · ${fail} failed`:""}`); $("aBar").style.width=((done+fail)/todo.length*100)+"%"; });
@@ -870,7 +926,7 @@ function preview(){ return renderVideo(false,true); }
 async function renderVideo(auto,PV){
   if(BUSY&&!auto) return alert("Already working…");
   if(PV){ if(!S.scenes.length||!S.scenes[0].img){ alert("Make at least the first scene's picture first (step 2)."); return; } }
-  else { const miss=S.scenes.filter(s=>!s.voice||!s.img); if(!S.scenes.length||miss.length){ alert("Every scene needs a voice and a picture first."); return; } }
+  else { const miss=S.scenes.filter(s=>!s.voice||(!s.img&&!(s.own&&s.clip))); if(!S.scenes.length||miss.length){ alert("Every scene needs a voice and a picture first."); return; } }
   BUSY=true; $("btnRender").disabled=true; if(!PV) $("outBox").innerHTML="";
   let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
   try{
@@ -878,8 +934,8 @@ async function renderVideo(auto,PV){
   const a=ac(), [W,H]=dims(), cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d");
   const on=id=>$(id).checked, val=id=>$(id).value;
   const TSTY=val("titleStyle"), SUB=val("subStyle"), TRANS=val("trans"), FACT=val("factStyle");
-  const TITLE=on("titleCard")?4.4:0, TR=0.55, GAP=0.4, FPS=30, OUTRO=on("endScreen")?6:0.8, HL=on("kwHL"), SHAKE=on("shake");
-  const SC=PV?S.scenes.filter(s=>s.img).slice(0,3):S.scenes;
+  const FASTP=val("pacing")==="fast", TITLE=on("titleCard")?4.4:0, TR=FASTP?0.45:0.55, GAP=FASTP?0.12:0.4, FPS=30, OUTRO=on("endScreen")?6:0.8, HL=on("kwHL"), SHAKE=on("shake");
+  const SC=PV?S.scenes.filter(s=>s.img||(s.own&&s.clip)).slice(0,3):S.scenes;
   const after=!!TITLE&&val("titlePos")==="after"&&SC.length>1;
   let t=after?0.25:(TITLE?TITLE+0.2:0.5), titleStart=after?null:0;
   const tl=[];
@@ -891,8 +947,11 @@ async function renderVideo(auto,PV){
   });
   if(!TITLE) titleStart=-99;
   const BODY_END=t, total=t+OUTRO;
+  { const fmt=s=>{ s=Math.max(0,Math.floor(s)); const hh=Math.floor(s/3600), mm=Math.floor(s%3600/60), ss=s%60; return (hh?hh+":"+String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
+    const chs=[]; tl.forEach((x,j)=>{ const c=(x.s.chapter||"").trim(); if(!c) return; const at=j===0?0:Math.max(0,x.vs); if(!chs.length&&at>0) chs.push({at:0,c:"शुरुआत"}); if(!chs.length||at-chs[chs.length-1].at>=10) chs.push({at,c}); });
+    window._chapters=chs.length>=3?chs.map(x=>`${fmt(x.at)} ${x.c}`).join("\n"):""; }
   tl.forEach((x,j)=>{ x.ve=j<tl.length-1?tl[j+1].vs+TR:total; x.chunks=groupWords(x.words,SUB==="pop"?14:40,SUB==="pop"?3:9); const kw=x.words.find(w=>w.kw); x.kwT=kw?kw.a:null; });
-  const KINDS=["zoom","flash","whip","fade","glitch"], tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS;
+  const KINDS=["zoom","flash","whip","fade","glitch"], STORY=["cut","push","cut","cut","zoom","push","cut","fade"], tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS==="story"?STORY[(j*5+1)%STORY.length]:TRANS;
   const look=LOOKS[val("look")]||[], grain=on("grain")?makeGrain():null;
   const barH=on("bars")?(W>H?Math.round((H-W/2.39)/2):Math.round(H*0.05)):0;
   const ST=screenTitle();
@@ -915,11 +974,14 @@ async function renderVideo(auto,PV){
   function cover(src,sw,sh,z,px,py,alpha,dx){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha; g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5+dx+SX,(H-dh)/2+py*(dh-H)*0.5+SY,dw,dh); g.globalAlpha=1; }
   function punch(x,T){ if(!on("punch")||x.kwT==null) return 1; const d=T-x.kwT; return d>=0&&d<0.9?1+0.07*(1-ease(d/0.9)):1; }
   function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1), dx=(o.dx||0)*W;
-    const v=vids[j]; if(v&&v.started&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx); return; }
+    const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx); return; }
+    if(!x.s.img) return;
     const im=x.s.img.bmp, k=j%4, z=(k%2===0)?1.05+0.10*p:1.15-0.10*p;
     cover(im,im.width,im.height,z*zm,(k<2?-1:1)*(p-0.5),(k===1||k===2?1:-1)*(p-0.5)*0.6,alpha,dx); }
   function transition(A,B,T,q,kind){
-    if(kind==="fade"){ drawScene(A,T,1); drawScene(B,T,q); }
+    if(kind==="cut"){ drawScene(B,T,1); }
+    else if(kind==="push"){ const e=q<0.5?4*q*q*q:1-Math.pow(-2*q+2,3)/2; drawScene(A,T,1,{dx:-e}); drawScene(B,T,1,{dx:1-e}); }
+    else if(kind==="fade"){ drawScene(A,T,1); drawScene(B,T,q); }
     else if(kind==="zoom"){ if(q<0.5) drawScene(A,T,1,{z:1+0.5*ease(q*2)}); else drawScene(B,T,1,{z:1.35-0.35*ease((q-0.5)*2)}); g.fillStyle=`rgba(255,255,255,${0.3*(1-Math.abs(2*q-1))})`; g.fillRect(0,0,W,H); }
     else if(kind==="flash"){ drawScene(q<0.5?A:B,T,1); g.fillStyle=`rgba(255,255,255,${Math.pow(1-Math.abs(2*q-1),1.5)})`; g.fillRect(0,0,W,H); }
     else if(kind==="whip"){ const e=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2; drawScene(A,T,1,{dx:-e}); drawScene(B,T,1,{dx:1-e});
@@ -1050,7 +1112,7 @@ async function renderVideo(auto,PV){
     slams.forEach(st=>{ const d=T-st; if(d>0&&d<0.15){ SX+=(Math.random()-0.5)*fs*0.5; SY+=(Math.random()-0.5)*fs*0.5; } });
     let i=0; for(let j=0;j<tl.length;j++) if(tl[j].vs<=T) i=j;
     prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i-1||(+k===i-1&&T>tl[i].vs+TR)) release(+k); });
-    [i,i+1].forEach(j=>{ const v=vids[j]; if(v&&!v.started&&T>=tl[j].vs&&v.el.readyState>=2){ v.el.playbackRate=clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
+    [i,i+1].forEach(j=>{ const v=vids[j], own=tl[j]&&tl[j].s.own; if(v&&!v.started&&T>=(own?tl[j].start:tl[j].vs)&&v.el.readyState>=2){ v.el.playbackRate=own?1:clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
     const q=i>0?(T-tl[i].vs)/TR:1;
     if(q<1) transition(tl[i-1],tl[i],T,clamp(q),tk(i)); else drawScene(tl[i],T,1);
     grade(); leaks(T); vignette(); filmFx(n);
@@ -1067,7 +1129,7 @@ async function renderVideo(auto,PV){
   tl.forEach(x=>{ const src=a.createBufferSource(); src.buffer=x.s.voice.buf; src.connect(out); src.start(t0+x.start); srcs.push(src); });
   if(on("sfx")){
     if(TITLE) boom(a,out,t0+titleStart+0.3);
-    tl.forEach((x,j)=>{ if(j>0&&tk(j)!=="fade"&&!(after&&j===1)) whoosh(a,out,t0+x.vs-0.2,0.2,0.8); if(on("onscreen")&&(x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25,0.25); });
+    tl.forEach((x,j)=>{ if(j>0&&tk(j)!=="fade"&&tk(j)!=="cut"&&!(after&&j===1)) whoosh(a,out,t0+x.vs-0.2,tk(j)==="push"?0.12:0.2,0.8); if(on("onscreen")&&(x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25,0.25); });
     if(on("endScreen")) whoosh(a,out,t0+BODY_END+0.2); }
   if(mSrc){ const v=(+$("bgmVol").value)/100, G=mGain.gain, hi=Math.min(0.8,v*2.5); let c=t0;
     const set=(tt,val,ramp)=>{ tt=Math.max(tt,c+0.01); if(ramp) G.linearRampToValueAtTime(val,tt); else G.setValueAtTime(val,tt); c=tt; };
@@ -1087,7 +1149,7 @@ async function renderVideo(auto,PV){
    <div id="saveState" class="muted" style="margin-top:8px"></div>
    <button onclick="shareVideo()">📤 Share / Upload (YouTube, Drive, WhatsApp)</button>
    <button class="sec" onclick="saveToPhone()">💾 Save to phone again</button>
-   <button class="sec" onclick="copyDesc()">📋 Copy title + description</button>`;
+   <button class="sec" onclick="copyDesc()">📋 Copy title + description${window._chapters?" + chapters":""}</button>${window._chapters?`<div class="cost">📑 <b>YouTube chapters</b> (added to the description)<br>${esc(window._chapters).replace(/\n/g,"<br>")}</div>`:""}`;
   log("✅ Video ready: "+name); status("✅ Video ready!");
   SAVED=null; await saveToPhone();
   }catch(e){ log("❌ Render: "+e.message); status("❌ "+e.message); }
@@ -1128,8 +1190,8 @@ const GN="hl=en-IN&gl=IN&ceid=IN:en";
 const NICHE={any:"कुछ भी जो ट्रेंड में है (सबसे ज़्यादा views वाले)",history:"इतिहास, रहस्य, अजब-गजब facts",movies:"फ़िल्में, OTT, सेलेब्रिटी, बॉक्स ऑफ़िस",science:"साइंस, टेक्नोलॉजी, स्पेस, AI",news:"खबरों के explainers (आसान भाषा में)",sports:"क्रिकेट और खेल"};
 function ideaEngine(){ const te=$("txtEngine").value; if(te!=="paste") return te;
   if($("cfAcct").value.trim()&&$("cfToken").value.trim()) return "cloudflare"; if($("key").value.trim()) return "gemini"; if($("claudeKey").value.trim()) return "claude"; if($("oaKey").value.trim()) return "openai"; return null; }
-async function llmJSON(prompt,engine){
-  if(engine==="cloudflare") return cfScript(prompt,"ideas"); if(engine==="claude") return claudeScript(prompt); if(engine==="openai") return openaiScript(prompt);
+async function llmJSON(prompt,engine,need="ideas"){
+  if(engine==="cloudflare") return cfScript(prompt,need); if(engine==="claude") return claudeScript(prompt); if(engine==="openai") return openaiScript(prompt);
   const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.8}});
   return parseJSON(parts(j).map(p=>p.text||"").join("")); }
 function ideasPrompt(items){
@@ -1186,13 +1248,15 @@ function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollInt
 (function(){ try{ const t=JSON.parse(localStorage.getItem("hdm_trends")||"null"); if(t&&t.ideas&&Date.now()-t.at<20*3600e3){ TRENDS=t; drawIdeas(); drawRaw(); } }catch(e){} })();
 
 const PRESETS={
+ story:{look:"natural",trans:"story",subStyle:"none",titleCard:0,factStyle:"underline",onscreen:1,kwHL:0,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,endScreen:1,pacing:"fast",realism:1,
+   imgStyle:"ultra-realistic candid photograph of everyday India, true-to-life warm natural light, real-looking people and places, shallow depth of field, cinematic composition"},
  doc:{look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  viral:{look:"bleach",trans:"mix",subStyle:"pop",subPos:"middle",titleStyle:"punch",titlePos:"after",factStyle:"pop",kwHL:1,punch:1,shake:1,progress:1,bars:0,grain:0,leaks:1},
  mystery:{look:"mystery",trans:"glitch",subStyle:"karaoke",titleStyle:"glitch",titlePos:"after",factStyle:"underline",kwHL:1,punch:1,shake:1,progress:1,bars:1,grain:1,leaks:0},
  history:{look:"vintage",trans:"fade",subStyle:"type",titleStyle:"type",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  clean:{look:"natural",trans:"fade",subStyle:"minimal",titleStyle:"gold",titlePos:"start",factStyle:"underline",kwHL:0,punch:0,shake:0,progress:0,bars:0,grain:0,leaks:0}};
 function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
-function copyDesc(){ const t=S.title+"\n\n"+S.description; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
+function copyDesc(){ const t=S.title+"\n\n"+S.description+(window._chapters?"\n\n⏱️ Chapters\n"+window._chapters:""); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
 /* ---------- my own clips (GenV / FlixGen / any app) ---------- */
 function clipPrompt(s){ return `${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
 async function sendToApp(i){
@@ -1209,6 +1273,15 @@ async function sendToApp(i){
     await Capacitor.Plugins.Share.share({title:`Scene ${i+1}`,text:pr,files:[uri],dialogTitle:"Open in GenV / FlixGen"});
   }catch(e){ if(/cancel/i.test(e.message)) return; log("Send: "+e.message); alert("Could not open the share menu ("+e.message+"). Prompt copied — use 📤 Save all pictures, then pick the picture inside GenV/FlixGen.\n\n"+pr); }
 }
+function pickSelfClip(i){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const s=S.scenes[i];
+    s.st.v="run"; drawScenes();
+    try{ await setClip(s,f); await setVoice(s,f,null,true," "); s.own=true; s.useVideo=true; s.st.v="ok"; s.st.c="ok"; s.err=""; await saveProj(); log(`Scene ${i+1}: your video (${s.clip.dur.toFixed(1)}s, with your voice).`); }
+    catch(e){ s.st.v="error"; s.err="Your video: couldn't read its sound ("+e.message+"). Try an MP4 recorded with the phone camera."; }
+    drawScenes(); updateCost(); };
+  inp.click(); }
+async function dropSelf(i){ const s=S.scenes[i]; s.own=false; s.voice=null; s.clip=null; s.useVideo=false; await DB.del("a_"+s.id); await DB.del("c_"+s.id); await saveProj(); drawScenes(); }
 function pickClip(i){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const s=S.scenes[i];
