@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.4</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.5</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -191,7 +191,9 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>Video type</label><select id="genre"><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
  <div><label>Pacing</label><select id="pacing"><option value="fast">Fast — new picture every ~4 s</option><option value="normal">Normal — ~9 s per picture</option></select></div>
 </div>
-<label>Language style</label>
+<label>YouTube title, description, tags, on-screen text &amp; chapters</label>
+<select id="metaLang"><option value="en">English (better YouTube search)</option><option value="hinglish">Hinglish in English letters</option><option value="hi">Hindi (Devanagari)</option></select>
+<label>Language style (voiceover)</label>
 <select id="lang"><option value="modern">Modern Hindi — everyday words like YouTubers speak</option><option value="hinglish">Hinglish — more English words</option><option value="pure">Pure (shuddh) Hindi</option></select>
 <label>Tone</label>
 <select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select>
@@ -293,7 +295,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -443,6 +445,9 @@ const GENRE={
   rules:`- स्टाइल: "ये कहानी हमें हमारे एक दर्शक ने भेजी है…" जैसी शुरुआत, फिर पहले व्यक्ति (मैं) में कहानी। रोज़मर्रा की असली लगने वाली जगहें, दोस्त, सफ़र; धीरे-धीरे बढ़ता डर, छोटी अजीब बातें, climax में सबसे डरावना पल। आखिर में दर्शकों से सवाल ("आपके साथ कभी ऐसा हुआ है? कमेंट में बताइए")।
 - कहानी सुनी-सुनाई/काल्पनिक है — किसी असली व्यक्ति, होटल या जगह पर आरोप न लगाएँ (नाम काल्पनिक रखें)। Gore नहीं।`,
   img:`"image_prompt": English में उस पल की ultra-realistic candid photo का वर्णन — रोज़मर्रा का भारत, असली लगने वाले लोग और जगहें, डरावने पलों में अँधेरा, धुंध, परछाइयाँ; बोर्ड/साइनबोर्ड पर काल्पनिक नाम लिखें। कोई gore नहीं।`}};
+function metaRule(){ const m=$("metaLang").value; if(m==="hi") return "";
+  const L=m==="en"?"सिर्फ़ ENGLISH में (natural, SEO-friendly, clickable — जैसे बड़े English YouTube चैनल लिखते हैं)":"Hinglish में लेकिन सिर्फ़ ROMAN/English अक्षरों में (जैसे \"Bollywood ke Gumnaam Sitare: Bungalow se Chawl tak\")";
+  return `\n- भाषा नियम (ज़रूरी): "title", "description", "tags", "screen_title", "screen_subtitle", "chapter" और "onscreen" — ये सब ${L}। सिर्फ़ "narration" और "keyword" हिंदी देवनागरी में रहें।`; }
 function scriptRules(n,perScene){ const G=GENRE[$("genre").value]||GENRE.doc, fast=$("pacing").value==="fast";
   return `भाषा: ${LANG[$("lang").value]}
 टोन: ${$("tone").value}
@@ -455,7 +460,7 @@ ${G.rules}
 - ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
 - "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
 - "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
-- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम (हिंदी), बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।`; }
+- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}`; }
 function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
   return `आप एक ${G.who} हैं।
 विषय: "${topic}"
@@ -473,7 +478,7 @@ async function longScript(topic,mins,n){
 ${G.rules}
 हर अध्याय: "title" (2-5 शब्द हिंदी) और "summary" (4-6 वाक्य: इस अध्याय में क्या-क्या होता है, कौन से सुराग़/twists, अगला अध्याय किस सवाल पर जाता है)। पहला अध्याय hook से शुरू हो, आखिरी में खुलासा और अंत।
 "characters": मुख्य किरदार (2-6) — "name" (हिंदी) और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
-"title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।
+"title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।${metaRule().replace('"chapter"','chapters का "title"')}
 केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"chapters":[{"title":"","summary":""}]}`,eng,"chapters");
   const ch=outline.chapters.slice(0,nCh), per=Math.max(3,Math.round(n/ch.length)), scenes=[];
   const cast=(outline.characters||[]).map(c=>`${c.name}: ${c.look}`).join("; ");
@@ -552,6 +557,7 @@ function drawScript(){
    <div><label>Line under it</label><input value="${esc(S.screenSub||"")}" oninput="S.screenSub=this.value;saveProj()"></div></div>
    <label>YouTube title</label><input value="${esc(S.title)}" oninput="S.title=this.value;saveProj()">
    <label>YouTube description</label><textarea oninput="S.description=this.value;saveProj()">${esc(S.description)}</textarea>
+   <button class="small sec" onclick="translateMeta('en')">🔤 Make title, description, text &amp; chapters English</button><button class="small sec" onclick="translateMeta('hinglish')">🔤 Hinglish (English letters)</button>
    <label>👥 Characters (same look in every picture) — one per line: <i>name: look in English</i></label>
    <textarea style="min-height:70px" placeholder="राहुल: 28-year-old Indian man, short black hair, light beard, navy blue checked shirt, black backpack" oninput="setChars(this.value)">${esc((S.chars||[]).map(c=>c.name+": "+c.look).join("\n"))}</textarea>`;
   drawScenes(); updateCost();
@@ -582,6 +588,23 @@ function drawScenes(){
       ${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Listen</button>`:""}
       <button class="small sec" onclick="delScene(${i})">✕ Delete</button></div>`;}).join("")
    +`<button class="small sec" onclick="addScene()">+ Add scene</button>`;
+}
+async function translateMeta(to){
+  const eng=ideaEngine(); if(!eng) return alert("Needs an AI key in Settings (Cloudflare, Gemini, Claude or ChatGPT).");
+  const idx=S.scenes.map((s,i)=>(s.onscreen||s.chapter)?i:-1).filter(i=>i>=0);
+  status("🔤 Translating…");
+  try{
+    const d=await llmJSON(`Rewrite this Hindi YouTube video's metadata ${to==="en"?"in natural, SEO-friendly, clickable ENGLISH (like top English YouTube channels)":"in Hinglish written ONLY in Roman/English letters (e.g. \"Bollywood ke Gumnaam Sitare: Bungalow se Chawl tak\")"}. Keep meaning, names and emotional hook. Keep hashtags as English hashtags.
+Return ONLY JSON: {"title":"","description":"","screen_title":"","screen_subtitle":"","items":[{"i":0,"chapter":"","onscreen":""}]}
+title: ${S.title}
+screen_title: ${S.screenTitle||""}
+screen_subtitle: ${S.screenSub||""}
+description: ${S.description}
+items: ${JSON.stringify(idx.map(i=>({i,chapter:S.scenes[i].chapter||"",onscreen:S.scenes[i].onscreen||""})))}`,eng,"title");
+    S.title=d.title||S.title; S.description=d.description||S.description; S.screenTitle=d.screen_title||S.screenTitle; S.screenSub=d.screen_subtitle||S.screenSub;
+    (d.items||[]).forEach(x=>{ const s=S.scenes[+x.i]; if(!s) return; if(s.chapter&&x.chapter) s.chapter=x.chapter; if(s.onscreen&&x.onscreen) s.onscreen=x.onscreen; });
+    await saveProj(); drawScript(); status("✅ Title, description, on-screen text & chapters updated. Voiceover stays Hindi.");
+  }catch(e){ log("❌ Translate: "+e.message); status("❌ "+e.message); }
 }
 function setChars(t){ S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); return k>0?{name:l.slice(0,k).trim(),look:l.slice(k+1).trim()}:null; }).filter(c=>c&&c.name); saveProj(); }
 function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
