@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -1243,7 +1243,11 @@ function useAngle(i){ const g=ANA.ai.angles[i];
 
 /* ---------- 🔥 trending ideas ---------- */
 let TRENDS={items:[],ideas:[]};
-async function getText(url,headers={}){ const r=await http("GET",url,{headers,text:true,timeout:30000}); if(!r.ok) throw new Error(`${url.split("/")[2]} ${r.status}`); return String(r.data||""); }
+async function getText(url,headers={}){ const r=await http("GET",url,{headers,text:true,timeout:30000});
+  if(!r.ok){ let m=""; try{ const j=JSON.parse(r.data); m=errMsg(j); const rs=j.error&&j.error.errors&&j.error.errors[0]&&j.error.errors[0].reason; if(rs) m+=` (${rs})`; }catch(e){ m=String(r.data||"").slice(0,120); }
+    let tip=""; if(url.includes("googleapis.com")){ if(/not been used|disabled|SERVICE_DISABLED|accessNotConfigured/i.test(m)) tip=" → Enable YouTube Data API v3 in the SAME Google Cloud project as your key, wait 2–5 min."; else if(/API_KEY_SERVICE_BLOCKED|blocked|restrict/i.test(m)) tip=" → Your key is restricted: Credentials → your key → API restrictions → allow YouTube Data API v3."; else if(/API key not valid|keyInvalid|API_KEY_INVALID/i.test(m)) tip=" → The key is wrong — copy it again from Credentials."; else if(/quota/i.test(m)) tip=" → Daily free quota used up; resets 1:30 PM IST."; }
+    throw new Error(`${url.split("/")[2]} ${r.status}: ${m}${tip}`); }
+  return String(r.data||""); }
 function xmlItems(xml){ const x=new DOMParser().parseFromString(xml,"text/xml"); return [...x.getElementsByTagName("item")]; }
 function tagText(el,name){ let a=el.getElementsByTagName(name); if(!a.length&&name.includes(":")) a=el.getElementsByTagNameNS("*",name.split(":")[1]); return a[0]?a[0].textContent.trim():""; }
 function fmtNum(n){ n=+n; return n>=1e7?(n/1e7).toFixed(1)+" Cr":n>=1e5?(n/1e5).toFixed(1)+" L":n>=1e3?Math.round(n/1e3)+"K":String(n); }
