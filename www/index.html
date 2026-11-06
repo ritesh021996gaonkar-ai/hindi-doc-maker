@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.1</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -127,7 +127,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="row">
  <div><label>Clip quality</label><select id="vidRes"></select></div>
  <div><label>AI video for</label><select id="vidRule">
-  <option value="all">Every scene</option><option value="alt">Every 2nd scene</option><option value="hook">First 3 scenes only</option></select></div>
+  <option value="key">⭐ Key shots only (6-8)</option><option value="all">Every scene</option><option value="alt">Every 2nd scene</option><option value="hook">First 3 scenes only</option></select></div>
 </div>
 <div id="grokBox"><label>xAI API key — console.x.ai</label><input id="xaiKey" type="password" placeholder="xai-..."></div>
 <div id="klingBox">
@@ -436,7 +436,11 @@ async function geminiAuto(kind,pref,body){
 }
 
 /* ---------- 1. Script ---------- */
-function applyRule(){ const r=$("vidRule").value, none=$("vidEngine").value==="none"; S.scenes.forEach((s,i)=>s.useVideo=!none&&(r==="all"||(r==="alt"&&i%2===0)||(r==="hook"&&i<3))); }
+function keyShots(){ const n=S.scenes.length, K=new Set(); if(!n) return K; K.add(0); if(n>1) K.add(1);
+  S.scenes.forEach((s,i)=>{ if(s.chapter&&i>0) K.add(i); }); if(n>3){ K.add(n-2); K.add(Math.max(0,n-4)); }
+  const want=Math.min(n,8); let step=Math.max(1,Math.floor(n/want)); for(let i=step;K.size<want&&i<n;i+=step) K.add(i);
+  return new Set([...K].sort((a,b)=>a-b).slice(0,8)); }
+function applyRule(){ const r=$("vidRule").value, none=$("vidEngine").value==="none", K=r==="key"?keyShots():null; S.scenes.forEach((s,i)=>s.useVideo=!none&&(r==="all"||(r==="key"&&K.has(i))||(r==="alt"&&i%2===0)||(r==="hook"&&i<3))); }
 function sceneCount(mins){ return Math.max(4,Math.round(mins*60/($("pacing").value==="fast"?4.6:9))); }
 async function makeScript(){
   const topic=$("topic").value.trim(); if(!topic){ alert("Enter a topic"); return false; }
@@ -684,14 +688,14 @@ function sceneSecs(s){ return s.voice?s.voice.buf.duration:Math.max(4,s.narratio
 function clipSecs(s){ const v=sceneSecs(s), e=$("vidEngine").value; if(e==="omni") return Math.min(10,Math.max(4,Math.ceil(v))); if(e==="grok") return Math.min(15,Math.max(3,Math.ceil(v))); if(e==="kling") return v>6?10:5; if(e==="manual") return Math.min(10,Math.max(5,Math.ceil(v))); return 0; }
 function priceSec(){ const e=$("vidEngine").value,r=$("vidRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; if(e==="kling") return $("klMode").value==="pro"?0.112:0.084; return 0; }
 function estCost(){ let sc=S.scenes;
-  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
+  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="key"&&(i<2||i%Math.max(1,Math.floor(n/8))===0)&&i<n)||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const vids=sc.filter(s=>s.useVideo&&!s.own), vSecs=vids.filter(s=>!s.clip).reduce((a,s)=>a+clipSecs(s),0), ie=$("imgEngine").value;
   const vCost=$("vidEngine").value==="manual"?0:vSecs*priceSec(), iCost=sc.filter(s=>!s.img&&!s.own).length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
   const chars=sc.reduce((a,s)=>a+(s.narration||"").length,0), vc=$("voiceEngine").value==="gemini"?chars*0.00006:0, tc={paste:0,cloudflare:0,gemini:0.01,claude:0.06,openai:0.02}[$("txtEngine").value]||0;
   return {usd:vCost+iCost+vc+(S.scenes.length?0:tc),inr:Math.round((vCost+iCost+vc+(S.scenes.length?0:tc))*USD_INR)}; }
 function updateCost(){
   const box=$("costBox"); let sc=S.scenes;
-  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
+  if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="key"&&(i<2||i%Math.max(1,Math.floor(n/8))===0)&&i<n)||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
   const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
@@ -1557,7 +1561,7 @@ function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollInt
 (function(){ try{ const t=JSON.parse(localStorage.getItem("hdm_trends")||"null"); if(t&&t.ideas&&Date.now()-t.at<20*3600e3){ TRENDS=t; drawIdeas(); drawRaw(); } }catch(e){} })();
 
 const PRESETS={
- cartoon:{look:"mystery",trans:"story",subStyle:"box",subPos:"bottom",titleCard:1,titleStyle:"glitch",titlePos:"after",factStyle:"pop",onscreen:1,kwHL:1,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,ambience:1,endScreen:1,pacing:"normal",realism:0,
+ cartoon:{vidEngine:"manual",vidRule:"key",look:"mystery",trans:"story",subStyle:"box",subPos:"bottom",titleCard:1,titleStyle:"glitch",titlePos:"after",factStyle:"pop",onscreen:1,kwHL:1,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,ambience:1,endScreen:1,pacing:"normal",realism:0,
    imgStyle:"2D Indian cartoon animation style, clean bold outlines, flat cel shading, expressive faces, detailed painted background, moody cinematic night lighting, warm lantern glow, high quality animated-series look"},
  story:{look:"natural",trans:"story",subStyle:"none",titleCard:0,factStyle:"underline",onscreen:1,kwHL:0,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,endScreen:1,pacing:"fast",realism:1,
    imgStyle:"ultra-realistic candid photograph of everyday India, true-to-life warm natural light, real-looking people and places, shallow depth of field, cinematic composition"},
@@ -1566,7 +1570,7 @@ const PRESETS={
  mystery:{look:"mystery",trans:"glitch",subStyle:"karaoke",titleStyle:"glitch",titlePos:"after",factStyle:"underline",kwHL:1,punch:1,shake:1,progress:1,bars:1,grain:1,leaks:0},
  history:{look:"vintage",trans:"fade",subStyle:"type",titleStyle:"type",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  clean:{look:"natural",trans:"fade",subStyle:"minimal",titleStyle:"gold",titlePos:"start",factStyle:"underline",kwHL:0,punch:0,shake:0,progress:0,bars:0,grain:0,leaks:0}};
-function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
+function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); refreshUI(); if(S.scenes.length){ applyRule(); saveProj(); drawScenes(); } saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
 function copyDesc(){ const t=S.title+"\n\n"+S.description+(window._chapters?"\n\n⏱️ Chapters\n"+window._chapters:""); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
 /* ---------- my own clips (GenV / FlixGen / any app) ---------- */
 function clipPrompt(s){ const cartoon=/cartoon|2D|animation/i.test($("imgStyle").value); return cartoon?`${s.motion}. 2D cartoon animation, keep the characters and art style exactly as in the picture, natural mouth movement while speaking, subtle idle motion, ${clipSecs(s)} seconds, no text.`:`${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
