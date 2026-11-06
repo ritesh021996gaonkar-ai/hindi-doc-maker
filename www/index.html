@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.1</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -548,14 +548,7 @@ async function openaiScript(prompt){
   if(!r.ok) throw new Error(`ChatGPT ${r.status}: ${errMsg(r.data)}`);
   return parseJSON(r.data.choices[0].message.content);
 }
-async function writeScript(prompt){
-  const te=$("txtEngine").value;
-  if(te==="cloudflare") return cfScript(prompt);
-  if(te==="claude") return claudeScript(prompt);
-  if(te==="openai") return openaiScript(prompt);
-  const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.9}});
-  return parseJSON(parts(j).map(p=>p.text||"").join(""));
-}
+async function writeScript(prompt){ return llmJSON(prompt,$("txtEngine").value,"scenes"); }
 function drawScript(){
   $("scriptCard").style.display=S.scenes.length?"":"none";
   $("scriptBox").innerHTML=`<div class="row"><div><label>🎬 Big title on screen</label><input value="${esc(S.screenTitle||"")}" placeholder="auto from title" oninput="S.screenTitle=this.value;saveProj()"></div>
@@ -1359,12 +1352,19 @@ async function srcYouTube(){ const k=$("ytKey").value.trim(); if(!k) return [];
   return (j.items||[]).map(v=>({src:"YouTube trending",title:v.snippet.title,traffic:v.statistics&&v.statistics.viewCount?fmtNum(v.statistics.viewCount)+" views":"",news:v.snippet.channelTitle})); }
 const GN="hl=en-IN&gl=IN&ceid=IN:en";
 const NICHE={any:"कुछ भी जो ट्रेंड में है (सबसे ज़्यादा views वाले)",history:"इतिहास, रहस्य, अजब-गजब facts",movies:"फ़िल्में, OTT, सेलेब्रिटी, बॉक्स ऑफ़िस",science:"साइंस, टेक्नोलॉजी, स्पेस, AI",news:"खबरों के explainers (आसान भाषा में)",sports:"क्रिकेट और खेल"};
-function ideaEngine(){ const te=$("txtEngine").value; if(te!=="paste") return te;
-  if($("cfAcct").value.trim()&&$("cfToken").value.trim()) return "cloudflare"; if($("key").value.trim()) return "gemini"; if($("claudeKey").value.trim()) return "claude"; if($("oaKey").value.trim()) return "openai"; return null; }
-async function llmJSON(prompt,engine,need="ideas"){
+function engineChain(pref){ const has=id=>!!$(id).value.trim(), avail=[];
+  if(has("oaKey")) avail.push("openai"); if(has("claudeKey")) avail.push("claude"); if(has("key")) avail.push("gemini"); if(has("cfAcct")&&has("cfToken")) avail.push("cloudflare");
+  return [...new Set([pref,...avail].filter(e=>e&&e!=="paste"&&avail.includes(e)))]; }
+function ideaEngine(){ const te=$("txtEngine").value; return engineChain(te)[0]||null; }
+async function llmOnce(prompt,engine,need){
   if(engine==="cloudflare") return cfScript(prompt,need); if(engine==="claude") return claudeScript(prompt); if(engine==="openai") return openaiScript(prompt);
   const j=await geminiAuto("text",$("mText").value,{contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:0.8}});
   return parseJSON(parts(j).map(p=>p.text||"").join("")); }
+async function llmJSON(prompt,engine,need="ideas"){
+  const chain=engineChain(engine); if(!chain.length) throw new Error("Add an AI key in Settings (ChatGPT, Claude, Gemini or Cloudflare).");
+  let last; for(const e of chain){ try{ const out=await llmOnce(prompt,e,need); if(e!==chain[0]) log(`⚡ Used ${e} (backup)`); return out; }
+    catch(err){ last=err; log(`${e} failed: ${String(err.message).slice(0,110)} → trying next AI…`); } }
+  throw last; }
 function ideasPrompt(items){
   const today=new Date().toLocaleDateString("hi-IN",{day:"numeric",month:"long",year:"numeric"});
   return `आप एक सफल हिंदी YouTube चैनल के content strategist हैं। आज की तारीख: ${today}।
