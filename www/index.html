@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -462,7 +462,7 @@ function scriptRules(n,perScene){ const G=GENRE[$("genre").value]||GENRE.doc, fa
 - Retention: पहले दृश्य में सबसे चौंकाने वाली बात या सवाल (hook)। बीच-बीच में curiosity ("लेकिन असली राज़ अभी बाकी है…", "और यहीं से कहानी पलटती है…")। दर्शक से सीधे बात करें।
 ${G.rules}
 - "keyword": उस दृश्य की narration का सबसे ज़रूरी 1 शब्द (बिल्कुल वैसा ही)।
-- ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
+- ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम (characters वाले English नाम) "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
 - "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
 - "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
 - "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}`; }
@@ -471,7 +471,7 @@ function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
 विषय: "${topic}"
 लगभग ${mins} मिनट की ${G.kind} के लिए ठीक ${n} दृश्य (scenes) लिखें।
 ${scriptRules(n)}
-- "characters": कहानी के मुख्य किरदार (2-5) — "name" (हिंदी नाम, जैसा narration में) और "look" (English में स्थायी रूप: उम्र, चेहरा, बाल, कपड़े — हर तस्वीर में यही रहेगा)।
+- "characters": कहानी के मुख्य किरदार (2-5) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English में स्थायी रूप: उम्र, चेहरा, बाल, कपड़े — हर तस्वीर में यही रहेगा)।
 - "screen_title": 2-4 शब्दों का छोटा शीर्षक, "screen_subtitle": 6-10 शब्द। "title": clickable हिंदी YouTube title। "description": हिंदी description। "tags": 10 tags।
 केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"scenes":[{"chapter":"","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
 function engineForLong(){ const te=$("txtEngine").value; return te==="paste"?ideaEngine():te; }
@@ -482,7 +482,7 @@ async function longScript(topic,mins,n){
   const outline=await llmJSON(`आप एक ${G.who} हैं। विषय: "${topic}"। लगभग ${mins} मिनट की ${G.kind} की पूरी योजना बनाइए — ${nCh} अध्याय (chapters)।
 ${G.rules}
 हर अध्याय: "title" (2-5 शब्द हिंदी) और "summary" (4-6 वाक्य: इस अध्याय में क्या-क्या होता है, कौन से सुराग़/twists, अगला अध्याय किस सवाल पर जाता है)। पहला अध्याय hook से शुरू हो, आखिरी में खुलासा और अंत।
-"characters": मुख्य किरदार (2-6) — "name" (हिंदी) और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
+"characters": मुख्य किरदार (2-6) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
 "title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।${metaRule().replace('"chapter"','chapters का "title"')}
 केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":""}],"chapters":[{"title":"","summary":""}]}`,eng,"chapters");
   const ch=outline.chapters.slice(0,nCh), per=Math.max(3,Math.round(n/ch.length)), scenes=[];
@@ -1294,10 +1294,10 @@ async function analyzeVideo(){
   finally{ btn.disabled=false; btn.textContent="🔍 Analyze why it works"; }
 }
 function anaPrompt(){ const A=ANA;
-  return `आप एक अनुभवी YouTube growth strategist हैं जो हिंदी चैनलों की मदद करते हैं। नीचे एक सफल वीडियो का public data है।
-आपका काम: समझाना कि यह वीडियो क्यों चल रहा है, और मेरे चैनल के लिए इसी विषय पर पूरी तरह ORIGINAL वीडियो के ideas देना।
-ज़रूरी: creator की script, लाइनें या खास कहानी कॉपी या paraphrase न करें; सिर्फ़ format/structure/psychology का विश्लेषण करें। मेरे angles नए हों, अलग रिसर्च पर आधारित, और creator का नाम इस्तेमाल न करें।
-मेरा चैनल: ${NICHE[$("niche").value]}, हिंदी, AI पिक्चर्स + वॉइसओवर।
+  return `You are an experienced YouTube growth strategist helping a Hindi-language channel.
+Below is public data about a successful video. Explain WHY it works, and suggest fully ORIGINAL video ideas on this topic for my channel.
+Important: do NOT copy or paraphrase the creator's script, lines or specific story — only analyse format, structure and viewer psychology. My angles must be new, based on separate research, and must not use the creator's name.
+My channel: ${NICHE_EN[$("niche").value]} — Hindi voiceover with AI visuals.
 
 Title: ${A.title}
 Channel: ${A.channel} (${fmtNum(A.subs)} subscribers)
@@ -1305,13 +1305,13 @@ Views: ${fmtNum(A.views)} in ${Math.round(A.days)} days · Likes: ${fmtNum(A.lik
 Views ÷ subscribers: ${A.subs?(A.views/A.subs).toFixed(2):"?"}
 Tags: ${A.tags.slice(0,20).join(", ")||"—"}
 Chapters: ${A.chapters.join(" | ")||"—"}
-Description (शुरुआत): ${A.desc.slice(0,700)}
+Description (start): ${A.desc.slice(0,700)}
 Top comments (likes):
 ${A.comments.slice(0,40).map(c=>`- (${c.l}) ${c.t}`).join("\n")||"—"}
 
-केवल JSON (सब हिंदी में, छोटे और साफ़ points):
-{"verdict":"1-2 लाइन: यह वीडियो क्यों चला","title_formula":"title किस तरीके से click करवाता है","hook_guess":"शुरुआती hook किस प्रकार का होगा (chapters/description/comments से अनुमान)","structure":["structure/retention की 3-5 बातें"],"viewers_loved":["comments में लोगों को क्या पसंद आया (3-5)"],"viewers_want":["comments में लोग और क्या जानना/देखना चाहते हैं, या क्या गलत/कमी लगी (3-5) — यही मेरा मौका है"],"length_tip":"मेरे वीडियो की सही लंबाई और क्यों","angles":[{"title":"मेरे original वीडियो का clickable हिंदी title","topic":"script writer के लिए साफ़ विषय + मेरा अलग angle","why":"यह angle क्यों बेहतर/अलग है","hook":"पहली लाइन"}],"thumbnail":"मेरे thumbnail का आइडिया (text 2-4 शब्द + चित्र)"}
-"angles" में ठीक 3 ideas दें।`; }
+Write EVERYTHING in clear, simple ENGLISH (short points). Return ONLY JSON:
+{"verdict":"1-2 lines: why this video worked","title_formula":"how the title makes people click","hook_guess":"what kind of opening hook it likely uses (guess from chapters/description/comments)","structure":["3-5 structure/retention points"],"viewers_loved":["3-5 things viewers loved (from comments)"],"viewers_want":["3-5 things viewers want more of, or complained about — my opportunity"],"length_tip":"ideal length for my video and why","angles":[{"title":"clickable ENGLISH YouTube title for my original video","topic":"clear topic + my different angle, for the script writer","why":"why this angle is better/different","hook":"opening line idea (English)"}],"thumbnail":"thumbnail idea for my video (2-4 words of text + picture)"}
+Give exactly 3 "angles".`; }
 function drawAna(){ const A=ANA; if(!A) return; const X=A.ai||{}, L=a=>(a||[]).map(x=>`<li>${esc(x)}</li>`).join("");
   const ratio=A.subs?A.views/A.subs:0;
   $("anaBox").innerHTML=`<div class="scene"><img class="thumb" src="${A.thumb}" alt=""><div style="font-weight:700;margin-top:8px">${esc(A.title)}</div>
@@ -1327,7 +1327,7 @@ function drawAna(){ const A=ANA; if(!A) return; const X=A.ai||{}, L=a=>(a||[]).m
    <h3>💡 Your original versions</h3>${(X.angles||[]).map((g,i)=>`<div class="scene"><div style="font-weight:700">${esc(g.title)}</div><div class="muted" style="margin-top:4px">✨ ${esc(g.why||"")}</div>${g.hook?`<div style="margin-top:4px">🎣 “${esc(g.hook)}”</div>`:""}<button class="small" onclick="useAngle(${i})">✅ Make my version</button></div>`).join("")}`:`<p class="muted">🧠 Analyzing…</p>`}`;
 }
 function useAngle(i){ const g=ANA.ai.angles[i];
-  $("topic").value=`${g.topic}${g.hook?` — शुरुआत इस hook से: "${g.hook}"`:""} (पूरी तरह original script, अपनी रिसर्च से; किसी मौजूदा वीडियो की नकल नहीं)`;
+  $("topic").value=`${g.topic}${g.hook?` — open with this hook (say it in Hindi): "${g.hook}"`:""} (fully original script from own research; do not copy any existing video)`;
   saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set from your original angle — tap 🚀 Make full video."); }
 
 /* ---------- 🔥 trending ideas ---------- */
@@ -1365,14 +1365,15 @@ async function llmJSON(prompt,engine,need="ideas"){
   let last; for(const e of chain){ try{ const out=await llmOnce(prompt,e,need); if(e!==chain[0]) log(`⚡ Used ${e} (backup)`); return out; }
     catch(err){ last=err; log(`${e} failed: ${String(err.message).slice(0,110)} → trying next AI…`); } }
   throw last; }
+const NICHE_EN={any:"anything trending (most views)",history:"history, mysteries & amazing facts",movies:"movies, OTT, celebrities, box office",science:"science, technology, space, AI",news:"easy news explainers",sports:"cricket & sports"};
 function ideasPrompt(items){
-  const today=new Date().toLocaleDateString("hi-IN",{day:"numeric",month:"long",year:"numeric"});
-  return `आप एक सफल हिंदी YouTube चैनल के content strategist हैं। आज की तारीख: ${today}।
-चैनल का niche: ${NICHE[$("niche").value]}। स्टाइल: हिंदी डॉक्यूमेंट्री/explainer — AI पिक्चर्स/क्लिप्स और वॉइसओवर (असली फ़ुटेज नहीं)।
-नीचे भारत में अभी ट्रेंड हो रही चीज़ें हैं। इनमें से 10 सबसे अच्छे video ideas चुनें जिन पर आज/इस हफ़्ते वीडियो बनाने से सबसे ज़्यादा views मिलें। niche से मेल खाने वाले ideas को प्राथमिकता दें; किसी ट्रेंड को niche के angle से भी जोड़ सकते हैं (जैसे किसी फ़िल्म से जुड़ा असली इतिहास)।
-नियम: असली लोगों के बारे में अफ़वाह, आरोप या निजी बातें नहीं; हादसों/मौतों को sensational न बनाएँ; सिर्फ़ ऐसे ideas जिनकी कहानी 2-8 मिनट में दिलचस्प तरीके से बताई जा सके।
-केवल JSON: {"ideas":[{"topic":"वीडियो का विषय (हिंदी, साफ़)","title":"clickable हिंदी YouTube title","why":"यह अभी क्यों ट्रेंड में है (1 लाइन)","hook":"वीडियो की पहली चौंकाने वाली लाइन","source":"किस ट्रेंड से","format":"long या short","when":"आज / इस हफ़्ते / evergreen","score":8}]}
-ट्रेंड्स:
+  const today=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+  return `You are the content strategist of a successful Hindi-language YouTube channel. Today is ${today}.
+Channel niche: ${NICHE_EN[$("niche").value]}. Style: documentary / explainer with AI pictures and clips plus Hindi voiceover (no real footage).
+Below are things trending in India right now. Pick the 10 best video ideas that would get the most views if made today or this week. Prefer ideas that fit the niche; you may connect a trend to the niche (e.g. the real history behind a film).
+Rules: no rumours, accusations or private details about real people; don't sensationalise accidents or deaths; only ideas that can be told as an interesting 2-8 minute story.
+Write ALL fields in clear ENGLISH. Return ONLY JSON: {"ideas":[{"topic":"clear video topic (English)","title":"clickable English YouTube title","why":"why it is trending now (1 line)","hook":"shocking opening line idea","source":"which trend","format":"long or short","when":"today / this week / evergreen","score":8}]}
+Trends:
 ${items.map(x=>`- [${x.src}] ${x.title}${x.traffic?` (${x.traffic})`:""}${x.news?` — ${x.news}`:""}`).join("\n").slice(0,14000)}`; }
 async function findTrends(){
   const btn=$("btnTrend"); btn.disabled=true; btn.textContent="🔍 Checking what's trending…"; $("ideasBox").innerHTML="";
@@ -1412,7 +1413,7 @@ function drawRaw(){
   const groups={}; TRENDS.items.forEach((x,i)=>{ (groups[x.src]=groups[x.src]||[]).push([x,i]); });
   $("rawTrends").innerHTML=Object.entries(groups).map(([k,arr])=>`<h3>${esc(k)}</h3>`+arr.map(([x,i])=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><a href="#" style="color:var(--text)" onclick="useRaw(${i});return false">➕ ${esc(x.title)}</a> <span class="muted">${esc(x.traffic||"")}</span></div>`).join("")).join("");
 }
-function useIdea(i){ const x=TRENDS.ideas[i]; $("topic").value=x.topic+(x.hook?` — शुरुआत इस hook से: "${x.hook}"`:"");
+function useIdea(i){ const x=TRENDS.ideas[i]; $("topic").value=x.topic+(x.hook?` — open with this hook (say it in Hindi): "${x.hook}"`:"");
   const short=/short/i.test(x.format||""); $("format").value=short?"9:16":"16:9"; if(short) $("mins").value=1;
   saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status(`✅ Topic set${short?" (Short, 1 min)":""} — tap 🚀 Make full video.`); }
 function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set — tap 🚀 Make full video."); }
