@@ -28,3 +28,7 @@ The app shows a live estimate before you start.
 
 ## Build
 Every push to `main` builds the APK in GitHub Actions → download **HindiDocMaker-apk**.
+
+## ☁️ Cloud video bot (new in v5.3)
+Let GitHub make the AI clips while your phone is locked. The bot lives in a separate repo, **doc-video-bot** (see its README for the 10-minute setup).
+Then in the app: ⚙️ Settings → ☁️ Cloud video bot → GitHub token + repo → tap **☁️ Send to cloud bot**, later **⬇️ Get clips**.

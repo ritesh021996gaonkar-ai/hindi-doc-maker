@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -140,6 +140,16 @@ details summary{cursor:pointer;font-weight:700}
  <label>Kling API server</label><input id="klBase" value="https://api-singapore.klingai.com">
 </div>
 
+<h3>☁️ Cloud video bot (GitHub Actions)</h3>
+<p class="muted">Clips are made on GitHub's computers by your <b>doc-video-bot</b> repo — you can lock the phone meanwhile. AI keys go in that repo's Secrets, not here.</p>
+<label>GitHub token (fine-grained: Contents + Actions read/write on the bot repo)</label><input id="ghToken" type="password" placeholder="github_pat_...">
+<label>Bot repo</label><input id="ghRepo" value="Ritesh021996gaonkar-ai/doc-video-bot">
+<div class="row">
+ <div><label>Bot engine</label><select id="cbEngine" onchange="cbUI()"><option value="kling">Kling AI</option><option value="grok">xAI Grok Imagine</option><option value="omni">Gemini Omni Flash</option></select></div>
+ <div><label>Bot clip quality</label><select id="cbRes"></select></div>
+</div>
+<label>Money limit per video (₹) — bot stops when the estimate reaches it</label><input id="cbMax" type="number" value="200" min="0">
+
 <details style="margin-top:14px"><summary class="muted">Advanced</summary>
  <div class="row">
   <div><label>Script model</label><input id="mText" value="auto"></div>
@@ -221,6 +231,9 @@ details summary{cursor:pointer;font-weight:700}
 <section class="card" id="scriptCard" style="display:none">
 <h2>2. Script &amp; scenes</h2>
 <div id="scriptBox"></div>
+<div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
+<div id="cloudInfo" class="muted"></div>
+<button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
 <button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
 <div class="row">
@@ -284,8 +297,8 @@ const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 const CH=NATIVE?(Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp):null;
-const GBASE="https://generativelanguage.googleapis.com/v1beta";
 const USD_INR=88;
+const GBASE="https://generativelanguage.googleapis.com/v1beta";
 const S={title:"",description:"",topic:"",scenes:[]};
 let AC=null, BUSY=false;
 
@@ -300,7 +313,7 @@ async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:M
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
 /* ---------- settings ---------- */
-const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
+const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -326,7 +339,9 @@ function refreshUI(){
   if(!load("hdm2_key")&&load("hdm_key")) store("hdm2_key",load("hdm_key"));
   const vc=load("hdm2_elVoiceList"); if(vc){ try{ fillVoices(JSON.parse(vc)); }catch(e){} }
   refreshUI();
-  SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); });
+  cbUI();
+  SET_IDS.forEach(id=>{ const v=load("hdm2_"+id); if(v!==null) setV(id,v); if(id==="vidEngine") refreshUI(); if(id==="cbEngine") cbUI(); });
+  setTimeout(()=>{ const J=cloudJob(); if(J) cloudShow(`Job <b>${J.id}</b> (${J.n} clips) is on the bot — tap ⬇️ Get clips.`); },0);
   refreshUI();
   ["vidEngine","voiceEngine","imgEngine","txtEngine"].forEach(id=>$(id).addEventListener("change",refreshUI));
   $("vidEngine").addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); });
@@ -886,6 +901,70 @@ async function makeClip(s){
   await setClip(s,blob);
 }
 
+
+/* ---------- ☁️ cloud video bot (doc-video-bot repo on GitHub Actions) ---------- */
+function cbUI(){ const e=$("cbEngine").value, sel=$("cbRes"), cur=sel.value||load("hdm2_cbRes");
+  const opts=e==="kling"?[["std","Standard (cheaper)"],["pro","Pro"]]:RES[e];
+  sel.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join(""); if(opts.some(o=>o[0]===cur)) sel.value=cur; }
+function cbRate(){ const e=$("cbEngine").value,r=$("cbRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; return r==="pro"?0.112:0.084; }
+function cbSecs(s){ const v=Math.ceil(sceneSecs(s)), e=$("cbEngine").value; if(e==="omni") return Math.min(10,Math.max(4,v)); if(e==="grok") return Math.min(15,Math.max(3,v)); return v>6?10:5; }
+function cloudJob(){ try{ return JSON.parse(load("hdm2_cloudJob")||"null"); }catch(e){ return null; } }
+function cloudShow(m){ $("cloudInfo").innerHTML=m||""; }
+async function gh(method,path,{json,raw,blob}={}){
+  const tok=$("ghToken").value.trim(), repo=$("ghRepo").value.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\/+$/,"");
+  if(!tok||!repo.includes("/")) throw new Error("Add the GitHub token and bot repo in ⚙️ Settings → ☁️ Cloud video bot.");
+  const r=await http(method,`https://api.github.com/repos/${repo}${path}`,{headers:{Authorization:"Bearer "+tok,Accept:raw||blob?"application/vnd.github.raw":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},json,text:!!raw,blob:!!blob,timeout:300000});
+  if(!r.ok&&r.status!==404) throw new Error(`GitHub ${r.status}: ${errMsg(r.data)}${r.status===401?" (token wrong or expired)":r.status===403?" (token needs Contents + Actions read/write on the bot repo)":""}`);
+  return r; }
+async function ghPut(job,name,b64){ const r=await gh("PUT",`/contents/jobs/${job}/${name}`,{json:{message:`job ${job}: ${name}`,content:b64,branch:"job-"+job}}); if(!r.ok) throw new Error(`Upload ${name}: GitHub ${r.status}`); }
+async function cloudSend(){ if(BUSY) return alert("Wait until the current job finishes."); BUSY=true;
+  try{
+    const old=cloudJob(); if(old&&!confirm(`Job ${old.id} is still on the bot. Start a new one anyway? (Tap ⬇️ Get clips first if you haven't.)`)) return;
+    let sc=S.scenes.filter(s=>s.useVideo&&!s.own);
+    if(!sc.length){ if(!confirm("No scene has 🎥 ticked. Send ALL scenes to the bot?")) return; sc=S.scenes.filter(s=>!s.own); }
+    sc=sc.filter(s=>!s.clip); if(!sc.length) return alert("All 🎥 scenes already have clips.");
+    for(const s of sc){ if(!s.img){ status(`🖼️ Making picture for scene ${S.scenes.indexOf(s)+1}…`); await makeImage(s); } }
+    const usd=sc.reduce((a,s)=>a+cbSecs(s)*cbRate(),0), lim=+$("cbMax").value||0;
+    if(!confirm(`Send ${sc.length} clip(s) to the cloud bot (${$("cbEngine").selectedOptions[0].text}, ${$("cbRes").value})?\n\nEstimate ≈ $${usd.toFixed(2)} (≈ ₹${Math.round(usd*USD_INR)})${lim?`\nMoney limit: ₹${lim}${usd*USD_INR>lim?" — some clips will be skipped":""}`:""}`)) return;
+    const d=new Date(), p=x=>String(x).padStart(2,"0"), id=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${uid().slice(0,6)}`;
+    cloudShow("Connecting to GitHub…");
+    const info=await gh("GET",""); if(!info.ok) throw new Error("Bot repo not found — check the repo name and that the token can see it.");
+    const main=info.data.default_branch||"main", ref=await gh("GET",`/git/ref/heads/${main}`); if(!ref.ok) throw new Error("Bot repo is empty — push the doc-video-bot files first.");
+    const mk=await gh("POST","/git/refs",{json:{ref:"refs/heads/job-"+id,sha:ref.data.object.sha}}); if(!mk.ok) throw new Error("Could not create the job branch");
+    const map={}, scenes=[];
+    for(const [k,s] of sc.entries()){ const n=S.scenes.indexOf(s)+1, name=`scene_${p(n)}.jpg`; map[n]=s.id;
+      cloudShow(`⬆️ Uploading picture ${k+1}/${sc.length}…`); await ghPut(id,name,await blobToB64(await toJpeg(s.img.blob)));
+      scenes.push({n,id:s.id,secs:Math.ceil(sceneSecs(s)),prompt:s.motion||"slow cinematic camera push in",img:name}); }
+    const e=$("cbEngine").value;
+    const job={id,title:S.title,engine:e,res:e==="kling"?"std":$("cbRes").value,klMode:e==="kling"?$("cbRes").value:undefined,klModel:$("klModel").value.trim()||"kling-v2-6",klBase:$("klBase").value.trim(),omniModel:$("mOmni").value.trim(),format:$("format").value,maxUSD:lim?+(lim/USD_INR).toFixed(2):0,parallel:3,scenes};
+    await ghPut(id,"job.json",await blobToB64(new Blob([JSON.stringify(job,null,1)],{type:"application/json"})));
+    const go=await gh("POST","/actions/workflows/make-clips.yml/dispatches",{json:{ref:main,inputs:{job:id}}});
+    if(!go.ok) throw new Error("Could not start the bot — is .github/workflows/make-clips.yml in the bot repo?");
+    store("hdm2_cloudJob",JSON.stringify({id,map,n:sc.length,at:Date.now()}));
+    cloudShow(`🚀 Job <b>${id}</b> started — ${sc.length} clip(s). Tap ⬇️ Get clips in a few minutes (you can close the app).`); log(`☁️ Cloud job ${id} started (${sc.length} clips, ≈$${usd.toFixed(2)}).`);
+  }catch(e){ cloudShow("❌ "+esc(e.message)); log("❌ Cloud: "+e.message); }
+  finally{ BUSY=false; } }
+async function cloudGet(){ const J=cloudJob(); if(!J) return cloudShow("No cloud job yet — tap ☁️ Send to cloud bot first.");
+  try{
+    cloudShow("Checking the bot…");
+    const r=await gh("GET",`/contents/jobs/${J.id}/status.json?ref=job-${J.id}`,{raw:true});
+    if(r.status===404) return cloudShow(`⏳ Job ${J.id}: the bot hasn't started yet (GitHub can take a minute). Try again soon.`);
+    const st=JSON.parse(r.data); let got=0;
+    for(const n of st.done||[]){ const s=S.scenes.find(x=>x.id===J.map[n]); if(!s||s.clip) continue;
+      cloudShow(`⬇️ Downloading clip for scene ${n}…`);
+      const c=await gh("GET",`/contents/jobs/${J.id}/clip_${String(n).padStart(2,"0")}.mp4?ref=job-${J.id}`,{blob:true});
+      if(!c.ok) { log(`Clip ${n}: download failed (${c.status})`); continue; }
+      await setClip(s,c.data.type?c.data:new Blob([c.data],{type:"video/mp4"})); s.useVideo=true; got++; }
+    if(got){ saveProj(); drawScenes(); updateCost(); }
+    const fails=Object.entries(st.failed||{}).map(([n,m])=>`Scene ${n}: ${esc(m)}`).join("<br>");
+    const run=st.state==="running";
+    cloudShow(`${run?"⏳":st.state==="done"?"✅":"⚠️"} Job ${J.id}: ${(st.done||[]).length}/${st.total} clips ready${got?` · ${got} new added to your scenes`:""} · ≈$${(+st.spentUSD||0).toFixed(2)} (₹${Math.round((+st.spentUSD||0)*USD_INR)})${run?"<br>Still working — tap ⬇️ again later.":""}${fails?"<br>"+fails:""}${!run&&fails?"<br>Fix those scenes and send again, or use 🎥 New clip.":""}`);
+    log(`☁️ Job ${J.id}: ${st.state}, ${got} clip(s) added.`);
+  }catch(e){ cloudShow("❌ "+esc(e.message)); log("❌ Cloud: "+e.message); } }
+async function cloudClean(){ const J=cloudJob(); if(!J) return cloudShow("Nothing to clean up.");
+  if(!confirm(`Delete job ${J.id} from GitHub? Download your clips first (⬇️ Get clips) — clips already in your scenes stay on the phone.`)) return;
+  try{ const r=await gh("DELETE",`/git/refs/heads/job-${J.id}`); if(!r.ok&&r.status!==404&&r.status!==422) throw new Error("GitHub "+r.status);
+    store("hdm2_cloudJob",""); cloudShow(`🧹 Job ${J.id} deleted from GitHub.`); }catch(e){ cloudShow("❌ "+esc(e.message)); } }
 /* ---------- runners ---------- */
 async function doStep(s,k){
   s.st[k]="run"; s.err=""; drawScenes();
