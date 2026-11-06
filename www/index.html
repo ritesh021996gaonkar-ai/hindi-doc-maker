@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.2</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -71,6 +71,9 @@ details summary{cursor:pointer;font-weight:700}
 <div id="cfTxtBox"><label>Cloudflare script model</label><input id="cfTxtModel" value="@cf/meta/llama-3.3-70b-instruct-fp8-fast"></div>
 
 <h3>🖼️ Pictures</h3>
+<label>🎨 Picture theme — what kind of video to build</label>
+<select id="picTheme" onchange="setTheme(this.value,1)"></select>
+<p class="muted" id="themeDesc"></p>
 <label>Picture engine</label>
 <select id="imgEngine"><option value="cloudflare">Cloudflare FLUX — FREE (fast)</option><option value="horde">AI Horde — FREE realistic (slower, unlimited)</option><option value="openai">ChatGPT images API (≈ ₹3.5 each)</option><option value="chatgptapp">ChatGPT app — FREE (copy prompt &amp; import)</option><option value="gemini">Google Gemini (paid)</option></select>
 <div id="oaImgBox"><label>Uses the OpenAI key from ✍️ Script writer (set engine there once or paste below)</label>
@@ -201,6 +204,9 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>Video type</label><select id="genre"><option value="cartoon">🎨 Cartoon horror (dialogue, like animated stories)</option><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
  <div><label>Pacing</label><select id="pacing"><option value="fast">Fast — new picture every ~4 s</option><option value="normal">Normal — ~9 s per picture</option></select></div>
 </div>
+<label>🎨 Picture theme</label>
+<select id="picTheme2" onchange="setTheme(this.value,1)"></select>
+<p class="muted" id="themeDesc2"></p>
 <label>YouTube title, description, tags, on-screen text &amp; chapters</label>
 <select id="metaLang"><option value="en">English (better YouTube search)</option><option value="hinglish">Hinglish in English letters</option><option value="hi">Hindi (Devanagari)</option></select>
 <label>Language style (voiceover)</label>
@@ -234,6 +240,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
 <div id="cloudInfo" class="muted"></div>
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
+<button class="small sec" onclick="remakeAll()">🔄 Remake all pictures in the chosen theme</button>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
 <button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
 <button class="small sec" onclick="copyAllMotion()">📋 Copy all motion prompts (for GenV/FlixGen)</button>
@@ -315,8 +322,34 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 async function pool(items,n,fn){ let k=0; await Promise.all(Array.from({length:Math.max(1,Math.min(n,items.length))},async()=>{ while(k<items.length){ const i=k++; await fn(items[i],i); } })); }
 function errMsg(d){ if(!d) return ""; if(typeof d==="string") return d.slice(0,300); const m=(d.error&&(d.error.message||d.error))||(d.detail&&(d.detail.message||d.detail))||d.message||d.msg; return typeof m==="string"?m.slice(0,300):JSON.stringify(d).slice(0,300); }
 
+const THEMES={
+ photo:{l:"📷 Realistic photo",d:"Real-life photos of everyday India — like SR PAY stories",art:0,s:"ultra-realistic candid photograph of everyday India, true-to-life warm natural light, real-looking people and places, shallow depth of field, cinematic composition"},
+ cinematic:{l:"🎬 Cinematic film",d:"Looks like a still from a big movie — dramatic light and colour",art:0,s:"cinematic film still, anamorphic lens, dramatic lighting, rich color grading, shallow depth of field, epic composition"},
+ cartoon2d:{l:"🎨 2D cartoon story",d:"Indian animated-story look — bold outlines, flat colours, painted backgrounds",art:1,s:"2D Indian cartoon animation style, clean bold outlines, flat cel shading, expressive faces, detailed painted background, moody cinematic lighting, warm lantern glow, high quality animated-series look"},
+ anim3d:{l:"🧸 3D animated movie",d:"Soft, colourful 3D characters like a family animated film",art:1,s:"high-quality 3D animated feature film style, stylized expressive characters, soft global illumination, rich detailed environments, vibrant colors, cinematic framing"},
+ anime:{l:"🌸 Anime style",d:"Japanese-style animation — clean lines, vivid colours",art:1,s:"anime style illustration, clean line art, cel shading, vivid colors, detailed painted backgrounds, dramatic lighting"},
+ comic:{l:"💥 Comic / graphic novel",d:"Bold ink and halftone — great for crime and action",art:1,s:"graphic novel comic art, bold ink lines, halftone shading, strong shadows, dramatic angles, limited color palette"},
+ horror:{l:"👻 Dark horror art",d:"Eerie, foggy, shadowy — for scary stories",art:1,s:"dark eerie horror illustration, deep shadows, fog and mist, desaturated cold tones, unsettling atmosphere, cinematic composition"},
+ painting:{l:"🖼️ Historical oil painting",d:"Classic painting look — perfect for history and kings",art:1,s:"classical oil painting, rich visible brush strokes, warm dramatic lighting, historical epic scene, museum quality"},
+ watercolor:{l:"💧 Watercolor storybook",d:"Soft children's-book style — calm stories, folk tales",art:1,s:"soft watercolor storybook illustration, gentle colors, delicate ink outlines, paper texture, whimsical"},
+ vintage:{l:"📼 Vintage old photo",d:"Faded old photograph from the past — 1940s–80s stories",art:0,s:"vintage old film photograph, faded colors, heavy film grain, soft focus, period-accurate clothing and objects"},
+ clay:{l:"🧱 Claymation",d:"Handmade clay figures on tiny sets — fun and unique",art:1,s:"stop-motion claymation style, handmade clay figures with fingerprints texture, miniature handcrafted sets, soft studio lighting"},
+ flat:{l:"📊 Flat explainer",d:"Clean simple graphics — science, tech and news explainers",art:1,s:"clean flat vector illustration, minimal shapes, bold colors, simple background, modern explainer style"},
+ custom:{l:"✏️ Custom",d:"Uses your own text in Settings → Advanced → Picture style",art:-1,s:""}};
+function themeArt(){ const t=THEMES[$("picTheme").value]; return t&&t.art!==-1?!!t.art:/cartoon|2D|animation|illustration|anime|clay|painting|comic|vector/i.test($("imgStyle").value); }
+function themeOpts(){ return Object.entries(THEMES).map(([k,t])=>`<option value="${k}">${t.l}</option>`).join(""); }
+function setTheme(k,from){ const t=THEMES[k]; if(!t) return; ["picTheme","picTheme2"].forEach(id=>{ if($(id)) $(id).value=k; });
+  if(t.s){ $("imgStyle").value=t.s; $("realism").checked=!t.art&&k!=="vintage"; }
+  ["themeDesc","themeDesc2"].forEach(id=>{ if($(id)) $(id).textContent=t.d; });
+  saveSettings(true);
+  if(from&&S.scenes.some(s=>s.img)) status(`🎨 Theme: ${t.l}. New pictures use it — tap "🔄 Remake all pictures" in step 2 to change existing ones.`); }
+async function remakeAll(){ const n=S.scenes.filter(s=>s.img&&!s.own).length; if(!n) return runImages();
+  if(!confirm(`Remake all ${n} pictures in the "${THEMES[$("picTheme").value].l}" theme? (Uses picture credits again; clips on those scenes are removed.)`)) return;
+  for(const s of S.scenes){ if(s.own) continue; s.img=null; DB.del("i_"+s.id); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } }
+  (S.chars||[]).forEach(c=>{ c.sheet=null; DB.del("cs_"+c.name); });
+  drawScript(); await guard(async()=>{ if($("imgEngine").value==="openai"&&(S.chars||[]).length) await makeSheets(false); return runStep("i","🖼️ Pictures",2); }); }
 /* ---------- settings ---------- */
-const SET_IDS=["fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
+const SET_IDS=["picTheme","fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -338,6 +371,7 @@ function refreshUI(){
   updateCost();
 }
 (function initSettings(){
+  ["picTheme","picTheme2"].forEach(id=>{ if($(id)) $(id).innerHTML=themeOpts(); });
   // migrate v1 key
   if(!load("hdm2_key")&&load("hdm_key")) store("hdm2_key",load("hdm_key"));
   const vc=load("hdm2_elVoiceList"); if(vc){ try{ fillVoices(JSON.parse(vc)); }catch(e){} }
@@ -352,6 +386,7 @@ function refreshUI(){
   ["vidRule"].forEach(id=>$(id).addEventListener("change",()=>{ applyRule(); saveProj(); drawScenes(); updateCost(); }));
   ["vidRes","klMode","mins","elModel"].forEach(id=>$(id).addEventListener("change",updateCost));
   if(!$("key").value) $("setBox").open=true;
+  { const k=$("picTheme").value||"cinematic"; if(!load("hdm2_picTheme")){ $("picTheme").value=/cartoon/i.test($("imgStyle").value)?"cartoon2d":/candid/i.test($("imgStyle").value)?"photo":"cinematic"; } $("picTheme2").value=$("picTheme").value; const t=THEMES[$("picTheme").value]; if(t){ $("themeDesc").textContent=t.d; $("themeDesc2").textContent=t.d; } }
 })();
 
 /* ---------- HTTP (native on phone = no CORS problems) ---------- */
@@ -850,7 +885,7 @@ async function makeImageHorde(s){
   throw new Error("AI Horde timed out — try again later");
 }
 async function makeImageOA(s){
-  const vert=$("format").value==="9:16", cartoon=/cartoon|2D|animation/i.test($("imgStyle").value);
+  const vert=$("format").value==="9:16", cartoon=themeArt();
   const refsC=(s.who||[]).map(n=>(S.chars||[]).find(c=>c.name===n)).filter(c=>c&&c.sheet).slice(0,4);
   const base=`${vert?"Vertical 9:16":"Wide 16:9"} ${cartoon?"":"cinematic "}image. ${fullPrompt(s)}. ${$("realism").checked&&!cartoon?REAL+". ":""}${$("imgStyle").value}`.slice(0,3900);
   let blob;
@@ -1561,19 +1596,19 @@ function useRaw(i){ $("topic").value=TRENDS.items[i].title; $("topic").scrollInt
 (function(){ try{ const t=JSON.parse(localStorage.getItem("hdm_trends")||"null"); if(t&&t.ideas&&Date.now()-t.at<20*3600e3){ TRENDS=t; drawIdeas(); drawRaw(); } }catch(e){} })();
 
 const PRESETS={
- cartoon:{vidEngine:"manual",vidRule:"key",look:"mystery",trans:"story",subStyle:"box",subPos:"bottom",titleCard:1,titleStyle:"glitch",titlePos:"after",factStyle:"pop",onscreen:1,kwHL:1,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,ambience:1,endScreen:1,pacing:"normal",realism:0,
+ cartoon:{picTheme:"cartoon2d",vidEngine:"manual",vidRule:"key",look:"mystery",trans:"story",subStyle:"box",subPos:"bottom",titleCard:1,titleStyle:"glitch",titlePos:"after",factStyle:"pop",onscreen:1,kwHL:1,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,ambience:1,endScreen:1,pacing:"normal",realism:0,
    imgStyle:"2D Indian cartoon animation style, clean bold outlines, flat cel shading, expressive faces, detailed painted background, moody cinematic night lighting, warm lantern glow, high quality animated-series look"},
- story:{look:"natural",trans:"story",subStyle:"none",titleCard:0,factStyle:"underline",onscreen:1,kwHL:0,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,endScreen:1,pacing:"fast",realism:1,
+ story:{picTheme:"photo",look:"natural",trans:"story",subStyle:"none",titleCard:0,factStyle:"underline",onscreen:1,kwHL:0,punch:1,shake:0,progress:0,bars:0,grain:0,leaks:0,sfx:1,endScreen:1,pacing:"fast",realism:1,
    imgStyle:"ultra-realistic candid photograph of everyday India, true-to-life warm natural light, real-looking people and places, shallow depth of field, cinematic composition"},
- doc:{look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
+ doc:{picTheme:"cinematic",look:"warm",trans:"fade",subStyle:"box",titleStyle:"gold",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  viral:{look:"bleach",trans:"mix",subStyle:"pop",subPos:"middle",titleStyle:"punch",titlePos:"after",factStyle:"pop",kwHL:1,punch:1,shake:1,progress:1,bars:0,grain:0,leaks:1},
  mystery:{look:"mystery",trans:"glitch",subStyle:"karaoke",titleStyle:"glitch",titlePos:"after",factStyle:"underline",kwHL:1,punch:1,shake:1,progress:1,bars:1,grain:1,leaks:0},
- history:{look:"vintage",trans:"fade",subStyle:"type",titleStyle:"type",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
+ history:{picTheme:"painting",look:"vintage",trans:"fade",subStyle:"type",titleStyle:"type",titlePos:"after",factStyle:"bar",kwHL:1,punch:0,shake:0,progress:0,bars:1,grain:1,leaks:1},
  clean:{look:"natural",trans:"fade",subStyle:"minimal",titleStyle:"gold",titlePos:"start",factStyle:"underline",kwHL:0,punch:0,shake:0,progress:0,bars:0,grain:0,leaks:0}};
-function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); refreshUI(); if(S.scenes.length){ applyRule(); saveProj(); drawScenes(); } saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
+function applyPreset(k){ const p=PRESETS[k]; if(!p) return; Object.entries(p).forEach(([id,v])=>setV(id,typeof v==="number"?String(v):v)); if(p.picTheme&&!p.imgStyle) setTheme(p.picTheme); else if(p.picTheme){ ["picTheme2"].forEach(id=>$(id).value=p.picTheme); } refreshUI(); if(S.scenes.length){ applyRule(); saveProj(); drawScenes(); } saveSettings(true); log("Style preset applied: "+$("preset").selectedOptions[0].text); }
 function copyDesc(){ const t=S.title+"\n\n"+S.description+(window._chapters?"\n\n⏱️ Chapters\n"+window._chapters:""); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert("Copied"),()=>prompt("Copy:",t)); }
 /* ---------- my own clips (GenV / FlixGen / any app) ---------- */
-function clipPrompt(s){ const cartoon=/cartoon|2D|animation/i.test($("imgStyle").value); return cartoon?`${s.motion}. 2D cartoon animation, keep the characters and art style exactly as in the picture, natural mouth movement while speaking, subtle idle motion, ${clipSecs(s)} seconds, no text.`:`${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
+function clipPrompt(s){ const cartoon=themeArt(); return cartoon?`${s.motion}. Animated in the same art style as the picture, keep the characters and style exactly as they are, natural mouth movement while speaking, subtle idle motion, ${clipSecs(s)} seconds, no text.`:`${s.motion}. Cinematic documentary shot, smooth realistic camera movement, ${clipSecs(s)} seconds, no text, no talking.`; }
 async function sendToApp(i){
   const s=S.scenes[i]; if(!s.img) return alert("Make the picture first.");
   const pr=clipPrompt(s);
