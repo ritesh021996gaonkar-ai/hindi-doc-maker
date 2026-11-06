@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v4.1</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -167,6 +167,15 @@ details summary{cursor:pointer;font-weight:700}
 <p class="muted" id="trendInfo">Checks Google Trends India, Google News (top, movies &amp; OTT, sports, tech), Wikipedia most-read, "On this day" and YouTube trending — then AI picks the best video ideas for your niche.</p>
 <div id="ideasBox"></div>
 <details><summary class="muted">📋 All trending items</summary><div id="rawTrends"></div></details>
+</section>
+
+<section class="card" id="anaCard">
+<h2>📊 Analyze a video</h2>
+<label>Paste a YouTube video link (long video or Short)</label>
+<input id="anaUrl" placeholder="https://youtu.be/...">
+<button id="btnAna" onclick="analyzeVideo()">🔍 Analyze why it works</button>
+<p class="muted">Reads the title, description, chapters, stats and top comments, then finds why it works, what viewers want, and original angles for <b>your own</b> video. Needs the YouTube API key in Settings. It never copies the creator's script.</p>
+<div id="anaBox"></div>
 </section>
 
 <section class="card">
@@ -1169,6 +1178,68 @@ function restoreSettings(){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return; try{ applySettingsJSON(await f.text()); status("✅ Settings restored."); }catch(e){ alert("Restore failed: "+e.message); } };
   if(confirm("Pick the backup file (settings-backup.json)?\n\nTap Cancel to paste the backup text instead.")) inp.click();
   else { const t=prompt("Paste your settings backup:"); if(t) try{ applySettingsJSON(t); status("✅ Settings restored."); }catch(e){ alert("Restore failed: "+e.message); } } }
+
+/* ---------- 📊 analyze a video ---------- */
+let ANA=null;
+function ytId(u){ u=String(u||"").trim(); const m=u.match(/(?:youtu\.be\/|v=|\/shorts\/|\/live\/|\/embed\/)([A-Za-z0-9_-]{11})/)||u.match(/^([A-Za-z0-9_-]{11})$/); return m?m[1]:null; }
+function isoDur(d){ const m=String(d||"").match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)||[]; const s=(+m[1]||0)*86400+(+m[2]||0)*3600+(+m[3]||0)*60+(+m[4]||0); return {s,txt:(s>=3600?Math.floor(s/3600)+":"+String(Math.floor(s%3600/60)).padStart(2,"0"):Math.floor(s/60))+":"+String(s%60).padStart(2,"0")}; }
+function chaptersFrom(desc){ return String(desc||"").split("\n").map(l=>l.match(/^\s*\(?((?:\d+:)?\d{1,2}:\d{2})\)?\s*[-–—:]?\s*(.+)$/)).filter(Boolean).map(m=>`${m[1]} ${m[2].trim()}`).slice(0,40); }
+async function analyzeVideo(){
+  const k=$("ytKey").value.trim(); if(!k){ alert("Add your YouTube Data API key in ⚙️ Settings first (free)."); $("setBox").open=true; return; }
+  const id=ytId($("anaUrl").value); if(!id){ alert("That doesn't look like a YouTube video link."); return; }
+  const btn=$("btnAna"); btn.disabled=true; btn.textContent="📥 Reading video details…"; $("anaBox").innerHTML="";
+  try{
+    const v=JSON.parse(await getText(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${id}&key=${encodeURIComponent(k)}`));
+    const it=v.items&&v.items[0]; if(!it) throw new Error(v.error?errMsg(v):"Video not found (private or deleted?)");
+    const sn=it.snippet, st=it.statistics||{}, dur=isoDur(it.contentDetails.duration);
+    let subs=0; try{ const c=JSON.parse(await getText(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${sn.channelId}&key=${encodeURIComponent(k)}`)); subs=+(c.items&&c.items[0].statistics.subscriberCount)||0; }catch(e){}
+    let comments=[]; try{ const c=JSON.parse(await getText(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${id}&order=relevance&maxResults=60&textFormat=plainText&key=${encodeURIComponent(k)}`));
+      comments=(c.items||[]).map(x=>({t:x.snippet.topLevelComment.snippet.textDisplay.replace(/\s+/g," ").slice(0,240),l:+x.snippet.topLevelComment.snippet.likeCount||0})).sort((a,b)=>b.l-a.l); }catch(e){ log("Comments not available: "+e.message); }
+    const days=Math.max(1,(Date.now()-new Date(sn.publishedAt))/864e5), views=+st.viewCount||0;
+    ANA={id,title:sn.title,channel:sn.channelTitle,desc:sn.description||"",tags:sn.tags||[],views,likes:+st.likeCount||0,ncom:+st.commentCount||0,subs,dur,days,chapters:chaptersFrom(sn.description),comments,thumb:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`};
+    drawAna();
+    const eng=ideaEngine(); if(!eng){ $("anaBox").insertAdjacentHTML("beforeend",`<div class="cost">Add a Cloudflare, Gemini, Claude or ChatGPT key in Settings to get the AI analysis.</div>`); return; }
+    btn.textContent="🧠 Analyzing…";
+    ANA.ai=await llmJSON(anaPrompt(),eng,"angles"); drawAna();
+  }catch(e){ log("❌ Analyze: "+e.message); $("anaBox").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+  finally{ btn.disabled=false; btn.textContent="🔍 Analyze why it works"; }
+}
+function anaPrompt(){ const A=ANA;
+  return `आप एक अनुभवी YouTube growth strategist हैं जो हिंदी चैनलों की मदद करते हैं। नीचे एक सफल वीडियो का public data है।
+आपका काम: समझाना कि यह वीडियो क्यों चल रहा है, और मेरे चैनल के लिए इसी विषय पर पूरी तरह ORIGINAL वीडियो के ideas देना।
+ज़रूरी: creator की script, लाइनें या खास कहानी कॉपी या paraphrase न करें; सिर्फ़ format/structure/psychology का विश्लेषण करें। मेरे angles नए हों, अलग रिसर्च पर आधारित, और creator का नाम इस्तेमाल न करें।
+मेरा चैनल: ${NICHE[$("niche").value]}, हिंदी, AI पिक्चर्स + वॉइसओवर।
+
+Title: ${A.title}
+Channel: ${A.channel} (${fmtNum(A.subs)} subscribers)
+Views: ${fmtNum(A.views)} in ${Math.round(A.days)} days · Likes: ${fmtNum(A.likes)} · Comments: ${fmtNum(A.ncom)} · Length: ${A.dur.txt}
+Views ÷ subscribers: ${A.subs?(A.views/A.subs).toFixed(2):"?"}
+Tags: ${A.tags.slice(0,20).join(", ")||"—"}
+Chapters: ${A.chapters.join(" | ")||"—"}
+Description (शुरुआत): ${A.desc.slice(0,700)}
+Top comments (likes):
+${A.comments.slice(0,40).map(c=>`- (${c.l}) ${c.t}`).join("\n")||"—"}
+
+केवल JSON (सब हिंदी में, छोटे और साफ़ points):
+{"verdict":"1-2 लाइन: यह वीडियो क्यों चला","title_formula":"title किस तरीके से click करवाता है","hook_guess":"शुरुआती hook किस प्रकार का होगा (chapters/description/comments से अनुमान)","structure":["structure/retention की 3-5 बातें"],"viewers_loved":["comments में लोगों को क्या पसंद आया (3-5)"],"viewers_want":["comments में लोग और क्या जानना/देखना चाहते हैं, या क्या गलत/कमी लगी (3-5) — यही मेरा मौका है"],"length_tip":"मेरे वीडियो की सही लंबाई और क्यों","angles":[{"title":"मेरे original वीडियो का clickable हिंदी title","topic":"script writer के लिए साफ़ विषय + मेरा अलग angle","why":"यह angle क्यों बेहतर/अलग है","hook":"पहली लाइन"}],"thumbnail":"मेरे thumbnail का आइडिया (text 2-4 शब्द + चित्र)"}
+"angles" में ठीक 3 ideas दें।`; }
+function drawAna(){ const A=ANA; if(!A) return; const X=A.ai||{}, L=a=>(a||[]).map(x=>`<li>${esc(x)}</li>`).join("");
+  const ratio=A.subs?A.views/A.subs:0;
+  $("anaBox").innerHTML=`<div class="scene"><img class="thumb" src="${A.thumb}" alt=""><div style="font-weight:700;margin-top:8px">${esc(A.title)}</div>
+    <div class="muted">${esc(A.channel)} · ${fmtNum(A.subs)} subs</div>
+    <div class="chips" style="margin-top:6px"><span class="st">👁️ ${fmtNum(A.views)}</span><span class="st">👍 ${fmtNum(A.likes)}</span><span class="st">💬 ${fmtNum(A.ncom)}</span><span class="st">⏱️ ${A.dur.txt}</span><span class="st">📅 ${Math.round(A.days)} days</span>${ratio?`<span class="st ${ratio>=1?"ok":""}">${ratio>=3?"🚀 ":""}${ratio.toFixed(1)}× subs</span>`:""}</div>
+    ${A.chapters.length?`<details><summary class="muted">📑 Chapters (${A.chapters.length})</summary><div class="muted">${A.chapters.map(esc).join("<br>")}</div></details>`:""}</div>
+  ${A.ai?`<div class="cost"><b>🎯 Why it works:</b> ${esc(X.verdict||"")}<br><br>
+    <b>🏷️ Title trick:</b> ${esc(X.title_formula||"")}<br><b>🎣 Hook:</b> ${esc(X.hook_guess||"")}
+    <br><br><b>🧱 Structure &amp; retention</b><ul>${L(X.structure)}</ul>
+    <b>❤️ Viewers loved</b><ul>${L(X.viewers_loved)}</ul>
+    <b>🙋 Viewers want / complained</b> (your opportunity)<ul>${L(X.viewers_want)}</ul>
+    <b>⏱️ Length:</b> ${esc(X.length_tip||"")}<br><b>🖼️ Thumbnail idea:</b> ${esc(X.thumbnail||"")}</div>
+   <h3>💡 Your original versions</h3>${(X.angles||[]).map((g,i)=>`<div class="scene"><div style="font-weight:700">${esc(g.title)}</div><div class="muted" style="margin-top:4px">✨ ${esc(g.why||"")}</div>${g.hook?`<div style="margin-top:4px">🎣 “${esc(g.hook)}”</div>`:""}<button class="small" onclick="useAngle(${i})">✅ Make my version</button></div>`).join("")}`:`<p class="muted">🧠 Analyzing…</p>`}`;
+}
+function useAngle(i){ const g=ANA.ai.angles[i];
+  $("topic").value=`${g.topic}${g.hook?` — शुरुआत इस hook से: "${g.hook}"`:""} (पूरी तरह original script, अपनी रिसर्च से; किसी मौजूदा वीडियो की नकल नहीं)`;
+  saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set from your original angle — tap 🚀 Make full video."); }
 
 /* ---------- 🔥 trending ideas ---------- */
 let TRENDS={items:[],ideas:[]};
