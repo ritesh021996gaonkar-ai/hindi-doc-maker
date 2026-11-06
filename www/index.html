@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.3</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -196,6 +196,8 @@ details summary{cursor:pointer;font-weight:700}
 <h2>1. Topic</h2>
 <label>Documentary topic (Hindi or English)</label>
 <input id="topic" placeholder="e.g. हम्पी साम्राज्य का उदय और पतन">
+<label>🗣️ Video language (voiceover &amp; subtitles)</label>
+<select id="vlang" onchange="langUI()"></select>
 <div class="row">
  <div><label>Length (min)</label><input id="mins" type="number" value="3" min="1" max="40"></div>
  <div><label>Format</label><select id="format"><option value="16:9">16:9 long video</option><option value="9:16">9:16 Short</option></select></div>
@@ -209,7 +211,7 @@ details summary{cursor:pointer;font-weight:700}
 <p class="muted" id="themeDesc2"></p>
 <label>YouTube title, description, tags, on-screen text &amp; chapters</label>
 <select id="metaLang"><option value="en">English (better YouTube search)</option><option value="hinglish">Hinglish in English letters</option><option value="hi">Hindi (Devanagari)</option></select>
-<label>Language style (voiceover)</label>
+<label>Language style (for Hindi)</label>
 <select id="lang"><option value="modern">Modern Hindi — everyday words like YouTubers speak</option><option value="hinglish">Hinglish — more English words</option><option value="pure">Pure (shuddh) Hindi</option></select>
 <label>Tone</label>
 <select id="tone"><option>रहस्यमय और रोमांचक</option><option>ऐतिहासिक और गंभीर</option><option>वैज्ञानिक और सरल</option><option>प्रेरणादायक</option></select>
@@ -348,8 +350,16 @@ async function remakeAll(){ const n=S.scenes.filter(s=>s.img&&!s.own).length; if
   for(const s of S.scenes){ if(s.own) continue; s.img=null; DB.del("i_"+s.id); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } }
   (S.chars||[]).forEach(c=>{ c.sheet=null; DB.del("cs_"+c.name); });
   drawScript(); await guard(async()=>{ if($("imgEngine").value==="openai"&&(S.chars||[]).length) await makeSheets(false); return runStep("i","🖼️ Pictures",2); }); }
+const LANGS={hi:{n:"Hindi",s:"Devanagari",l:"हिंदी — Hindi"},en:{n:"English",s:"Latin",l:"English"},kn:{n:"Kannada",s:"Kannada",l:"ಕನ್ನಡ — Kannada"},mr:{n:"Marathi",s:"Devanagari",l:"मराठी — Marathi"},
+ ta:{n:"Tamil",s:"Tamil",l:"தமிழ் — Tamil"},te:{n:"Telugu",s:"Telugu",l:"తెలుగు — Telugu"},bn:{n:"Bengali",s:"Bengali",l:"বাংলা — Bengali"},gu:{n:"Gujarati",s:"Gujarati",l:"ગુજરાતી — Gujarati"},
+ ml:{n:"Malayalam",s:"Malayalam",l:"മലയാളം — Malayalam"},pa:{n:"Punjabi",s:"Gurmukhi",l:"ਪੰਜਾਬੀ — Punjabi"},ur:{n:"Urdu",s:"Urdu (Perso-Arabic)",l:"اردو — Urdu"},konk:{n:"Konkani",s:"Devanagari",l:"कोंकणी — Konkani"}};
+const EL_V2=new Set(["hi","en","ta","ur"]);
+const vl=()=>($("vlang")&&$("vlang").value)||"hi", VL=()=>LANGS[vl()]||LANGS.hi;
+function langUI(){ const hi=vl()==="hi"; if($("lang")) $("lang").disabled=!hi&&vl()!=="hi"?false:false; saveSettings(true); if(S.scenes.length) drawScenes();
+  if(!hi&&$("voiceEngine").value==="eleven"&&$("elModel").value==="eleven_multilingual_v2"&&!EL_V2.has(vl())) status(`🗣️ ${VL().n}: ElevenLabs will use Eleven v3 automatically (needed for ${VL().n}). Pick a ${VL().n} voice from ElevenLabs' Voice Library for best results.`);
+  else status(`🗣️ Video language: ${VL().n}`); }
 /* ---------- settings ---------- */
-const SET_IDS=["picTheme","fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
+const SET_IDS=["picTheme","fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","vlang","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -371,6 +381,7 @@ function refreshUI(){
   updateCost();
 }
 (function initSettings(){
+  if($("vlang")) $("vlang").innerHTML=Object.entries(LANGS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join("");
   ["picTheme","picTheme2"].forEach(id=>{ if($(id)) $(id).innerHTML=themeOpts(); });
   // migrate v1 key
   if(!load("hdm2_key")&&load("hdm_key")) store("hdm2_key",load("hdm_key"));
@@ -518,6 +529,8 @@ const GENRE={
 function metaRule(){ const m=$("metaLang").value; if(m==="hi") return "";
   const L=m==="en"?"सिर्फ़ ENGLISH में (natural, SEO-friendly, clickable — जैसे बड़े English YouTube चैनल लिखते हैं)":"Hinglish में लेकिन सिर्फ़ ROMAN/English अक्षरों में (जैसे \"Bollywood ke Gumnaam Sitare: Bungalow se Chawl tak\")";
   return `\n- भाषा नियम (ज़रूरी): "title", "description", "tags", "screen_title", "screen_subtitle", "chapter" और "onscreen" — ये सब ${L}। सिर्फ़ "narration" और "keyword" हिंदी देवनागरी में रहें।`; }
+function langRule(){ const L=VL(); if(vl()==="hi") return "";
+  return `\n\n⚠️ भाषा (सबसे ज़रूरी, ऊपर के हिंदी नियमों से ऊपर): "narration" और "keyword" पूरी तरह ${L.n} भाषा में लिखें, ${L.s} लिपि में — हिंदी में नहीं। आज की आसान, बोलचाल वाली ${L.n}${vl()==="en"?" (simple spoken English, Indian audience)":""}। अंक/साल ${L.n} शब्दों में। ऊपर के बाकी नियम (लंबाई, hook, retention, सुरक्षा) वैसे ही लागू हैं।\nIMPORTANT: write every "narration" and "keyword" in ${L.n} (${L.s} script), NOT Hindi.`; }
 function scriptRules(n,perScene){ const G=GENRE[$("genre").value]||GENRE.doc, fast=$("pacing").value==="fast";
   return `भाषा: ${LANG[$("lang").value]}
 टोन: ${$("tone").value}
@@ -530,7 +543,7 @@ ${G.rules}
 - ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम (characters वाले English नाम) "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
 - "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
 - "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
-- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}`; }
+- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}${langRule()}`; }
 function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
   return `आप एक ${G.who} हैं।
 विषय: "${topic}"
@@ -634,7 +647,7 @@ function drawScenes(){
       ${s.clip?`<video class="thumb" src="${s.clip.url}" muted playsinline controls preload="metadata"></video>`:s.img?`<img class="thumb" src="${s.img.url}">`:""}
       ${s.err?`<div class="err">${esc(s.err)}</div>`:""}
       ${(S.chars||[]).length?`<label>🗣️ Who speaks</label><select onchange="setSpeaker(${i},this.value)"><option value="">Narrator</option>${S.chars.map(c=>`<option ${c.name===s.speaker?"selected":""}>${esc(c.name)}</option>`).join("")}</select>`:""}
-      <label>${s.speaker?"💬 "+esc(s.speaker)+" says (Hindi)":"Narration (Hindi)"}${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
+      <label>${s.speaker?"💬 "+esc(s.speaker)+" says ("+VL().n+")":"Narration ("+VL().n+")"}${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
       <textarea oninput="editNarr(${i},this.value)">${esc(s.narration)}</textarea>
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
@@ -771,6 +784,9 @@ function hiNum(n){ n=Math.floor(n); if(n<100) return HN[n];
   const r=n%10000000; return hiNum(Math.floor(n/10000000))+" करोड़"+(r?" "+hiNum(r):""); }
 const DEV_DIG="०१२३४५६७८९";
 function speakable(t){
+  if(vl()!=="hi"){ t=String(t||"").replace(/[()\[\]{}"“”*_#]/g," ").replace(/[—–]/g,", ").replace(/\s+/g," ").trim();
+    const dict=($("pronDict").value||"").split("\n").map(l=>l.split("=")).filter(x=>x.length>=2&&x[0].trim());
+    dict.forEach(([w,...say])=>{ const e=w.trim().replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); try{ t=t.replace(new RegExp(`(?<![\\p{L}\\p{M}])${e}(?![\\p{L}\\p{M}])`,"gu"),say.join("=").trim()); }catch(err){} }); return t; }
   t=String(t||"").replace(/[०-९]/g,d=>DEV_DIG.indexOf(d));
   t=t.replace(/(\d),(?=\d)/g,"$1");
   t=t.replace(/ई\.\s?पू\./g,"ईसा पूर्व").replace(/(\d)\s?ई\./g,"$1 ईस्वी").replace(/(\d)\s?(वीं|वी|वाँ|वां|वें)/g,(m,d,s)=>d+"$"+s);
@@ -790,20 +806,20 @@ async function makeVoice(s){
     const st=$("elStyle").value, spd=+$("elSpeed").value||1;
     const call=async model=>{
       const body={text,model_id:model};
-      if(model!=="eleven_multilingual_v2") body.language_code="hi";
+      if(model!=="eleven_multilingual_v2"&&vl()!=="konk") body.language_code=vl();
       if(model==="eleven_v3") body.voice_settings={stability:st==="dramatic"?0:st==="steady"?1:0.5};
       else { body.voice_settings={stability:st==="dramatic"?0.3:st==="steady"?0.75:0.5,similarity_boost:0.8,style:st==="dramatic"?0.45:st==="steady"?0:0.15,use_speaker_boost:true,speed:spd};
         if(i>0) body.previous_text=speakable(S.scenes[i-1].narration); if(i<S.scenes.length-1) body.next_text=speakable(S.scenes[i+1].narration); }
       let r; for(let t=0;t<3;t++){ r=await http("POST",`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}/with-timestamps?output_format=mp3_44100_128`,{headers:{"xi-api-key":key},json:body});
         if(r.ok||![429,500,502,503].includes(r.status)) break; await sleep(4000*(t+1)); }
       return r; };
-    const model=$("elModel").value;
+    let model=$("elModel").value; if(!EL_V2.has(vl())&&model!=="eleven_v3"){ model="eleven_v3"; if(!window._v3note){ window._v3note=1; log(`🗣️ ${VL().n} needs Eleven v3 — using it for the voice.`); } }
     let r=await call(model);
-    if(!r.ok&&model!=="eleven_multilingual_v2"&&r.status!==401&&!/quota|credits|limit/i.test(errMsg(r.data))){ log(`${model} failed (${errMsg(r.data).slice(0,80)}) → using Multilingual v2`); r=await call("eleven_multilingual_v2"); }
+    if(!r.ok&&model!=="eleven_multilingual_v2"&&EL_V2.has(vl())&&r.status!==401&&!/quota|credits|limit/i.test(errMsg(r.data))){ log(`${model} failed (${errMsg(r.data).slice(0,80)}) → using Multilingual v2`); r=await call("eleven_multilingual_v2"); }
     if(!r.ok) throw new Error(`ElevenLabs ${r.status}: ${errMsg(r.data)}`);
     await setVoice(s,new Blob([b64ToBytes(r.data.audio_base64)],{type:"audio/mpeg"}),r.data.alignment||r.data.normalized_alignment||null,true,text);
   }else{
-    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${$("ttsStyle").value}:\n${speakable(s.narration)}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:((s.speaker&&(S.chars||[]).find(c=>c.name===s.speaker))||{}).gvoice||$("voice").value}}}}});
+    const j=await geminiAuto("tts",$("mTts").value,{contents:[{parts:[{text:`${vl()==="hi"?$("ttsStyle").value:`Read this in natural, gripping spoken ${VL().n}, like a documentary storyteller, clear and medium pace`}:\n${speakable(s.narration)}`}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:((s.speaker&&(S.chars||[]).find(c=>c.name===s.speaker))||{}).gvoice||$("voice").value}}}}});
     const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("No audio returned");
     const mime=p.inlineData.mimeType||"", bytes=b64ToBytes(p.inlineData.data);
     const blob=/wav|mp3|mpeg|ogg/.test(mime)?new Blob([bytes],{type:mime}):pcmToWav(bytes,+((mime.match(/rate=(\d+)/)||[])[1]||24000));
