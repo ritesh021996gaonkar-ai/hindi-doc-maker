@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.4</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -264,8 +264,14 @@ details summary{cursor:pointer;font-weight:700}
 </div>
 <div class="row">
  <div><label>🎨 Look / filter</label><select id="look"><option value="warm">Cinematic teal-orange</option><option value="golden">Golden hour</option><option value="mystery">Dark mystery</option><option value="vintage">Vintage film</option><option value="bleach">Gritty (bleach bypass)</option><option value="neon">Neon night</option><option value="bw">Black &amp; white</option><option value="natural">Natural</option></select></div>
- <div><label>🔀 Transitions</label><select id="trans"><option value="story">Story mix — cuts + push (SR PAY style)</option><option value="mix">Mixed (auto variety)</option><option value="push">Push / slide</option><option value="cut">Hard cut</option><option value="zoom">Zoom punch</option><option value="whip">Whip pan</option><option value="flash">Flash</option><option value="glitch">Glitch</option><option value="fade">Smooth fade</option></select></div>
+ <div><label>🔀 Transitions</label><select id="trans"><option value="mood">🎯 Match the voiceover mood (auto)</option><option value="story">Story mix — cuts + push (SR PAY style)</option><option value="mix">Mixed (auto variety)</option><option value="push">Push / slide</option><option value="cut">Hard cut</option><option value="zoom">Zoom punch</option><option value="whip">Whip pan</option><option value="flash">Flash</option><option value="glitch">Glitch</option><option value="fade">Smooth fade</option><option value="dip">Dip to black</option><option value="blur">Blur</option><option value="spin">Spin</option><option value="zoomout">Zoom out</option><option value="slideup">Slide up</option><option value="wipe">Wipe</option><option value="iris">Circle reveal</option><option value="blinds">Blinds</option><option value="doors">Doors open</option><option value="pixel">Pixelate</option><option value="shakecut">Shake cut</option></select></div>
 </div>
+<div class="row">
+ <div><label>🎥 Camera motion</label><select id="camMode"><option value="auto">🎯 Match the voiceover (auto)</option><option value="mixed">Mixed variety</option><option value="push_in">Slow push in</option><option value="push_fast">Fast push in</option><option value="pull_out">Pull out</option><option value="pan_left">Pan left</option><option value="pan_right">Pan right</option><option value="pan_fast">Fast pan</option><option value="tilt_up">Tilt up</option><option value="tilt_down">Tilt down</option><option value="orbit">Orbit</option><option value="drift">Floating drift</option><option value="handheld">Handheld</option></select></div>
+ <div><label>Motion strength</label><select id="camStr"><option value="subtle">Subtle</option><option value="normal" selected>Normal</option><option value="strong">Strong</option></select></div>
+</div>
+<div class="chk"><input type="checkbox" id="voiceSync" checked><label for="voiceSync">🎯 Visuals follow the voice — mood effects (shock flash, tense darkness, sad colours, mystery fog), movement reacts to voice loudness</label></div>
+<div class="chk"><input type="checkbox" id="multiShot" checked><label for="multiShot">✂️ Multi-shot — cut to a new close-up of the picture on every sentence (feels like real camera shots)</label></div>
 <div class="row">
  <div><label>💬 Subtitle style</label><select id="subStyle"><option value="karaoke">Word-by-word highlight</option><option value="pop">Big pop words (Shorts style)</option><option value="box">Classic box</option><option value="type">Typewriter</option><option value="minimal">Minimal shadow</option><option value="none">No subtitles</option></select></div>
  <div><label>Subtitle position</label><select id="subPos"><option value="bottom">Bottom</option><option value="middle">Middle</option></select></div>
@@ -427,7 +433,7 @@ async function http1(method,url,{headers={},json,blob=false,text=false,timeout=6
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
@@ -542,6 +548,7 @@ ${G.rules}
 - "keyword": उस दृश्य की narration का सबसे ज़रूरी 1 शब्द (बिल्कुल वैसा ही)।
 - ${G.img} कहानी के किरदार जिस दृश्य में हों उनके नाम (characters वाले English नाम) "who" में लिखें (image_prompt में उनका रूप दोबारा न लिखें — ऐप characters से जोड़ देगा)।
 - "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
+- "mood": उस दृश्य की narration का भाव — calm | tense | shock | sad | action | mystery | reveal | happy। "camera": mood से मेल खाता — push_in | pull_out | pan_left | pan_right | tilt_up | tilt_down | orbit | drift | handheld | push_fast | pan_fast (shock→push_fast, tense→push_in, sad/reveal→pull_out, action→pan_fast/handheld, mystery→drift/orbit)।
 - "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
 - "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}${langRule()}`; }
 function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
@@ -551,7 +558,7 @@ function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
 ${scriptRules(n)}
 - "characters": कहानी के मुख्य किरदार (2-5) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English में स्थायी रूप: उम्र, चेहरा, बाल, कपड़े — हर तस्वीर में यही रहेगा)।
 - "screen_title": 2-4 शब्दों का छोटा शीर्षक, "screen_subtitle": 6-10 शब्द। "title": clickable हिंदी YouTube title। "description": हिंदी description। "tags": 10 tags।
-केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":"","gender":"male/female","age":"","voice":"voice style in English"}],"scenes":[{"chapter":"","speaker":"Narrator","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
+केवल JSON: {"title":"","screen_title":"","screen_subtitle":"","description":"","tags":[],"characters":[{"name":"","look":"","gender":"male/female","age":"","voice":"voice style in English"}],"scenes":[{"chapter":"","speaker":"Narrator","mood":"calm","camera":"push_in","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`; }
 function engineForLong(){ const te=$("txtEngine").value; return te==="paste"?ideaEngine():te; }
 async function longScript(topic,mins,n){
   const G=GENRE[$("genre").value]||GENRE.doc, eng=engineForLong(); if(!eng) throw new Error("Long videos need an automatic script engine (Claude, ChatGPT, Gemini or Cloudflare) in Settings.");
@@ -574,7 +581,7 @@ ${ch.map((c,k)=>`${k+1}. ${c.title} — ${c.summary}`).join("\n")}
 अभी सिर्फ़ अध्याय ${i+1} "${ch[i].title}" के लिए ठीक ${per} दृश्य लिखें।${prev?`\nपिछले दृश्यों की आखिरी लाइनें (वहीं से आगे बढ़ें, दोहराएँ नहीं): ${prev}`:""}
 ${i===0?"पहला दृश्य दमदार hook हो।":""}${i===ch.length-1?"आखिरी दृश्य में निष्कर्ष और like/subscribe की छोटी अपील।":"अध्याय के आखिरी दृश्य में अगले अध्याय के लिए curiosity छोड़ें।"}
 ${scriptRules(per)}
-केवल JSON: {"scenes":[{"speaker":"Narrator","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`,eng,"scenes");
+केवल JSON: {"scenes":[{"speaker":"Narrator","mood":"calm","camera":"push_in","narration":"","keyword":"","who":[],"image_prompt":"","motion":"","onscreen":""}]}`,eng,"scenes");
     (d.scenes||[]).forEach((s,k)=>{ s.chapter=k===0?ch[i].title:""; scenes.push(s); });
   }
   $("aBar").style.width="100%";
@@ -585,7 +592,7 @@ async function applyScript(d,topic){
     S.topic=topic; S.title=d.title||topic; S.screenTitle=d.screen_title||""; S.screenSub=d.screen_subtitle||"";
     S.description=(d.description||"")+(d.tags&&d.tags.length?"\n\n"+d.tags.map(x=>"#"+String(x).replace(/\s+/g,"")).join(" "):"");
     S.chars=(d.characters||[]).filter(c=>c&&c.name).map(c=>({name:String(c.name).trim(),look:String(c.look||"").trim(),gender:/f|woman|girl|महिला|स्त्री/i.test(c.gender||"")?"female":"male",age:String(c.age||""),vdesc:String(c.voice||"")})); autoVoices();
-    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",who:Array.isArray(s.who)?s.who:(s.who?[s.who]:[]),speaker:s.speaker&&!/narrat|कथावाचक/i.test(s.speaker)?String(s.speaker).trim():"",chapter:s.chapter||"",st:{}}));
+    S.scenes=(d.scenes||[]).map(s=>({id:uid(),narration:s.narration||"",prompt:s.image_prompt||"",motion:s.motion||"slow cinematic camera push in",onscreen:s.onscreen||"",keyword:s.keyword||"",who:Array.isArray(s.who)?s.who:(s.who?[s.who]:[]),speaker:s.speaker&&!/narrat|कथावाचक/i.test(s.speaker)?String(s.speaker).trim():"",mood:MOODS.includes(String(s.mood||"").toLowerCase())?String(s.mood).toLowerCase():"",camera:CAMS.includes(String(s.camera||"").toLowerCase())?String(s.camera).toLowerCase():"",chapter:s.chapter||"",st:{}}));
     S.scenes.forEach(s=>{ if(s.speaker&&!s.who.includes(s.speaker)) s.who.push(s.speaker); });
     if(S.scenes.length&&!S.scenes[0].chapter&&S.scenes.some(s=>s.chapter)) S.scenes[0].chapter="Intro";
     applyRule(); await saveProj(); drawScript();
@@ -651,7 +658,9 @@ function drawScenes(){
       <textarea oninput="editNarr(${i},this.value)">${esc(s.narration)}</textarea>
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
-       <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()"></details>
+       <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()">
+       <div class="row"><div><label>🎭 Mood</label><select onchange="S.scenes[${i}].mood=this.value;saveProj()"><option value="">Auto (${moodOf({narration:s.narration,prompt:s.prompt})})</option>${MOODS.map(m=>`<option ${m===s.mood?"selected":""}>${m}</option>`).join("")}</select></div>
+       <div><label>🎥 Camera</label><select onchange="S.scenes[${i}].camera=this.value;saveProj()"><option value="">Auto</option>${CAMS.map(m=>`<option ${m===s.camera?"selected":""}>${m}</option>`).join("")}</select></div></div></details>
       <div class="row"><div><label>📑 Chapter (starts here)</label><input value="${esc(s.chapter||"")}" placeholder="—" oninput="S.scenes[${i}].chapter=this.value;saveProj()"></div>
       <div><label>👥 Who is in the picture</label><input value="${esc((s.who||[]).join(", "))}" placeholder="names" oninput="S.scenes[${i}].who=this.value.split(/[,،]/).map(x=>x.trim()).filter(Boolean);saveProj()"></div></div>
       <div class="row"><div><label>📍 On-screen text</label><input value="${esc(s.onscreen||"")}" placeholder="e.g. 1336 ई. — विजयनगर" oninput="S.scenes[${i}].onscreen=this.value;saveProj()"></div>
@@ -1159,6 +1168,15 @@ async function autoRun(){
   });
 }
 
+const MOODS=["calm","tense","shock","sad","action","mystery","reveal","happy"], CAMS=["push_in","pull_out","pan_left","pan_right","tilt_up","tilt_down","orbit","drift","handheld","push_fast","pan_fast"];
+function moodOf(s){ if(s.mood&&MOODS.includes(s.mood)) return s.mood; const t=(s.narration||"")+" "+(s.prompt||"");
+  if(/अचानक|चीख|धमाका|खून|मौत|लाश|!|suddenly|scream|blood|explo|ಅಚಾನಕ|திடீர|అకస్మాత్తు/i.test(t)) return "shock";
+  if(/भाग|दौड़|लड़ाई|हमला|पीछा|chase|fight|attack|run|race/i.test(t)) return "action";
+  if(/सच|खुलासा|पता चला|truth|reveal|finally/i.test(t)) return "reveal";
+  if(/रहस्य|राज़|राज|अंधेर|रहस्यमय|secret|myster|unknown|ರಹಸ್ಯ|மர்ம/i.test(t)) return "mystery";
+  if(/दुख|आँसू|रोने|अकेल|अंत|tears|sad|lonely|grief/i.test(t)) return "sad";
+  if(/डर|सन्नाटा|कदम|आहट|काँप|fear|silence|creep|footstep|night|रात/i.test(t)) return "tense";
+  if(/खुश|हँस|जश्न|मज़ा|happy|smile|celebrat/i.test(t)) return "happy"; return "calm"; }
 /* ---------- 3. Render (retention style engine v3) ---------- */
 function pickMime(){ const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]; return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||""; }
 function wrap(g,text,maxW){ const w=String(text).split(" "),L=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(g.measureText(t).width>maxW&&l){L.push(l);l=x;}else l=t; }); if(l)L.push(l); return L; }
@@ -1235,8 +1253,15 @@ async function renderVideo(auto,PV){
   { const fmt=s=>{ s=Math.max(0,Math.floor(s)); const hh=Math.floor(s/3600), mm=Math.floor(s%3600/60), ss=s%60; return (hh?hh+":"+String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
     const chs=[]; tl.forEach((x,j)=>{ const c=(x.s.chapter||"").trim(); if(!c) return; const at=j===0?0:Math.max(0,x.vs); if(!chs.length&&at>0) chs.push({at:0,c:"शुरुआत"}); if(!chs.length||at-chs[chs.length-1].at>=10) chs.push({at,c}); });
     window._chapters=chs.length>=3?chs.map(x=>`${fmt(x.at)} ${x.c}`).join("\n"):""; }
+  tl.forEach(x=>{ x.mood=moodOf(x.s);
+    if(x.s.voice&&x.s.voice.buf&&!x.s.own){ const ch=x.s.voice.buf.getChannelData(0), sr=x.s.voice.buf.sampleRate, win=Math.floor(sr/30), env=[];
+      for(let k=0;k+win<=ch.length;k+=win){ let sum=0; for(let q=k;q<k+win;q+=4) sum+=ch[q]*ch[q]; env.push(Math.sqrt(sum/(win/4))); }
+      const srt=[...env].sort((a,b)=>a-b), ref=srt[Math.floor(srt.length*0.95)]||1; let sm=0; x.env=env.map(v=>{ sm=sm*0.6+Math.min(1,v/ref)*0.4; return sm; }); }
+    if(!(x.s.useVideo&&x.s.clip)&&x.words&&x.words.length){ const segs=[]; let cur=null;
+      x.words.forEach((w,k)=>{ if(!cur) cur={a:w.a,b:w.b}; cur.b=w.b; if(/[।.!?॥]$/.test(w.w)&&k<x.words.length-1){ segs.push(cur); cur=null; } }); if(cur) segs.push(cur);
+      const m=[]; segs.forEach(sg=>{ if(m.length&&(sg.b-sg.a<1.4||m[m.length-1].b-m[m.length-1].a<1.4)) m[m.length-1].b=sg.b; else m.push(sg); }); x.segs=m; } });
   tl.forEach((x,j)=>{ x.ve=j<tl.length-1?tl[j+1].vs+TR:total; x.chunks=groupWords(x.words,SUB==="pop"?14:40,SUB==="pop"?3:9); const kw=x.words.find(w=>w.kw); x.kwT=kw?kw.a:null; });
-  const KINDS=["zoom","flash","whip","fade","glitch"], STORY=["cut","push","cut","cut","zoom","push","cut","fade"], tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS==="story"?STORY[(j*5+1)%STORY.length]:TRANS;
+  const KINDS=["zoom","flash","whip","fade","glitch","dip","spin","wipe","iris","blinds","doors","pixel","slideup","zoomout","blur"], STORY=["cut","push","cut","cut","zoom","push","cut","fade"], MOODTR={shock:"shakecut",tense:"dip",sad:"blur",mystery:"dip",action:"whip",reveal:"iris",happy:"zoomout",calm:"fade"}, tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS==="story"?STORY[(j*5+1)%STORY.length]:TRANS==="mood"?(MOODTR[tl[j]&&tl[j].mood]||"fade"):TRANS;
   const look=LOOKS[val("look")]||[], grain=on("grain")?makeGrain():null;
   const barH=on("bars")?(W>H?Math.round((H-W/2.39)/2):Math.round(H*0.05)):0;
   const ST=screenTitle();
@@ -1256,14 +1281,54 @@ async function renderVideo(auto,PV){
   const vids={};
   function prep(j){ const x=tl[j]; if(!x||!x.s.useVideo||!x.s.clip||vids[j]) return; const el=document.createElement("video"); el.muted=true; el.playsInline=true; el.preload="auto"; el.src=x.s.clip.url; el.load(); vids[j]={el,started:false}; }
   function release(j){ const v=vids[j]; if(!v) return; try{ v.el.pause(); v.el.removeAttribute("src"); v.el.load(); }catch(e){} delete vids[j]; }
-  function cover(src,sw,sh,z,px,py,alpha,dx){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha; g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5+dx+SX,(H-dh)/2+py*(dh-H)*0.5+SY,dw,dh); g.globalAlpha=1; }
+  function cover(src,sw,sh,z,px,py,alpha,dx,dy=0,rot=0){ const sc=Math.max(W/sw,H/sh)*z, dw=sw*sc, dh=sh*sc; g.globalAlpha=alpha;
+    if(rot){ g.save(); g.translate(W/2+dx+SX,H/2+dy+SY); g.rotate(rot); g.drawImage(src,-dw/2+px*(dw-W)*0.5,-dh/2+py*(dh-H)*0.5,dw,dh); g.restore(); }
+    else g.drawImage(src,(W-dw)/2+px*(dw-W)*0.5+dx+SX,(H-dh)/2+py*(dh-H)*0.5+dy+SY,dw,dh); g.globalAlpha=1; }
   function punch(x,T){ if(!on("punch")||x.kwT==null) return 1; const d=T-x.kwT; return d>=0&&d<0.9?1+0.07*(1-ease(d/0.9)):1; }
-  function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1), dx=(o.dx||0)*W;
-    const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx); return; }
+  const CAMK=["push_in","pan_right","pull_out","tilt_up","pan_left","drift","orbit","tilt_down"], CSTR={subtle:0.6,normal:1,strong:1.6}[val("camStr")]||1;
+  const MOODCAM={calm:["pan_right","pan_left","tilt_up"],tense:["push_in"],shock:["push_fast"],sad:["pull_out"],action:["pan_fast","handheld"],mystery:["drift","orbit"],reveal:["pull_out"],happy:["tilt_up","pan_right"]};
+  function camKind(x){ const c=val("camMode"); if(c!=="auto"&&c!=="mixed") return c; if(x.s.camera&&CAMK.concat(["push_fast","pan_fast","handheld"]).includes(x.s.camera)&&c==="auto") return x.s.camera;
+    if(c==="auto"){ const L=MOODCAM[x.mood]; if(L) return L[x.i%L.length]; } return CAMK[x.i%CAMK.length]; }
+  const eio=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  function cam(kind,p,T){ const s=CSTR, e=eio(p);
+    switch(kind){
+      case "push_in": return {z:1.04+0.13*s*e,px:0,py:0};
+      case "push_fast": return {z:1.04+0.26*s*ease(p*1.6),px:0,py:-0.1};
+      case "pull_out": return {z:1.04+0.15*s*(1-e),px:0,py:0};
+      case "pan_left": return {z:1.10+0.04*s,px:0.5*s*(0.5-e)*1.6,py:0};
+      case "pan_right": return {z:1.10+0.04*s,px:-0.5*s*(0.5-e)*1.6,py:0};
+      case "pan_fast": return {z:1.16,px:-0.9*s*(0.5-e),py:0.05};
+      case "tilt_up": return {z:1.12+0.03*s,px:0,py:0.5*s*(0.5-e)*1.6};
+      case "tilt_down": return {z:1.12+0.03*s,px:0,py:-0.5*s*(0.5-e)*1.6};
+      case "orbit": return {z:1.14+0.04*s,px:Math.sin(e*Math.PI-Math.PI/2)*0.35*s,py:0,rot:(e-0.5)*0.035*s};
+      case "drift": return {z:1.10+0.05*s*e,px:Math.sin(T*0.35)*0.25*s,py:Math.cos(T*0.27)*0.2*s};
+      case "handheld": return {z:1.10,px:(Math.sin(T*2.1)+Math.sin(T*3.7))*0.035*s,py:(Math.cos(T*1.9)+Math.sin(T*3.1))*0.035*s,rot:Math.sin(T*1.3)*0.004*s};
+      default: return {z:1.05+0.1*e,px:0,py:0}; } }
+  function shotAt(x,T){ if(!on("multiShot")||!x.segs||x.segs.length<2) return null; let k=0; x.segs.forEach((sg,n)=>{ if(T>=sg.a) k=n; }); if(k===0) return null;
+    const r=(n)=>{ let h2=0; const str=x.s.id+":"+k+":"+n; for(let c=0;c<str.length;c++) h2=(h2*31+str.charCodeAt(c))|0; return ((h2>>>0)%1000)/1000; };
+    const seg=x.segs[k], q=clamp((T-seg.a)/Math.max(0.6,seg.b-seg.a));
+    return {z:1.32+0.22*r(1)+0.05*q, px:(r(2)-0.5)*1.4, py:(r(3)-0.5)*1.1, pop:clamp((T-seg.a)/0.18)}; }
+  function envAt(x,T){ if(!x.env) return 0; const k=Math.floor((T-x.start)*30); return k>=0&&k<x.env.length?x.env[k]:0; }
+  function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1)*(on("voiceSync")?1+0.014*CSTR*envAt(x,T):1), dx=(o.dx||0)*W, dy=(o.dy||0)*H, rot=o.rot||0;
+    const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx,dy,rot); return; }
     if(!x.s.img) return;
-    const im=x.s.img.bmp, k=j%4, z=(k%2===0)?1.05+0.10*p:1.15-0.10*p;
-    cover(im,im.width,im.height,z*zm,(k<2?-1:1)*(p-0.5),(k===1||k===2?1:-1)*(p-0.5)*0.6,alpha,dx); }
+    const im=x.s.img.bmp, sh=shotAt(x,T);
+    if(sh){ cover(im,im.width,im.height,sh.z*zm*(1+0.04*(1-sh.pop)),clamp(sh.px,-1,1),clamp(sh.py,-1,1),alpha,dx,dy,rot); return; }
+    const c=cam(camKind(x),p,T); cover(im,im.width,im.height,c.z*zm,c.px,c.py,alpha,dx,dy,rot+(c.rot||0)); }
+  let tmpC=null;
   function transition(A,B,T,q,kind){
+    const e=eio(q);
+    if(kind==="dip"){ if(q<0.5){ drawScene(A,T,1); g.fillStyle=`rgba(0,0,0,${q*2})`; } else { drawScene(B,T,1); g.fillStyle=`rgba(0,0,0,${2-q*2})`; } g.fillRect(0,0,W,H); return; }
+    if(kind==="blur"){ g.save(); g.filter=`blur(${Math.round(q*18*U)}px)`; drawScene(A,T,1); g.filter=`blur(${Math.round((1-q)*18*U)}px)`; drawScene(B,T,q); g.restore(); return; }
+    if(kind==="spin"){ if(q<0.5) drawScene(A,T,1,{rot:e*0.6,z:1+e*0.6}); else drawScene(B,T,1,{rot:-(1-e)*0.6,z:1+(1-e)*0.6}); g.fillStyle=`rgba(255,255,255,${0.25*(1-Math.abs(2*q-1))})`; g.fillRect(0,0,W,H); return; }
+    if(kind==="zoomout"){ drawScene(A,T,1-q,{z:1-0.25*e}); drawScene(B,T,q,{z:1.5-0.5*e}); return; }
+    if(kind==="slideup"){ drawScene(A,T,1,{dy:-e}); drawScene(B,T,1,{dy:1-e}); return; }
+    if(kind==="wipe"){ drawScene(A,T,1); g.save(); g.beginPath(); g.rect(0,0,W*e,H); g.clip(); drawScene(B,T,1); g.restore(); g.fillStyle="rgba(255,255,255,0.7)"; g.fillRect(W*e-2*U,0,4*U,H); return; }
+    if(kind==="iris"){ drawScene(A,T,1); g.save(); g.beginPath(); g.arc(W/2,H/2,Math.hypot(W,H)/2*e,0,Math.PI*2); g.clip(); drawScene(B,T,1); g.restore(); return; }
+    if(kind==="blinds"){ drawScene(A,T,1); g.save(); g.beginPath(); const n=8, sh=H/n; for(let k=0;k<n;k++) g.rect(0,k*sh,W,sh*e); g.clip(); drawScene(B,T,1); g.restore(); return; }
+    if(kind==="doors"){ drawScene(B,T,1); g.save(); g.beginPath(); g.rect(0,0,W/2,H); g.clip(); drawScene(A,T,1,{dx:-e*0.5}); g.restore(); g.save(); g.beginPath(); g.rect(W/2,0,W/2,H); g.clip(); drawScene(A,T,1,{dx:e*0.5}); g.restore(); return; }
+    if(kind==="pixel"){ drawScene(q<0.5?A:B,T,1); const lv=1-Math.abs(2*q-1), sz=Math.max(4,Math.round(lv*48*U)); if(sz>4){ if(!tmpC){ tmpC=document.createElement("canvas"); } tmpC.width=Math.ceil(W/sz); tmpC.height=Math.ceil(H/sz); const t2=tmpC.getContext("2d"); t2.drawImage(cv,0,0,tmpC.width,tmpC.height); g.save(); g.imageSmoothingEnabled=false; g.drawImage(tmpC,0,0,W,H); g.restore(); } return; }
+    if(kind==="shakecut"){ const k2=1-q; SX+=(Math.random()-0.5)*fs*1.2*k2; SY+=(Math.random()-0.5)*fs*1.2*k2; drawScene(B,T,1,{z:1+0.08*k2}); return; }
     if(kind==="cut"){ drawScene(B,T,1); }
     else if(kind==="push"){ const e=q<0.5?4*q*q*q:1-Math.pow(-2*q+2,3)/2; drawScene(A,T,1,{dx:-e}); drawScene(B,T,1,{dx:1-e}); }
     else if(kind==="fade"){ drawScene(A,T,1); drawScene(B,T,q); }
@@ -1275,6 +1340,14 @@ async function renderVideo(auto,PV){
       for(let k=0;k<n;k++){ const y=Math.random()*H, hh=Math.random()*H*0.08+4; g.drawImage(cv,0,y,W,hh,(Math.random()-0.5)*W*0.12*amt,y,W,hh); }
       g.globalCompositeOperation="screen"; g.fillStyle=`rgba(255,0,60,${0.2*amt})`; g.fillRect(W*0.006*amt,0,W,H); g.fillStyle=`rgba(0,200,255,${0.2*amt})`; g.fillRect(-W*0.006*amt,0,W,H); g.globalCompositeOperation="source-over"; }
   }
+  function moodFx(x,T){ if(!on("voiceSync")||!x) return; const m=x.mood, ev=envAt(x,T);
+    if(m==="sad"){ g.globalCompositeOperation="saturation"; g.fillStyle="hsl(0,0%,50%)"; g.globalAlpha=0.45; g.fillRect(0,0,W,H); g.globalCompositeOperation="soft-light"; g.fillStyle="#3a5a8a"; g.globalAlpha=0.3; g.fillRect(0,0,W,H); }
+    else if(m==="happy"){ g.globalCompositeOperation="soft-light"; g.fillStyle="#ffc070"; g.globalAlpha=0.3; g.fillRect(0,0,W,H); }
+    else if(m==="tense"){ const pulse=0.22+0.12*(0.5+0.5*Math.sin(T*2.4))+0.1*ev; const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25,W/2,H/2,Math.max(W,H)*0.7); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,`rgba(0,0,0,${pulse})`); g.fillStyle=vg; g.fillRect(0,0,W,H); }
+    else if(m==="mystery"){ g.globalCompositeOperation="screen"; for(let k=0;k<3;k++){ const fx=W*(0.2+0.3*k+0.15*Math.sin(T*0.2+k*2)), fy=H*(0.6+0.2*Math.cos(T*0.15+k)), r=Math.max(W,H)*0.45; const fg=g.createRadialGradient(fx,fy,0,fx,fy,r); fg.addColorStop(0,"rgba(200,210,230,0.16)"); fg.addColorStop(1,"rgba(200,210,230,0)"); g.fillStyle=fg; g.globalAlpha=1; g.fillRect(0,0,W,H); } }
+    else if(m==="reveal"){ const d=T-x.start; if(d>=0&&d<1.4){ const k=1-d/1.4, gr=g.createRadialGradient(W*0.5,H*0.35,0,W*0.5,H*0.35,Math.max(W,H)*0.7); gr.addColorStop(0,`rgba(255,230,180,${0.6*k})`); gr.addColorStop(1,"rgba(255,200,120,0)"); g.globalCompositeOperation="screen"; g.fillStyle=gr; g.fillRect(0,0,W,H); } }
+    else if(m==="shock"){ const ht=x.kwT!=null?x.kwT:(x.words.find(w=>/!/.test(w.w))||x.words[0]||{a:x.start}).a, d=T-ht; if(d>0&&d<0.14){ g.fillStyle=`rgba(255,255,255,${0.5*(1-d/0.14)})`; g.fillRect(0,0,W,H); } }
+    g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
   function grade(){ look.forEach(([op,col,al])=>{ g.globalCompositeOperation=op; if(col==="grad"){ const gr=g.createLinearGradient(0,0,W*0.3,H); gr.addColorStop(0,al[0]); gr.addColorStop(1,al[1]); g.fillStyle=gr; g.globalAlpha=1; } else { g.fillStyle=col; g.globalAlpha=al; } g.fillRect(0,0,W,H); }); g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
   function leaks(T){ if(!on("leaks")) return; let s=0;
     tl.forEach(x=>{ if(x.i>0){ const d=Math.abs(T-(x.vs+TR/2)); if(d<1.1) s=Math.max(s,1-d/1.1); } });
@@ -1396,11 +1469,14 @@ async function renderVideo(auto,PV){
     if(SHAKE){ SX=(Math.sin(T*1.7)*0.6+Math.sin(T*3.3+1)*0.4)*W*0.0035; SY=(Math.cos(T*1.3)*0.6+Math.sin(T*2.9)*0.4)*H*0.0035; }
     slams.forEach(st=>{ const d=T-st; if(d>0&&d<0.15){ SX+=(Math.random()-0.5)*fs*0.5; SY+=(Math.random()-0.5)*fs*0.5; } });
     let i=0; for(let j=0;j<tl.length;j++) if(tl[j].vs<=T) i=j;
+    if(on("voiceSync")){ const cx=tl[i], ev=envAt(cx,T);
+      if(cx.mood==="action"){ SX+=(Math.random()-0.5)*fs*0.25*ev*CSTR; SY+=(Math.random()-0.5)*fs*0.2*ev*CSTR; }
+      if(cx.mood==="shock"){ const ht=cx.kwT!=null?cx.kwT:(cx.words.find(w=>/!/.test(w.w))||cx.words[0]||{a:cx.start}).a, d=T-ht; if(d>0&&d<0.35){ const k=1-d/0.35; SX+=(Math.random()-0.5)*fs*0.6*k*CSTR; SY+=(Math.random()-0.5)*fs*0.6*k*CSTR; } } }
     prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i-1||(+k===i-1&&T>tl[i].vs+TR)) release(+k); });
     [i,i+1].forEach(j=>{ const v=vids[j], own=tl[j]&&tl[j].s.own; if(v&&!v.started&&T>=(own?tl[j].start:tl[j].vs)&&v.el.readyState>=2){ v.el.playbackRate=own?1:clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
     const q=i>0?(T-tl[i].vs)/TR:1;
     if(q<1) transition(tl[i-1],tl[i],T,clamp(q),tk(i)); else drawScene(tl[i],T,1);
-    grade(); leaks(T); vignette(); filmFx(n);
+    grade(); moodFx(tl[i],T); leaks(T); vignette(); filmFx(n);
     titleCard(T); lowerThird(tl[i],T); subtitles(tl[i],T); endScreen(T); bars(T); progress(T);
   }
   prep(0); prep(1); await sleep(600); frame(0);
