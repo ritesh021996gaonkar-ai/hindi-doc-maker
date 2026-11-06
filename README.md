@@ -32,3 +32,4 @@ Every push to `main` builds the APK in GitHub Actions → download **HindiDocMak
 ## ☁️ Cloud video bot (new in v5.3)
 Let GitHub make the AI clips while your phone is locked. The bot lives in a separate repo, **doc-video-bot** (see its README for the 10-minute setup).
 Then in the app: ⚙️ Settings → ☁️ Cloud video bot → GitHub token + repo → tap **☁️ Send to cloud bot**, later **⬇️ Get clips**.
+**🆓 v5.4:** pick "My own model — Kaggle free GPU" as the bot engine to make clips at ₹0 with open-source LTX-Video or Wan 2.2.

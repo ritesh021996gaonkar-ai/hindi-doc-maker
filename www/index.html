@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v5.4</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -145,7 +145,7 @@ details summary{cursor:pointer;font-weight:700}
 <label>GitHub token (fine-grained: Contents + Actions read/write on the bot repo)</label><input id="ghToken" type="password" placeholder="github_pat_...">
 <label>Bot repo</label><input id="ghRepo" value="Ritesh021996gaonkar-ai/doc-video-bot">
 <div class="row">
- <div><label>Bot engine</label><select id="cbEngine" onchange="cbUI()"><option value="kling">Kling AI</option><option value="grok">xAI Grok Imagine</option><option value="omni">Gemini Omni Flash</option></select></div>
+ <div><label>Bot engine</label><select id="cbEngine" onchange="cbUI()"><option value="kaggle">🆓 My own model — Kaggle free GPU (₹0)</option><option value="kling">Kling AI</option><option value="grok">xAI Grok Imagine</option><option value="omni">Gemini Omni Flash</option></select></div>
  <div><label>Bot clip quality</label><select id="cbRes"></select></div>
 </div>
 <label>Money limit per video (₹) — bot stops when the estimate reaches it</label><input id="cbMax" type="number" value="200" min="0">
@@ -904,10 +904,10 @@ async function makeClip(s){
 
 /* ---------- ☁️ cloud video bot (doc-video-bot repo on GitHub Actions) ---------- */
 function cbUI(){ const e=$("cbEngine").value, sel=$("cbRes"), cur=sel.value||load("hdm2_cbRes");
-  const opts=e==="kling"?[["std","Standard (cheaper)"],["pro","Pro"]]:RES[e];
+  const opts=e==="kaggle"?[["fast","Fast — LTX-Video (~3–5 min/clip)"],["best","Best — Wan 2.2 (~10–25 min/clip)"]]:e==="kling"?[["std","Standard (cheaper)"],["pro","Pro"]]:RES[e];
   sel.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join(""); if(opts.some(o=>o[0]===cur)) sel.value=cur; }
-function cbRate(){ const e=$("cbEngine").value,r=$("cbRes").value; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; return r==="pro"?0.112:0.084; }
-function cbSecs(s){ const v=Math.ceil(sceneSecs(s)), e=$("cbEngine").value; if(e==="omni") return Math.min(10,Math.max(4,v)); if(e==="grok") return Math.min(15,Math.max(3,v)); return v>6?10:5; }
+function cbRate(){ const e=$("cbEngine").value,r=$("cbRes").value; if(e==="kaggle") return 0; if(e==="omni") return {"360p":0.034,"720p":0.101,"1080p":0.152}[r]||0.101; if(e==="grok") return r==="480p"?0.05:0.07; return r==="pro"?0.112:0.084; }
+function cbSecs(s){ const v=Math.ceil(sceneSecs(s)), e=$("cbEngine").value; if(e==="kaggle") return Math.min($("cbRes").value==="best"?5:6,Math.max(2,v)); if(e==="omni") return Math.min(10,Math.max(4,v)); if(e==="grok") return Math.min(15,Math.max(3,v)); return v>6?10:5; }
 function cloudJob(){ try{ return JSON.parse(load("hdm2_cloudJob")||"null"); }catch(e){ return null; } }
 function cloudShow(m){ $("cloudInfo").innerHTML=m||""; }
 async function gh(method,path,{json,raw,blob}={}){
@@ -925,17 +925,16 @@ async function cloudSend(){ if(BUSY) return alert("Wait until the current job fi
     sc=sc.filter(s=>!s.clip); if(!sc.length) return alert("All 🎥 scenes already have clips.");
     for(const s of sc){ if(!s.img){ status(`🖼️ Making picture for scene ${S.scenes.indexOf(s)+1}…`); await makeImage(s); } }
     const usd=sc.reduce((a,s)=>a+cbSecs(s)*cbRate(),0), lim=+$("cbMax").value||0;
-    if(!confirm(`Send ${sc.length} clip(s) to the cloud bot (${$("cbEngine").selectedOptions[0].text}, ${$("cbRes").value})?\n\nEstimate ≈ $${usd.toFixed(2)} (≈ ₹${Math.round(usd*USD_INR)})${lim?`\nMoney limit: ₹${lim}${usd*USD_INR>lim?" — some clips will be skipped":""}`:""}`)) return;
+    if(!confirm(`Send ${sc.length} clip(s) to the cloud bot (${$("cbEngine").selectedOptions[0].text}, ${$("cbRes").value})?\n\n${$("cbEngine").value==="kaggle"?`Cost: ₹0 — uses your free Kaggle GPU hours (about ${$("cbRes").value==="best"?"10–25":"3–5"} min per clip, max ${$("cbRes").value==="best"?5:6} s each).`:`Estimate ≈ $${usd.toFixed(2)} (≈ ₹${Math.round(usd*USD_INR)})`}${$("cbEngine").value!=="kaggle"&&lim?`\nMoney limit: ₹${lim}${usd*USD_INR>lim?" — some clips will be skipped":""}`:""}`)) return;
     const d=new Date(), p=x=>String(x).padStart(2,"0"), id=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${uid().slice(0,6)}`;
     cloudShow("Connecting to GitHub…");
     const info=await gh("GET",""); if(!info.ok) throw new Error("Bot repo not found — check the repo name and that the token can see it.");
     const main=info.data.default_branch||"main", ref=await gh("GET",`/git/ref/heads/${main}`); if(!ref.ok) throw new Error("Bot repo is empty — push the doc-video-bot files first.");
     const mk=await gh("POST","/git/refs",{json:{ref:"refs/heads/job-"+id,sha:ref.data.object.sha}}); if(!mk.ok) throw new Error("Could not create the job branch");
-    const map={}, scenes=[];
+    const e=$("cbEngine").value, map={}, scenes=[];
     for(const [k,s] of sc.entries()){ const n=S.scenes.indexOf(s)+1, name=`scene_${p(n)}.jpg`; map[n]=s.id;
       cloudShow(`⬆️ Uploading picture ${k+1}/${sc.length}…`); await ghPut(id,name,await blobToB64(await toJpeg(s.img.blob)));
-      scenes.push({n,id:s.id,secs:Math.ceil(sceneSecs(s)),prompt:s.motion||"slow cinematic camera push in",img:name}); }
-    const e=$("cbEngine").value;
+      scenes.push({n,id:s.id,secs:e==="kaggle"?cbSecs(s):Math.ceil(sceneSecs(s)),prompt:s.motion||"slow cinematic camera push in",desc:String(s.prompt||"").slice(0,400),img:name}); }
     const job={id,title:S.title,engine:e,res:e==="kling"?"std":$("cbRes").value,klMode:e==="kling"?$("cbRes").value:undefined,klModel:$("klModel").value.trim()||"kling-v2-6",klBase:$("klBase").value.trim(),omniModel:$("mOmni").value.trim(),format:$("format").value,maxUSD:lim?+(lim/USD_INR).toFixed(2):0,parallel:3,scenes};
     await ghPut(id,"job.json",await blobToB64(new Blob([JSON.stringify(job,null,1)],{type:"application/json"})));
     const go=await gh("POST","/actions/workflows/make-clips.yml/dispatches",{json:{ref:main,inputs:{job:id}}});
