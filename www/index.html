@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.8</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.9</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -242,6 +242,8 @@ details summary{cursor:pointer;font-weight:700}
 <div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
 <div id="cloudInfo" class="muted"></div>
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
+<label>🖼️ New picture every (pictures change with the words)</label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2" selected>2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
+<button class="small" onclick="runBeats()">🖼️ Make extra pictures for all scenes</button>
 <button class="small sec" onclick="remakeAll()">🔄 Remake all pictures in the chosen theme</button>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
 <button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
@@ -359,7 +361,7 @@ function setTheme(k,from){ const t=THEMES[k]; if(!t) return; ["picTheme","picThe
   if(from&&S.scenes.some(s=>s.img)) status(`🎨 Theme: ${t.l}. New pictures use it — tap "🔄 Remake all pictures" in step 2 to change existing ones.`); }
 async function remakeAll(){ const n=S.scenes.filter(s=>s.img&&!s.own).length; if(!n) return runImages();
   if(!confirm(`Remake all ${n} pictures in the "${THEMES[$("picTheme").value].l}" theme? (Uses picture credits again; clips on those scenes are removed.)`)) return;
-  for(const s of S.scenes){ if(s.own) continue; s.img=null; DB.del("i_"+s.id); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } }
+  for(const s of S.scenes){ if(s.own) continue; s.img=null; DB.del("i_"+s.id); clearBeats(s); if(s.clip){ s.clip=null; DB.del("c_"+s.id); } }
   (S.chars||[]).forEach(c=>{ c.sheet=null; DB.del("cs_"+c.name); });
   drawScript(); await guard(async()=>{ if($("imgEngine").value==="openai"&&(S.chars||[]).length) await makeSheets(false); return runStep("i","🖼️ Pictures",2); }); }
 const LANGS={hi:{n:"Hindi",s:"Devanagari",l:"हिंदी — Hindi"},en:{n:"English",s:"Latin",l:"English"},kn:{n:"Kannada",s:"Kannada",l:"ಕನ್ನಡ — Kannada"},mr:{n:"Marathi",s:"Devanagari",l:"मराठी — Marathi"},
@@ -392,7 +394,7 @@ function textPack(){ const sel=($("textPack")&&$("textPack").value)||"auto"; let
   if(sel==="auto"&&$("genre").value==="crime"&&$("picTheme").value==="photo") base=TEXTPACKS.crime;
   const P={...base}; const ts=$("titleStyle").value, fs2=$("factStyle").value; if(ts&&ts!=="auto") P.title=ts; if(fs2&&fs2!=="auto") P.fact=fs2; return P; }
 /* ---------- settings ---------- */
-const SET_IDS=["cutEvery","textPack","picTheme","fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","vlang","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
+const SET_IDS=["picsEvery","cutEvery","textPack","picTheme","fullAuto","budget","autoTopic","hordeAuto","cfImgModel","hordeModel","hordeKey","realism","oaImgQ","oaImgModel","ytKey","niche","claudeKey","claudeModel","oaKey","oaModel","txtEngine","cfTxtModel","imgEngine","cfAcct","cfToken","key","voiceEngine","elKey","elVoice","elModel","voice","vidEngine","vidRes","vidRule","xaiKey","klAk","klSk","klModel","klMode","klBase","ghToken","ghRepo","cbEngine","cbRes","cbMax","mText","mImg","mTts","mOmni","imgStyle","ttsStyle","par","vlang","format","mins","tone","lang","genre","pacing","metaLang","pronDict","elSpeed","elStyle","titleCard","bgmVol","look","channel","onscreen","bars","grain","leaks","sfx","endScreen","trans","subStyle","subPos","titleStyle","titlePos","factStyle","kwHL","punch","shake","progress","ambience"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -465,7 +467,7 @@ async function http1(method,url,{headers={},json,blob=false,text=false,timeout=6
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",ed:s.ed||{},chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",ed:s.ed||{},beats:(s.beats||[]).map(b=>({id:b.id,w0:b.w0,text:b.text,prompt:b.prompt})),chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
@@ -475,6 +477,7 @@ async function restore(){
     try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,false,a.text); }catch(e){}
     try{ const im=await DB.get("i_"+s.id); if(im) await setImage(s,im,false); }catch(e){}
     try{ const c=await DB.get("c_"+s.id); if(c) await setClip(s,c.blob,false); }catch(e){}
+    for(const b of (s.beats||[])){ try{ const im=await DB.get("i_"+b.id); if(im) await setImage(b,im,false); }catch(e){} }
   }
   log(`Restored saved project: ${S.scenes.length} scenes.`); drawScript();
 }
@@ -684,6 +687,7 @@ function drawScenes(){
     return `<div class="scene" id="sc_${s.id}"><div class="hd">Scene ${i+1}
       <span class="chips">${chip("v","voice")}${chip("i","picture")}${s.useVideo?chip("c","clip"):""}</span></div>
       ${s.clip?`<video class="thumb" src="${s.clip.url}" muted playsinline controls preload="metadata"></video>`:s.img?`<img class="thumb" src="${s.img.url}">`:""}
+      ${(s.beats||[]).length?`<div class="muted" style="margin-top:6px">🖼️ Extra pictures (change with the words) — tap one to remake it</div><div style="display:flex;gap:6px;overflow-x:auto;padding:4px 0">${s.beats.map((b,k)=>`<div style="flex:0 0 31%;font-size:11px" onclick="redoBeat(${i},${k})">${b.img?`<img src="${b.img.url}" style="width:100%;border-radius:6px;display:block">`:`<div style="aspect-ratio:16/9;background:#222;border-radius:6px;display:flex;align-items:center;justify-content:center">⏳</div>`}<div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.text)}</div></div>`).join("")}</div>`:""}
       ${s.err?`<div class="err">${esc(s.err)}</div>`:""}
       ${(S.chars||[]).length?`<label>🗣️ Who speaks</label><select onchange="setSpeaker(${i},this.value)"><option value="">Narrator</option>${S.chars.map(c=>`<option ${c.name===s.speaker?"selected":""}>${esc(c.name)}</option>`).join("")}</select>`:""}
       <label>${s.speaker?"💬 "+esc(s.speaker)+" says ("+VL().n+")":"Narration ("+VL().n+")"}${s.voice?` · ${s.voice.buf.duration.toFixed(1)}s`:""}</label>
@@ -792,13 +796,13 @@ function editPanel(s,i){ const e=ed(s), id=s.id, rng=(k,min,max,step,def,lab,uni
    ${rng("hold",0,3,0.25,0,"⏸️ Extra pause after the voice","s")}
    <div class="chk"><input type="checkbox" id="flip_${id}" ${e.flip?"checked":""} onchange="edSet(${i},'flip',this.checked?1:'')"><label for="flip_${id}">↔️ Flip picture (mirror)</label></div>
    ${s.clip?`${rng("cstart",0,Math.max(0,Math.floor((s.clip.dur||5)-1)),0.25,0,"🎬 Clip starts at","s")}<label>🎬 Clip speed</label><select onchange="edSet(${i},'cspeed',this.value?+this.value:'')">${opts({"":"Auto (fit voice)","0.5":"0.5× slow-mo","0.75":"0.75×","1":"1× normal","1.25":"1.25×","1.5":"1.5× fast"},e.cspeed!=null?String(e.cspeed):"")}</select>`:""}
-   <button class="small" onclick="previewScene(${i})">▶️ Preview this scene</button><button class="small sec" onclick="edCopyAll(${i})">📋 Copy edits to all scenes</button><button class="small sec" onclick="edReset(${i})">↺ Reset</button>
+   <button class="small" onclick="previewScene(${i})">▶️ Preview this scene</button><button class="small sec" onclick="sceneBeats(${i})">🖼️ (Re)make extra pictures</button><button class="small sec" onclick="edCopyAll(${i})">📋 Copy edits to all scenes</button><button class="small sec" onclick="edReset(${i})">↺ Reset</button>
   </details>`; }
 function previewScene(i){ if(!S.scenes[i].img&&!(S.scenes[i].own&&S.scenes[i].clip)) return alert("Make this scene's picture first."); return renderVideo(false,true,i); }
 function setSpeaker(i,v){ const s=S.scenes[i]; s.speaker=v; if(v&&!(s.who||[]).includes(v)) (s.who=s.who||[]).push(v); if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); drawScenes(); }
 function setChars(t){ const old=Object.fromEntries((S.chars||[]).map(c=>[c.name,c])); S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); if(k<=0) return null; const name=l.slice(0,k).trim(); return {...(old[name]||{}),name,look:l.slice(k+1).trim()}; }).filter(c=>c&&c.name); saveProj(); drawCharTools(); }
 function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
-function delScene(i){ const s=S.scenes[i]; ["a_","i_","c_"].forEach(p=>DB.del(p+s.id)); S.scenes.splice(i,1); saveProj(); drawScript(); }
+function delScene(i){ const s=S.scenes[i]; ["a_","i_","c_"].forEach(p=>DB.del(p+s.id)); clearBeats(s); S.scenes.splice(i,1); saveProj(); drawScript(); }
 function addScene(){ S.scenes.push({id:uid(),narration:"",prompt:"",motion:"slow cinematic camera push in",useVideo:false,st:{}}); saveProj(); drawScript(); }
 let playing=null;
 function playScene(i){ if(playing) try{playing.stop();}catch(e){} const src=ac().createBufferSource(); src.buffer=S.scenes[i].voice.buf; src.connect(ac().destination); src.start(); playing=src; }
@@ -810,7 +814,7 @@ function priceSec(){ const e=$("vidEngine").value,r=$("vidRes").value; if(e==="o
 function estCost(){ let sc=S.scenes;
   if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="key"&&(i<2||i%Math.max(1,Math.floor(n/8))===0)&&i<n)||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const vids=sc.filter(s=>s.useVideo&&!s.own), vSecs=vids.filter(s=>!s.clip).reduce((a,s)=>a+clipSecs(s),0), ie=$("imgEngine").value;
-  const vCost=$("vidEngine").value==="manual"?0:vSecs*priceSec(), iCost=sc.filter(s=>!s.img&&!s.own).length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
+  const vCost=$("vidEngine").value==="manual"?0:vSecs*priceSec(), iCost=(sc.filter(s=>!s.img&&!s.own).length+sc.reduce((a,s)=>a+beatsMissing(s),0))*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
   const chars=sc.reduce((a,s)=>a+(s.narration||"").length,0), vc=$("voiceEngine").value==="gemini"?chars*0.00006:0, tc={paste:0,cloudflare:0,gemini:0.01,claude:0.06,openai:0.02}[$("txtEngine").value]||0;
   return {usd:vCost+iCost+vc+(S.scenes.length?0:tc),inr:Math.round((vCost+iCost+vc+(S.scenes.length?0:tc))*USD_INR)}; }
 function updateCost(){
@@ -818,7 +822,7 @@ function updateCost(){
   if(!sc.length){ const mins=+$("mins").value||3, n=sceneCount(mins); sc=Array.from({length:n},(_,i)=>({narration:"x ".repeat($("pacing").value==="fast"?13:22),useVideo:$("vidEngine").value!=="none"&&($("vidRule").value==="all"||($("vidRule").value==="key"&&(i<2||i%Math.max(1,Math.floor(n/8))===0)&&i<n)||($("vidRule").value==="alt"&&i%2===0)||($("vidRule").value==="hook"&&i<3))})); }
   const secs=sc.reduce((a,s)=>a+sceneSecs(s)+0.5,0);
   const vids=sc.filter(s=>s.useVideo); const vSecs=vids.reduce((a,s)=>a+clipSecs(s),0);
-  const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=sc.length*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
+  const ie=$("imgEngine").value, vCost=vSecs*priceSec(), iCost=(sc.length+sc.reduce((a,s)=>a+beatsWanted(s),0))*({cloudflare:0,horde:0,chatgptapp:0,openai:{low:0.005,medium:0.041,high:0.165}[$("oaImgQ").value]||0.041,gemini:0.06}[ie]||0);
   const chars=S.scenes.length?S.scenes.reduce((a,s)=>a+s.narration.length,0):Math.round(secs*14);
   const voiceTxt=$("voiceEngine").value==="eleven"?`ElevenLabs: ~${chars.toLocaleString()} characters from your plan${$("elModel").value==="eleven_flash_v2_5"?" (Flash counts half)":""}`:`Gemini voice: ≈ $${(chars*0.00006).toFixed(2)}`;
   const tot=vCost+iCost;
@@ -1145,6 +1149,42 @@ async function cloudClean(){ const J=cloudJob(); if(!J) return cloudShow("Nothin
   if(!confirm(`Delete job ${J.id} from GitHub? Download your clips first (⬇️ Get clips) — clips already in your scenes stay on the phone.`)) return;
   try{ const r=await gh("DELETE",`/git/refs/heads/job-${J.id}`); if(!r.ok&&r.status!==404&&r.status!==422) throw new Error("GitHub "+r.status);
     store("hdm2_cloudJob",""); cloudShow(`🧹 Job ${J.id} deleted from GitHub.`); }catch(e){ cloudShow("❌ "+esc(e.message)); } }
+/* ---------- 🖼️ extra pictures that follow the words ---------- */
+function PE(){ return +(($("picsEvery")||{}).value)||0; }
+function beatsWanted(s){ const pe=PE(); if(!pe||s.own||(s.useVideo&&s.clip)) return 0; const d=sceneSecs(s); return Math.max(0,Math.min(5,Math.round(d/pe)-1)); }
+function beatsMissing(s){ const w=beatsWanted(s); if(!w) return 0; const have=(s.beats||[]).filter(b=>b.img).length; return Math.max(0,w-have); }
+function clearBeats(s){ (s.beats||[]).forEach(b=>{ DB.del("i_"+b.id); if(b.img&&b.img.url) URL.revokeObjectURL(b.img.url); }); s.beats=[]; }
+function splitBeats(s){ const n=beatsWanted(s)+1; if(n<2) return [];
+  const ws=s.voice?wordTimes(s):s.narration.split(/\s+/).filter(Boolean).map((w,k,arr)=>({w,a:k,b:k+1}));
+  if(ws.length<n) return []; const d=s.voice?s.voice.buf.duration:ws.length, out=[];
+  for(let k=1;k<n;k++){ const tgt=d*k/n; let best=0; ws.forEach((w,j)=>{ if(Math.abs(w.a-tgt)<Math.abs(ws[best].a-tgt)) best=j; }); if(best>0&&(!out.length||best>out[out.length-1].w0)) out.push({w0:best}); }
+  out.forEach((b,k)=>{ const end=k+1<out.length?out[k+1].w0:ws.length; b.text=ws.slice(b.w0,end).map(w=>w.w).join(" "); }); return out; }
+const ANGLES=["close-up of the most important detail","wide establishing shot of the place","medium shot from a different angle","low-angle dramatic shot","over-the-shoulder shot","extreme close-up of hands or an object"];
+async function planBeats(list){
+  const need=list.filter(s=>beatsWanted(s)&&!(s.beats&&s.beats.length===beatsWanted(s)));
+  if(!need.length) return;
+  need.forEach(s=>{ clearBeats(s); s.beats=splitBeats(s).map((b,k)=>({...b,id:s.id+"_b"+(k+1)+"_"+Math.random().toString(36).slice(2,6),prompt:`${s.prompt}. ${ANGLES[k%ANGLES.length]}, showing: ${b.text}`})); });
+  const todo=need.filter(s=>s.beats.length);
+  for(let c=0;c<todo.length;c+=12){ const part=todo.slice(c,c+12);
+    status(`🧠 Planning extra pictures ${Math.min(c+12,todo.length)}/${todo.length}…`);
+    const prompt=`You are the storyboard artist of a ${$("genre").value==="cartoon"?"cartoon":"documentary"} YouTube video. Each scene already has a MAIN picture prompt. Its voiceover is split into PARTS that play one after another; for EACH PART write a NEW picture prompt in ENGLISH that shows exactly what those words are about at that moment (a new subject, action or detail — not the same shot), keeping the SAME place, era, characters, clothes, lighting and art style as the main prompt. Vary the camera (close-up, wide, detail, reaction). No text or captions in the pictures. Keep each prompt under 60 words.
+Return ONLY JSON: {"scenes":[{"n":1,"prompts":["part 1 prompt","part 2 prompt"]}]}
+${part.map((s,k)=>`Scene ${k+1}\nMAIN: ${s.prompt}\nPEOPLE: ${(s.who||[]).join(", ")||"-"}\n`+s.beats.map((b,j)=>`PART ${j+1} words: ${b.text}`).join("\n")).join("\n\n")}`;
+    try{ const out=await llmJSON(prompt,$("txtEngine").value,"ideas"); (out.scenes||[]).forEach(o=>{ const s=part[(+o.n||0)-1]; if(!s) return; (o.prompts||[]).forEach((pr,j)=>{ if(s.beats[j]&&pr) s.beats[j].prompt=String(pr); }); }); }
+    catch(e){ log("Extra picture plan: "+String(e.message).slice(0,120)+" → using camera-angle prompts"); } }
+  saveProj(); }
+async function makeBeat(s,b){ b.who=s.who; b.st={}; b.narration=b.text; await makeImage(b); delete b.st; }
+async function runBeatsFor(list){
+  if(!PE()) return 0; if($("imgEngine").value==="chatgptapp"){ log("Extra pictures need an automatic picture engine (not ChatGPT app mode)."); return 0; }
+  await planBeats(list);
+  const jobs=[]; list.forEach(s=>(s.beats||[]).forEach(b=>{ if(!b.img) jobs.push([s,b]); })); if(!jobs.length) return 0;
+  let done=0, fail=0; status(`🖼️ Extra pictures 0/${jobs.length}`);
+  await pool(jobs,2,async([s,b])=>{ try{ await makeBeat(s,b); done++; }catch(e){ fail++; log(`❌ Extra picture (scene ${S.scenes.indexOf(s)+1}): ${String(e.message).slice(0,120)}`); }
+    status(`🖼️ Extra pictures ${done}/${jobs.length}${fail?` · ${fail} failed`:""}`); $("aBar").style.width=((done+fail)/jobs.length*100)+"%"; if((done+fail)%4===0) drawScenes(); });
+  saveProj(); drawScenes(); updateCost(); return fail; }
+const runBeats=()=>guard(async()=>{ if(!PE()){ setV("picsEvery","2"); saveSettings(true); } if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); return runBeatsFor(S.scenes); });
+async function redoBeat(i,k){ const s=S.scenes[i], b=s.beats[k]; await guard(async()=>{ try{ status("🖼️ Remaking extra picture…"); await makeBeat(s,b); status("✅ Done."); }catch(e){ status("❌ "+e.message); } drawScenes(); }); }
+async function sceneBeats(i){ const s=S.scenes[i]; if(!PE()){ setV("picsEvery","2"); saveSettings(true); } clearBeats(s); await guard(()=>runBeatsFor([s])); }
 /* ---------- runners ---------- */
 async function doStep(s,k){
   s.st[k]="run"; s.err=""; drawScenes();
@@ -1162,7 +1202,7 @@ async function runStep(k,label,n){
 }
 async function guard(fn){ if(BUSY){ alert("Already working…"); return; } BUSY=true; ac(); let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} try{ return await fn(); }finally{ BUSY=false; if(wake) try{wake.release();}catch(e){} } }
 const runVoices=()=>guard(()=>runStep("v","🎙️ Voices",3));
-const runImages=()=>guard(async()=>{ if($("imgEngine").value==="chatgptapp"){ picHint(); return 0; } return runStep("i","🖼️ Pictures",2); });
+const runImages=()=>guard(async()=>{ if($("imgEngine").value==="chatgptapp"){ picHint(); return 0; } const f=await runStep("i","🖼️ Pictures",2); if(PE()&&S.scenes.every(s=>s.voice)) await runBeatsFor(S.scenes); return f; });
 const runClips=()=>guard(async()=>{ if($("imgEngine").value!=="chatgptapp") await runStep("i","🖼️ Pictures",2); await runStep("v","🎙️ Voices",3); if($("vidEngine").value==="manual"){ manualHint(); return 0; } return runStep("c","🎥 Clips",+$("par").value||2); });
 function manualHint(){ const n=S.scenes.filter(s=>s.useVideo&&!s.clip).length; status(n?`📥 ${n} scene(s) need your clip: tap 📤 Send → make the clip in GenV/FlixGen → 📥 Import clip. Then tap Render.`:"✅ All clips imported — tap Render."); $("mediaBox").scrollIntoView({behavior:"smooth"}); }
 /* ---------- ⚡ full automation ---------- */
@@ -1219,7 +1259,8 @@ async function autoRun(){
       else { f=await runStep("i","🖼️ Pictures",2);
         if(f&&AUTO&&$("imgEngine").value!=="horde"){ log("⚡ Some pictures failed → trying AI Horde"); const old=$("imgEngine").value; setV("imgEngine","horde"); try{ await runStep("i","🖼️ Pictures (backup)",3); } finally{ setV("imgEngine",old); } }
         if(AUTO) for(let i=0;i<S.scenes.length;i++){ const s=S.scenes[i]; if(!s.img&&!s.own){ const nb=S.scenes.slice(0,i).reverse().find(x=>x.img)||S.scenes.slice(i+1).find(x=>x.img); if(nb){ await setImage(s,nb.img.blob); s.st.i="ok"; s.err=""; log(`⚡ Scene ${i+1}: reused a nearby picture`); } } }
-        if(S.scenes.some(s=>!s.img&&!s.own)){ status("⚠️ Some pictures failed — tap 🖼️ Pictures to retry."); return; } }
+        if(S.scenes.some(s=>!s.img&&!s.own)){ status("⚠️ Some pictures failed — tap 🖼️ Pictures to retry."); return; }
+        if(PE()){ const bf=await runBeatsFor(S.scenes); if(bf) log(`⚡ ${bf} extra picture(s) failed — those moments keep the main picture.`); } }
       // clips (failures are fine — picture with motion is used)
       if($("vidEngine").value==="manual"){ if(S.scenes.some(s=>s.useVideo&&!s.clip&&!s.own)){ manualHint(); status("✅ Script, voices & pictures ready. Now: 📋 Copy all motion prompts → make clips in GenV/FlixGen → 📥 Import all my clips → 🎬 Render. (Or tap 🎬 Render now — missing clips use the picture.)"); try{ navigator.vibrate&&navigator.vibrate([200,100,200]); }catch(e){} return; } }
       else if($("vidEngine").value!=="none"){ f=await runStep("c","🎥 Clips",+$("par").value||2); if(f) log(`⚡ ${f} clip(s) failed — those scenes use the picture with camera motion.`); }
@@ -1320,9 +1361,12 @@ async function renderVideo(auto,PV,ONE){
   });
   if(!TITLE) titleStart=-99;
   const BODY_END=t, total=t+OUTRO;
-  for(const x of tl){ const e=x.s.ed||{}; if(x.s.img&&(e.flip||(e.bri&&e.bri!==100)||(e.con&&e.con!==100)||(e.sat!=null&&e.sat!==100))){ try{
-      const bm=x.s.img.bmp, c2=document.createElement("canvas"); c2.width=bm.width; c2.height=bm.height; const x2=c2.getContext("2d");
-      x2.filter=`brightness(${(e.bri||100)/100}) contrast(${(e.con||100)/100}) saturate(${(e.sat!=null?e.sat:100)/100})`; if(e.flip){ x2.translate(c2.width,0); x2.scale(-1,1); } x2.drawImage(bm,0,0); x.bmp=await createImageBitmap(c2); }catch(err){ log("Scene edit: "+err.message); } } }
+  const adj=async(bm,e)=>{ if(!(e.flip||(e.bri&&e.bri!==100)||(e.con&&e.con!==100)||(e.sat!=null&&e.sat!==100))) return bm; try{
+      const c2=document.createElement("canvas"); c2.width=bm.width; c2.height=bm.height; const x2=c2.getContext("2d");
+      x2.filter=`brightness(${(e.bri||100)/100}) contrast(${(e.con||100)/100}) saturate(${(e.sat!=null?e.sat:100)/100})`; if(e.flip){ x2.translate(c2.width,0); x2.scale(-1,1); } x2.drawImage(bm,0,0); return await createImageBitmap(c2); }catch(err){ log("Scene edit: "+err.message); return bm; } };
+  for(const x of tl){ const e=x.s.ed||{}; if(x.s.img){ const b2=await adj(x.s.img.bmp,e); if(b2!==x.s.img.bmp) x.bmp=b2; }
+    if(PE()&&x.s.img&&!(x.s.useVideo&&x.s.clip)&&!(x.s.own&&x.s.clip)&&x.words&&x.words.length){ const bs=(x.s.beats||[]).filter(b=>b.img); if(bs.length){ x.beatT=[]; for(const b of bs) x.beatT.push({t:x.words[Math.min(b.w0,x.words.length-1)].a-0.05,bmp:await adj(b.img.bmp,e)}); x.beatT.sort((p2,q2)=>p2.t-q2.t);
+      const g3=[{a:x.vs,b:x.beatT[0].t,beat:1}]; x.beatT.forEach((bt,k)=>g3.push({a:bt.t,b:k+1<x.beatT.length?x.beatT[k+1].t:x.vend,beat:1,nb:1})); x.segs=g3; } } }
   { const fmt=s=>{ s=Math.max(0,Math.floor(s)); const hh=Math.floor(s/3600), mm=Math.floor(s%3600/60), ss=s%60; return (hh?hh+":"+String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
     const chs=[]; tl.forEach((x,j)=>{ const c=(x.s.chapter||"").trim(); if(!c) return; const at=j===0?0:Math.max(0,x.vs); if(!chs.length&&at>0) chs.push({at:0,c:"शुरुआत"}); if(!chs.length||at-chs[chs.length-1].at>=10) chs.push({at,c}); });
     window._chapters=chs.length>=3?chs.map(x=>`${fmt(x.at)} ${x.c}`).join("\n"):""; }
@@ -1330,11 +1374,11 @@ async function renderVideo(auto,PV,ONE){
     if(x.s.voice&&x.s.voice.buf&&!x.s.own){ const ch=x.s.voice.buf.getChannelData(0), sr=x.s.voice.buf.sampleRate, win=Math.floor(sr/30), env=[];
       for(let k=0;k+win<=ch.length;k+=win){ let sum=0; for(let q=k;q<k+win;q+=4) sum+=ch[q]*ch[q]; env.push(Math.sqrt(sum/(win/4))); }
       const srt=[...env].sort((a,b)=>a-b), ref=srt[Math.floor(srt.length*0.95)]||1; let sm=0; x.env=env.map(v=>{ sm=sm*0.6+Math.min(1,v/ref)*0.4; return sm; }); }
-    if(!(x.s.useVideo&&x.s.clip)&&x.words&&x.words.length){ const segs=[]; let cur=null;
+    if(!x.beatT&&!(x.s.useVideo&&x.s.clip)&&x.words&&x.words.length){ const segs=[]; let cur=null;
       x.words.forEach((w,k)=>{ if(!cur) cur={a:w.a,b:w.b}; cur.b=w.b; if(/[।.!?॥]$/.test(w.w)&&k<x.words.length-1){ segs.push(cur); cur=null; } }); if(cur) segs.push(cur);
       const m=[]; segs.forEach(sg=>{ if(m.length&&(sg.b-sg.a<1.4||m[m.length-1].b-m[m.length-1].a<1.4)) m[m.length-1].b=sg.b; else m.push(sg); }); x.segs=m; }
     const CE=+val("cutEvery")||0, ms0=(x.s.ed||{}).ms;
-    if(CE>0&&ms0!=="off"&&!(x.s.useVideo&&x.s.clip)&&!(x.s.own&&x.s.clip)){ const a0=x.vs, b0=x.vend, starts=(x.words||[]).map(w=>w.a), g2=[]; let t2=a0;
+    if(CE>0&&!x.beatT&&ms0!=="off"&&!(x.s.useVideo&&x.s.clip)&&!(x.s.own&&x.s.clip)){ const a0=x.vs, b0=x.vend, starts=(x.words||[]).map(w=>w.a), g2=[]; let t2=a0;
       while(t2<b0-0.4){ let nx=t2+CE; const near=starts.filter(s2=>Math.abs(s2-nx)<0.3).sort((p2,q2)=>Math.abs(p2-nx)-Math.abs(q2-nx))[0]; if(near!=null&&near>t2+0.6) nx=near; g2.push({a:t2,b:Math.min(nx,b0),fast:1}); t2=nx; }
       if(g2.length>1) x.segs=g2; } });
   tl.forEach((x,j)=>{ x.ve=j<tl.length-1?tl[j+1].vs+TR:total; x.chunks=groupWords(x.words,SUB==="pop"?14:40,SUB==="pop"?3:9); const kw=x.words.find(w=>w.kw); x.kwT=kw?kw.a:null; });
@@ -1381,9 +1425,10 @@ async function renderVideo(auto,PV,ONE){
       case "drift": return {z:1.10+0.05*s*e,px:Math.sin(T*0.35)*0.25*s,py:Math.cos(T*0.27)*0.2*s};
       case "handheld": return {z:1.10,px:(Math.sin(T*2.1)+Math.sin(T*3.7))*0.035*s,py:(Math.cos(T*1.9)+Math.sin(T*3.1))*0.035*s,rot:Math.sin(T*1.3)*0.004*s};
       default: return {z:1.05+0.1*e,px:0,py:0}; } }
-  function shotAt(x,T){ const ms=(x.s.ed||{}).ms; if(!x.segs||x.segs.length<2||ms==="off"||(!on("multiShot")&&ms!=="on"&&!x.segs[0].fast)) return null; let k=0; x.segs.forEach((sg,n)=>{ if(T>=sg.a) k=n; }); if(k===0) return null;
+  function shotAt(x,T){ const ms=(x.s.ed||{}).ms; if(!x.segs||x.segs.length<2||(ms==="off"&&!x.segs[0].beat)||(!on("multiShot")&&ms!=="on"&&!x.segs[0].fast&&!x.segs[0].beat)) return null; let k=0; x.segs.forEach((sg,n)=>{ if(T>=sg.a) k=n; }); if(k===0) return null;
     const r=(n)=>{ let h2=0; const str=x.s.id+":"+k+":"+n; for(let c=0;c<str.length;c++) h2=(h2*31+str.charCodeAt(c))|0; return ((h2>>>0)%1000)/1000; };
     const seg=x.segs[k], q=clamp((T-seg.a)/Math.max(0.6,seg.b-seg.a));
+    if(seg.beat){ const dir=r(5)>0.5?1:-1; return {z:dir>0?1.04+0.1*q:1.14-0.1*q, px:(r(2)-0.5)*0.5+(q-0.5)*0.12*dir, py:(r(3)-0.5)*0.3, pop:clamp((T-seg.a)/0.18), fast:1}; }
     if(seg.fast&&k%3===0) return {z:1.06+0.08*q, px:(r(2)-0.5)*0.6, py:(r(3)-0.5)*0.4, pop:clamp((T-seg.a)/0.18), fast:1};
     if(seg.fast) return {z:1.25+0.35*r(1)+0.06*q, px:(r(2)-0.5)*1.6+(q-0.5)*0.15*(r(4)>0.5?1:-1), py:(r(3)-0.5)*1.2, pop:clamp((T-seg.a)/0.18), fast:1};
     return {z:1.32+0.22*r(1)+0.05*q, px:(r(2)-0.5)*1.4, py:(r(3)-0.5)*1.1, pop:clamp((T-seg.a)/0.18)}; }
@@ -1391,7 +1436,7 @@ async function renderVideo(auto,PV,ONE){
   function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1)*(on("voicePulse")?1+0.014*CSTR*envAt(x,T):1), dx=(o.dx||0)*W, dy=(o.dy||0)*H, rot=o.rot||0;
     const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx,dy,rot); return; }
     if(!x.s.img) return;
-    const im=x.bmp||x.s.img.bmp, sh=shotAt(x,T), e=x.s.ed||{}, hasF=e.fx!=null;
+    let im=x.bmp||x.s.img.bmp; if(x.beatT) x.beatT.forEach(bt=>{ if(T>=bt.t) im=bt.bmp; }); const sh=shotAt(x,T), e=x.s.ed||{}, hasF=e.fx!=null&&im===(x.bmp||x.s.img.bmp);
     const fpx=hasF?clamp((0.5-(e.flip?1-e.fx:e.fx))*2.4,-1,1):0, fpy=hasF?clamp((0.5-e.fy)*2.4,-1,1):0;
     if(sh){ const fw=sh.fast?0.35:0.7, bx2=hasF?fpx*fw+sh.px*(1-fw):sh.px, by2=hasF?fpy*fw+sh.py*(1-fw):sh.py; cover(im,im.width,im.height,sh.z*zm*(1+0.04*(1-sh.pop)),clamp(bx2,-1,1),clamp(by2,-1,1),alpha,dx,dy,rot); return; }
     const S2=({subtle:0.6,normal:1,strong:1.6})[e.str]||1, kind=camKind(x), c=kind==="still"?{z:1.02,px:0,py:0}:cam(kind,p,T); const zz=1+(c.z-1)*S2*(hasF?1.25:1)+(hasF?0.08:0);
