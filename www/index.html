@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.9</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.10</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -242,7 +242,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
 <div id="cloudInfo" class="muted"></div>
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
-<label>🖼️ New picture every (pictures change with the words)</label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2" selected>2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
+<label>🖼️ New picture every (pictures change with the words) — <span class="muted">only for picture-style videos: works when "AI video clips" is set to None</span></label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2" selected>2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
 <button class="small" onclick="runBeats()">🖼️ Make extra pictures for all scenes</button>
 <button class="small sec" onclick="remakeAll()">🔄 Remake all pictures in the chosen theme</button>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
@@ -1150,8 +1150,8 @@ async function cloudClean(){ const J=cloudJob(); if(!J) return cloudShow("Nothin
   try{ const r=await gh("DELETE",`/git/refs/heads/job-${J.id}`); if(!r.ok&&r.status!==404&&r.status!==422) throw new Error("GitHub "+r.status);
     store("hdm2_cloudJob",""); cloudShow(`🧹 Job ${J.id} deleted from GitHub.`); }catch(e){ cloudShow("❌ "+esc(e.message)); } }
 /* ---------- 🖼️ extra pictures that follow the words ---------- */
-function PE(){ return +(($("picsEvery")||{}).value)||0; }
-function beatsWanted(s){ const pe=PE(); if(!pe||s.own||(s.useVideo&&s.clip)) return 0; const d=sceneSecs(s); return Math.max(0,Math.min(5,Math.round(d/pe)-1)); }
+function PE(){ if($("vidEngine").value!=="none") return 0; return +(($("picsEvery")||{}).value)||0; }
+function beatsWanted(s){ const pe=PE(); if(!pe||s.own||s.useVideo||s.clip) return 0; const d=sceneSecs(s); return Math.max(0,Math.min(5,Math.round(d/pe)-1)); }
 function beatsMissing(s){ const w=beatsWanted(s); if(!w) return 0; const have=(s.beats||[]).filter(b=>b.img).length; return Math.max(0,w-have); }
 function clearBeats(s){ (s.beats||[]).forEach(b=>{ DB.del("i_"+b.id); if(b.img&&b.img.url) URL.revokeObjectURL(b.img.url); }); s.beats=[]; }
 function splitBeats(s){ const n=beatsWanted(s)+1; if(n<2) return [];
@@ -1182,9 +1182,9 @@ async function runBeatsFor(list){
   await pool(jobs,2,async([s,b])=>{ try{ await makeBeat(s,b); done++; }catch(e){ fail++; log(`❌ Extra picture (scene ${S.scenes.indexOf(s)+1}): ${String(e.message).slice(0,120)}`); }
     status(`🖼️ Extra pictures ${done}/${jobs.length}${fail?` · ${fail} failed`:""}`); $("aBar").style.width=((done+fail)/jobs.length*100)+"%"; if((done+fail)%4===0) drawScenes(); });
   saveProj(); drawScenes(); updateCost(); return fail; }
-const runBeats=()=>guard(async()=>{ if(!PE()){ setV("picsEvery","2"); saveSettings(true); } if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); return runBeatsFor(S.scenes); });
+const runBeats=()=>guard(async()=>{ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos. Set 🎥 AI video clips → None in Settings to use them."); if(!PE()){ setV("picsEvery","2"); saveSettings(true); } if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); return runBeatsFor(S.scenes); });
 async function redoBeat(i,k){ const s=S.scenes[i], b=s.beats[k]; await guard(async()=>{ try{ status("🖼️ Remaking extra picture…"); await makeBeat(s,b); status("✅ Done."); }catch(e){ status("❌ "+e.message); } drawScenes(); }); }
-async function sceneBeats(i){ const s=S.scenes[i]; if(!PE()){ setV("picsEvery","2"); saveSettings(true); } clearBeats(s); await guard(()=>runBeatsFor([s])); }
+async function sceneBeats(i){ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos (AI video clips = None)."); const s=S.scenes[i]; if(!PE()){ setV("picsEvery","2"); saveSettings(true); } clearBeats(s); await guard(()=>runBeatsFor([s])); }
 /* ---------- runners ---------- */
 async function doStep(s,k){
   s.st[k]="run"; s.err=""; drawScenes();
