@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.5</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.6</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -463,7 +463,7 @@ async function http1(method,url,{headers={},json,blob=false,text=false,timeout=6
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",ed:s.ed||{},chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
@@ -689,8 +689,8 @@ function drawScenes(){
       <details><summary class="muted">Picture &amp; motion prompts</summary>
        <label>Picture</label><textarea style="min-height:60px" oninput="S.scenes[${i}].prompt=this.value;saveProj()">${esc(s.prompt)}</textarea>
        <label>Motion</label><input value="${esc(s.motion)}" oninput="S.scenes[${i}].motion=this.value;saveProj()">
-       <div class="row"><div><label>🎭 Mood</label><select onchange="S.scenes[${i}].mood=this.value;saveProj()"><option value="">Auto (${moodOf({narration:s.narration,prompt:s.prompt})})</option>${MOODS.map(m=>`<option ${m===s.mood?"selected":""}>${m}</option>`).join("")}</select></div>
-       <div><label>🎥 Camera</label><select onchange="S.scenes[${i}].camera=this.value;saveProj()"><option value="">Auto</option>${CAMS.map(m=>`<option ${m===s.camera?"selected":""}>${m}</option>`).join("")}</select></div></div></details>
+</details>
+      ${editPanel(s,i)}
       <div class="row"><div><label>📑 Chapter (starts here)</label><input value="${esc(s.chapter||"")}" placeholder="—" oninput="S.scenes[${i}].chapter=this.value;saveProj()"></div>
       <div><label>👥 Who is in the picture</label><input value="${esc((s.who||[]).join(", "))}" placeholder="names" oninput="S.scenes[${i}].who=this.value.split(/[,،]/).map(x=>x.trim()).filter(Boolean);saveProj()"></div></div>
       <div class="row"><div><label>📍 On-screen text</label><input value="${esc(s.onscreen||"")}" placeholder="e.g. 1336 ई. — विजयनगर" oninput="S.scenes[${i}].onscreen=this.value;saveProj()"></div>
@@ -762,6 +762,37 @@ async function makeSheets(force){
       c.sheet={blob,url:URL.createObjectURL(blob)}; await DB.put("cs_"+c.name,blob); drawCharTools(); }
     catch(e){ log(`❌ Sheet ${c.name}: ${e.message}`); if(force) status("❌ "+e.message); break; } }
   saveProj(); status("✅ Character sheets ready — new pictures will keep these faces."); }
+const TRNAMES={"":"Auto (global setting)",cut:"Hard cut",fade:"Smooth fade",push:"Push / slide",zoom:"Zoom punch",whip:"Whip pan",flash:"Flash",glitch:"Glitch",dip:"Dip to black",blur:"Blur",spin:"Spin",zoomout:"Zoom out",slideup:"Slide up",wipe:"Wipe",iris:"Circle reveal",blinds:"Blinds",doors:"Doors open",pixel:"Pixelate",shakecut:"Shake cut"};
+const CAMNAMES={"":"Auto (match voice)",push_in:"Slow push in",push_fast:"Fast push in",pull_out:"Pull out",pan_left:"Pan left",pan_right:"Pan right",pan_fast:"Fast pan",tilt_up:"Tilt up",tilt_down:"Tilt down",orbit:"Orbit",drift:"Floating drift",handheld:"Handheld",still:"No motion (still)"};
+const SFXNAMES={"":"None",whoosh:"Whoosh",boom:"Cinematic boom",hit:"Impact hit",riser:"Tension riser",heartbeat:"Heartbeat",bell:"Ding (reveal)"};
+const LOOKNAMES={"":"Same as video",natural:"Natural",warm:"Teal-orange",golden:"Golden hour",mystery:"Dark mystery",vintage:"Vintage",bleach:"Gritty",neon:"Neon night",bw:"Black & white"};
+function opts(map,cur){ return Object.entries(map).map(([k,v])=>`<option value="${k}" ${k===(cur||"")?"selected":""}>${v}</option>`).join(""); }
+function ed(s){ return s.ed||(s.ed={}); }
+function edSet(i,k,v){ const s=S.scenes[i]; const e=ed(s); if(v===""||v===null||v===undefined) delete e[k]; else e[k]=v; saveProj(); const lbl=document.getElementById("edv_"+s.id+"_"+k); if(lbl) lbl.textContent=v; }
+function edReset(i){ S.scenes[i].ed={}; S.scenes[i].mood=""; S.scenes[i].camera=""; saveProj(); drawScenes(); }
+function edCopyAll(i){ const src=S.scenes[i], e={...ed(src)}; delete e.fx; delete e.fy; if(!confirm("Copy this scene's transition, motion, filter, colours and sound settings to ALL scenes?")) return;
+  S.scenes.forEach((s,k)=>{ if(k!==i){ s.ed={...e,fx:ed(s).fx,fy:ed(s).fy}; if(src.camera) s.camera=src.camera; } }); saveProj(); drawScenes(); status("✅ Edits copied to all scenes."); }
+function setFocus(i,ev){ const r=ev.currentTarget.getBoundingClientRect(), fx=clamp((ev.clientX-r.left)/r.width), fy=clamp((ev.clientY-r.top)/r.height); edSet(i,"fx",+fx.toFixed(3)); edSet(i,"fy",+fy.toFixed(3));
+  const m=document.getElementById("fm_"+S.scenes[i].id); if(m){ m.style.left=(fx*100)+"%"; m.style.top=(fy*100)+"%"; m.style.display="block"; } }
+function editPanel(s,i){ const e=ed(s), id=s.id, rng=(k,min,max,step,def,lab,unit)=>`<label>${lab}: <b id="edv_${id}_${k}">${e[k]!=null?e[k]:def}</b>${unit||""}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${e[k]!=null?e[k]:def}" oninput="edSet(${i},'${k}',+this.value)">`;
+  const mood=`<option value="">Auto (${moodOf({narration:s.narration,prompt:s.prompt})})</option>`+MOODS.map(m=>`<option ${m===s.mood?"selected":""}>${m}</option>`).join("");
+  return `<details class="scene" style="border-style:dashed;margin-top:8px"><summary>🛠️ Edit this scene <span class="muted">— transition, motion, focus, filter, sound…</span></summary>
+   <div class="row"><div><label>🔀 Transition into this scene</label><select onchange="edSet(${i},'tr',this.value)">${opts(TRNAMES,e.tr)}</select></div>
+   <div><label>🎭 Mood</label><select onchange="S.scenes[${i}].mood=this.value;saveProj()">${mood}</select></div></div>
+   <div class="row"><div><label>🎥 Camera motion</label><select onchange="S.scenes[${i}].camera=this.value;saveProj()">${opts(CAMNAMES,s.camera)}</select></div>
+   <div><label>Motion strength</label><select onchange="edSet(${i},'str',this.value)">${opts({"":"Same as video",subtle:"Subtle",normal:"Normal",strong:"Strong"},e.str)}</select></div></div>
+   ${s.img?`<label>🎯 Focus point — tap where the camera should look</label><div style="position:relative" onclick="setFocus(${i},event)"><img src="${s.img.url}" style="width:100%;border-radius:8px;display:block"><div id="fm_${id}" style="position:absolute;left:${(e.fx!=null?e.fx:0.5)*100}%;top:${(e.fy!=null?e.fy:0.5)*100}%;width:26px;height:26px;margin:-13px 0 0 -13px;border:3px solid #ffb03d;border-radius:50%;box-shadow:0 0 0 2px #000;display:${e.fx!=null?"block":"none"}"></div></div>`:""}
+   <div class="row"><div><label>🎨 Filter</label><select onchange="edSet(${i},'look',this.value)">${opts(LOOKNAMES,e.look)}</select></div>
+   <div><label>✂️ Multi-shot close-ups</label><select onchange="edSet(${i},'ms',this.value)">${opts({"":"Same as video",on:"On",off:"Off"},e.ms)}</select></div></div>
+   ${rng("bri",50,150,5,100,"☀️ Brightness","%")}${rng("con",50,150,5,100,"◐ Contrast","%")}${rng("sat",0,200,5,100,"🌈 Colour","%")}
+   <div class="row"><div><label>🔊 Sound effect at start</label><select onchange="edSet(${i},'sfx',this.value)">${opts(SFXNAMES,e.sfx)}</select></div>
+   <div><label>💬 Subtitles</label><select onchange="edSet(${i},'subs',this.value)">${opts({"":"Show",off:"Hide in this scene"},e.subs)}</select></div></div>
+   ${rng("hold",0,3,0.25,0,"⏸️ Extra pause after the voice","s")}
+   <div class="chk"><input type="checkbox" id="flip_${id}" ${e.flip?"checked":""} onchange="edSet(${i},'flip',this.checked?1:'')"><label for="flip_${id}">↔️ Flip picture (mirror)</label></div>
+   ${s.clip?`${rng("cstart",0,Math.max(0,Math.floor((s.clip.dur||5)-1)),0.25,0,"🎬 Clip starts at","s")}<label>🎬 Clip speed</label><select onchange="edSet(${i},'cspeed',this.value?+this.value:'')">${opts({"":"Auto (fit voice)","0.5":"0.5× slow-mo","0.75":"0.75×","1":"1× normal","1.25":"1.25×","1.5":"1.5× fast"},e.cspeed!=null?String(e.cspeed):"")}</select>`:""}
+   <button class="small" onclick="previewScene(${i})">▶️ Preview this scene</button><button class="small sec" onclick="edCopyAll(${i})">📋 Copy edits to all scenes</button><button class="small sec" onclick="edReset(${i})">↺ Reset</button>
+  </details>`; }
+function previewScene(i){ if(!S.scenes[i].img&&!(S.scenes[i].own&&S.scenes[i].clip)) return alert("Make this scene's picture first."); return renderVideo(false,true,i); }
 function setSpeaker(i,v){ const s=S.scenes[i]; s.speaker=v; if(v&&!(s.who||[]).includes(v)) (s.who=s.who||[]).push(v); if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); drawScenes(); }
 function setChars(t){ const old=Object.fromEntries((S.chars||[]).map(c=>[c.name,c])); S.chars=t.split("\n").map(l=>{ const k=l.indexOf(":"); if(k<=0) return null; const name=l.slice(0,k).trim(); return {...(old[name]||{}),name,look:l.slice(k+1).trim()}; }).filter(c=>c&&c.name); saveProj(); drawCharTools(); }
 function editNarr(i,v){ const s=S.scenes[i]; s.narration=v; if(s.voice&&!s.own){ s.voice=null; DB.del("a_"+s.id); } saveProj(); updateCost(); }
@@ -1198,7 +1229,7 @@ async function autoRun(){
   });
 }
 
-const MOODS=["calm","tense","shock","sad","action","mystery","reveal","happy"], CAMS=["push_in","pull_out","pan_left","pan_right","tilt_up","tilt_down","orbit","drift","handheld","push_fast","pan_fast"];
+const MOODS=["calm","tense","shock","sad","action","mystery","reveal","happy"], CAMS=["push_in","pull_out","pan_left","pan_right","tilt_up","tilt_down","orbit","drift","handheld","push_fast","pan_fast","still"];
 function moodOf(s){ if(s.mood&&MOODS.includes(s.mood)) return s.mood; const t=(s.narration||"")+" "+(s.prompt||"");
   if(/अचानक|चीख|धमाका|खून|मौत|लाश|!|suddenly|scream|blood|explo|ಅಚಾನಕ|திடீர|అకస్మాత్తు/i.test(t)) return "shock";
   if(/भाग|दौड़|लड़ाई|हमला|पीछा|chase|fight|attack|run|race/i.test(t)) return "action";
@@ -1240,6 +1271,13 @@ function whoosh(a,dest,t,vol=0.35,len=1.1){
   const n=a.createBuffer(1,Math.floor(a.sampleRate*len),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.6; }
   const s=a.createBufferSource(), bp=a.createBiquadFilter(), g=a.createGain(); s.buffer=n; bp.type="bandpass"; bp.Q.value=1.2; bp.frequency.setValueAtTime(300,t); bp.frequency.exponentialRampToValueAtTime(3500,t+len*0.95); g.gain.value=vol; s.connect(bp); bp.connect(g); g.connect(dest); s.start(t);
 }
+function sfxHit(a,dest,t){ const o=a.createOscillator(), g=a.createGain(); o.type="triangle"; o.frequency.setValueAtTime(160,t); o.frequency.exponentialRampToValueAtTime(40,t+0.35); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(1,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.6); o.connect(g); g.connect(dest); o.start(t); o.stop(t+0.7);
+  const n=a.createBuffer(1,Math.floor(a.sampleRate*0.25),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3); const s=a.createBufferSource(), ng=a.createGain(); s.buffer=n; ng.gain.value=0.5; s.connect(ng); ng.connect(dest); s.start(t); }
+function sfxRiser(a,dest,t,len=2){ const o=a.createOscillator(), g=a.createGain(); o.type="sawtooth"; o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(880,t+len); const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.setValueAtTime(400,t); lp.frequency.exponentialRampToValueAtTime(4000,t+len);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+len*0.95); g.gain.exponentialRampToValueAtTime(0.0001,t+len+0.1); o.connect(lp); lp.connect(g); g.connect(dest); o.start(t); o.stop(t+len+0.2); whoosh(a,dest,t,0.15,len); }
+function sfxHeart(a,dest,t,beats=4){ for(let k=0;k<beats;k++){ [0,0.22].forEach((off,j)=>{ const tt=t+k*0.85+off, o=a.createOscillator(), g=a.createGain(); o.type="sine"; o.frequency.setValueAtTime(65,tt); o.frequency.exponentialRampToValueAtTime(38,tt+0.15); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(j?0.5:0.8,tt+0.015); g.gain.exponentialRampToValueAtTime(0.0001,tt+0.25); o.connect(g); g.connect(dest); o.start(tt); o.stop(tt+0.3); }); } }
+function sfxBell(a,dest,t){ [880,1320,1760].forEach((f,k)=>{ const o=a.createOscillator(), g=a.createGain(); o.type="sine"; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25/(k+1),t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+1.4); o.connect(g); g.connect(dest); o.start(t); o.stop(t+1.5); }); }
+function sceneSfx(a,dest,t,kind){ try{ ({whoosh:()=>whoosh(a,dest,t,0.3,0.9),boom:()=>boom(a,dest,t),hit:()=>sfxHit(a,dest,t),riser:()=>sfxRiser(a,dest,Math.max(0,t-1.8),1.8),heartbeat:()=>sfxHeart(a,dest,t),bell:()=>sfxBell(a,dest,t)})[kind]?.(); }catch(e){ log("Sound: "+e.message); } }
 function wordTimes(s){
   const text=(s.voice&&s.voice.text)||s.narration, d=s.voice.buf.duration, al=s.voice.align, words=[], re=/\S+/g; let m;
   while((m=re.exec(text))) words.push({w:m[0],o:m.index,l:m[0].length});
@@ -1256,7 +1294,7 @@ function groupWords(words,maxChars,maxWords){ const out=[]; let cur=[], len=0;
   return out.map((ws,i,arr)=>({ws,a:ws[0].a,b:i<arr.length-1?arr[i+1][0].a:ws[ws.length-1].b+0.4})); }
 
 function preview(){ return renderVideo(false,true); }
-async function renderVideo(auto,PV){
+async function renderVideo(auto,PV,ONE){
   if(BUSY&&!auto) return alert("Already working…");
   if(PV){ if(!S.scenes.length||!S.scenes[0].img){ alert("Make at least the first scene's picture first (step 2)."); return; } }
   else { const miss=S.scenes.filter(s=>!s.voice||(!s.img&&!(s.own&&s.clip))); if(!S.scenes.length||miss.length){ alert("Every scene needs a voice and a picture first."); return; } }
@@ -1268,18 +1306,21 @@ async function renderVideo(auto,PV){
   const PK=textPack(), TSTY=PK.title, SUB=val("subStyle"), TRANS=val("trans"), FACT=PK.fact, TITLE_FONT=PK.tf, UI_FONT=PK.uf, POP_FONT=PK.tf===F.baloo?F.baloo:PK.uf===F.kalam?F.hind:'"Baloo 2","Hind","Noto Sans Devanagari",sans-serif', ACC=PK.acc, HLC=PK.hl, TW=PK.tw||400;
   try{ await Promise.race([Promise.all([document.fonts.load(`${TW} 40px ${TITLE_FONT}`,"हम्पी Aa"),document.fonts.load(`700 40px ${UI_FONT}`,"हम्पी Aa"),document.fonts.load(`800 40px ${POP_FONT}`,"हम्पी Aa"),document.fonts.load(`700 40px ${F.kalam}`,"हम्पी")]),sleep(4000)]); }catch(e){}
   const FASTP=val("pacing")==="fast", TITLE=on("titleCard")?4.4:0, TR=FASTP?0.45:0.55, GAP=FASTP?0.12:0.4, FPS=30, OUTRO=on("endScreen")?6:0.8, HL=on("kwHL"), SHAKE=on("shake");
-  const SC=PV?S.scenes.filter(s=>s.img||(s.own&&s.clip)).slice(0,3):S.scenes;
+  const SC=PV?(ONE!=null?[S.scenes[ONE]]:S.scenes.filter(s=>s.img||(s.own&&s.clip)).slice(0,3)):S.scenes;
   const after=!!TITLE&&val("titlePos")==="after"&&SC.length>1;
   let t=after?0.25:(TITLE?TITLE+0.2:0.5), titleStart=after?null:0;
   const tl=[];
   SC.forEach((s,i)=>{ let vs;
     if(after&&i===1){ titleStart=t; vs=t; t+=TITLE; } else vs=i===0?0:t-TR;
-    const d=s.voice?s.voice.buf.duration:4, st=t; t+=d+GAP;
+    const d=s.voice?s.voice.buf.duration:4, st=t; t+=d+GAP+(+(s.ed&&s.ed.hold)||0);
     const words=s.voice?wordTimes(s).map(w=>({...w,a:w.a+st,b:w.b+st})):markKw(s.narration.split(/\s+/).filter(Boolean).map((w,k,arr)=>({w,a:st+d*k/arr.length,b:st+d*(k+1)/arr.length})),s.keyword);
     tl.push({s,i,start:st,vend:t,vs,words});
   });
   if(!TITLE) titleStart=-99;
   const BODY_END=t, total=t+OUTRO;
+  for(const x of tl){ const e=x.s.ed||{}; if(x.s.img&&(e.flip||(e.bri&&e.bri!==100)||(e.con&&e.con!==100)||(e.sat!=null&&e.sat!==100))){ try{
+      const bm=x.s.img.bmp, c2=document.createElement("canvas"); c2.width=bm.width; c2.height=bm.height; const x2=c2.getContext("2d");
+      x2.filter=`brightness(${(e.bri||100)/100}) contrast(${(e.con||100)/100}) saturate(${(e.sat!=null?e.sat:100)/100})`; if(e.flip){ x2.translate(c2.width,0); x2.scale(-1,1); } x2.drawImage(bm,0,0); x.bmp=await createImageBitmap(c2); }catch(err){ log("Scene edit: "+err.message); } } }
   { const fmt=s=>{ s=Math.max(0,Math.floor(s)); const hh=Math.floor(s/3600), mm=Math.floor(s%3600/60), ss=s%60; return (hh?hh+":"+String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
     const chs=[]; tl.forEach((x,j)=>{ const c=(x.s.chapter||"").trim(); if(!c) return; const at=j===0?0:Math.max(0,x.vs); if(!chs.length&&at>0) chs.push({at:0,c:"शुरुआत"}); if(!chs.length||at-chs[chs.length-1].at>=10) chs.push({at,c}); });
     window._chapters=chs.length>=3?chs.map(x=>`${fmt(x.at)} ${x.c}`).join("\n"):""; }
@@ -1291,7 +1332,7 @@ async function renderVideo(auto,PV){
       x.words.forEach((w,k)=>{ if(!cur) cur={a:w.a,b:w.b}; cur.b=w.b; if(/[।.!?॥]$/.test(w.w)&&k<x.words.length-1){ segs.push(cur); cur=null; } }); if(cur) segs.push(cur);
       const m=[]; segs.forEach(sg=>{ if(m.length&&(sg.b-sg.a<1.4||m[m.length-1].b-m[m.length-1].a<1.4)) m[m.length-1].b=sg.b; else m.push(sg); }); x.segs=m; } });
   tl.forEach((x,j)=>{ x.ve=j<tl.length-1?tl[j+1].vs+TR:total; x.chunks=groupWords(x.words,SUB==="pop"?14:40,SUB==="pop"?3:9); const kw=x.words.find(w=>w.kw); x.kwT=kw?kw.a:null; });
-  const KINDS=["zoom","flash","whip","fade","glitch","dip","spin","wipe","iris","blinds","doors","pixel","slideup","zoomout","blur"], STORY=["cut","push","cut","cut","zoom","push","cut","fade"], MOODTR={shock:"shakecut",tense:"dip",sad:"blur",mystery:"dip",action:"whip",reveal:"iris",happy:"zoomout",calm:"fade"}, tk=j=>TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS==="story"?STORY[(j*5+1)%STORY.length]:TRANS==="mood"?(MOODTR[tl[j]&&tl[j].mood]||"fade"):TRANS;
+  const KINDS=["zoom","flash","whip","fade","glitch","dip","spin","wipe","iris","blinds","doors","pixel","slideup","zoomout","blur"], STORY=["cut","push","cut","cut","zoom","push","cut","fade"], MOODTR={shock:"shakecut",tense:"dip",sad:"blur",mystery:"dip",action:"whip",reveal:"iris",happy:"zoomout",calm:"fade"}, tk=j=>(tl[j]&&tl[j].s.ed&&tl[j].s.ed.tr)?tl[j].s.ed.tr:TRANS==="mix"?KINDS[(j*7+3)%KINDS.length]:TRANS==="story"?STORY[(j*5+1)%STORY.length]:TRANS==="mood"?(MOODTR[tl[j]&&tl[j].mood]||"fade"):TRANS;
   const look=LOOKS[val("look")]||[], grain=on("grain")?makeGrain():null;
   const barH=on("bars")?(W>H?Math.round((H-W/2.39)/2):Math.round(H*0.05)):0;
   const ST=screenTitle();
@@ -1317,7 +1358,7 @@ async function renderVideo(auto,PV){
   function punch(x,T){ if(!on("punch")||x.kwT==null) return 1; const d=T-x.kwT; return d>=0&&d<0.9?1+0.07*(1-ease(d/0.9)):1; }
   const CAMK=["push_in","pan_right","pull_out","tilt_up","pan_left","drift","orbit","tilt_down"], CSTR={subtle:0.6,normal:1,strong:1.6}[val("camStr")]||1;
   const MOODCAM={calm:["pan_right","pan_left","tilt_up"],tense:["push_in"],shock:["push_fast"],sad:["pull_out"],action:["pan_fast","handheld"],mystery:["drift","orbit"],reveal:["pull_out"],happy:["tilt_up","pan_right"]};
-  function camKind(x){ const c=val("camMode"); if(c!=="auto"&&c!=="mixed") return c; if(x.s.camera&&CAMK.concat(["push_fast","pan_fast","handheld"]).includes(x.s.camera)&&c==="auto") return x.s.camera;
+  function camKind(x){ if(x.s.camera&&(CAMK.includes(x.s.camera)||["push_fast","pan_fast","handheld","still"].includes(x.s.camera))) return x.s.camera; const c=val("camMode"); if(c!=="auto"&&c!=="mixed") return c; if(x.s.camera&&CAMK.concat(["push_fast","pan_fast","handheld"]).includes(x.s.camera)&&c==="auto") return x.s.camera;
     if(c==="auto"){ const L=MOODCAM[x.mood]; if(L) return L[x.i%L.length]; } return CAMK[x.i%CAMK.length]; }
   const eio=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
   function cam(kind,p,T){ const s=CSTR, e=eio(p);
@@ -1334,7 +1375,7 @@ async function renderVideo(auto,PV){
       case "drift": return {z:1.10+0.05*s*e,px:Math.sin(T*0.35)*0.25*s,py:Math.cos(T*0.27)*0.2*s};
       case "handheld": return {z:1.10,px:(Math.sin(T*2.1)+Math.sin(T*3.7))*0.035*s,py:(Math.cos(T*1.9)+Math.sin(T*3.1))*0.035*s,rot:Math.sin(T*1.3)*0.004*s};
       default: return {z:1.05+0.1*e,px:0,py:0}; } }
-  function shotAt(x,T){ if(!on("multiShot")||!x.segs||x.segs.length<2) return null; let k=0; x.segs.forEach((sg,n)=>{ if(T>=sg.a) k=n; }); if(k===0) return null;
+  function shotAt(x,T){ const ms=(x.s.ed||{}).ms; if((ms==="off")||(!on("multiShot")&&ms!=="on")||!x.segs||x.segs.length<2) return null; let k=0; x.segs.forEach((sg,n)=>{ if(T>=sg.a) k=n; }); if(k===0) return null;
     const r=(n)=>{ let h2=0; const str=x.s.id+":"+k+":"+n; for(let c=0;c<str.length;c++) h2=(h2*31+str.charCodeAt(c))|0; return ((h2>>>0)%1000)/1000; };
     const seg=x.segs[k], q=clamp((T-seg.a)/Math.max(0.6,seg.b-seg.a));
     return {z:1.32+0.22*r(1)+0.05*q, px:(r(2)-0.5)*1.4, py:(r(3)-0.5)*1.1, pop:clamp((T-seg.a)/0.18)}; }
@@ -1342,9 +1383,11 @@ async function renderVideo(auto,PV){
   function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1)*(on("voiceSync")?1+0.014*CSTR*envAt(x,T):1), dx=(o.dx||0)*W, dy=(o.dy||0)*H, rot=o.rot||0;
     const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx,dy,rot); return; }
     if(!x.s.img) return;
-    const im=x.s.img.bmp, sh=shotAt(x,T);
-    if(sh){ cover(im,im.width,im.height,sh.z*zm*(1+0.04*(1-sh.pop)),clamp(sh.px,-1,1),clamp(sh.py,-1,1),alpha,dx,dy,rot); return; }
-    const c=cam(camKind(x),p,T); cover(im,im.width,im.height,c.z*zm,c.px,c.py,alpha,dx,dy,rot+(c.rot||0)); }
+    const im=x.bmp||x.s.img.bmp, sh=shotAt(x,T), e=x.s.ed||{}, hasF=e.fx!=null;
+    const fpx=hasF?clamp((0.5-(e.flip?1-e.fx:e.fx))*2.4,-1,1):0, fpy=hasF?clamp((0.5-e.fy)*2.4,-1,1):0;
+    if(sh){ const bx2=hasF?fpx*0.7+sh.px*0.3:sh.px, by2=hasF?fpy*0.7+sh.py*0.3:sh.py; cover(im,im.width,im.height,sh.z*zm*(1+0.04*(1-sh.pop)),clamp(bx2,-1,1),clamp(by2,-1,1),alpha,dx,dy,rot); return; }
+    const S2=({subtle:0.6,normal:1,strong:1.6})[e.str]||1, kind=camKind(x), c=kind==="still"?{z:1.02,px:0,py:0}:cam(kind,p,T); const zz=1+(c.z-1)*S2*(hasF?1.25:1)+(hasF?0.08:0);
+    cover(im,im.width,im.height,zz*zm,clamp(c.px*S2*(hasF?0.4:1)+fpx*(hasF?0.85:0),-1,1),clamp(c.py*S2*(hasF?0.4:1)+fpy*(hasF?0.85:0),-1,1),alpha,dx,dy,rot+(c.rot||0)*S2); }
   let tmpC=null;
   function transition(A,B,T,q,kind){
     const e=eio(q);
@@ -1378,7 +1421,7 @@ async function renderVideo(auto,PV){
     else if(m==="reveal"){ const d=T-x.start; if(d>=0&&d<1.4){ const k=1-d/1.4, gr=g.createRadialGradient(W*0.5,H*0.35,0,W*0.5,H*0.35,Math.max(W,H)*0.7); gr.addColorStop(0,`rgba(255,230,180,${0.6*k})`); gr.addColorStop(1,"rgba(255,200,120,0)"); g.globalCompositeOperation="screen"; g.fillStyle=gr; g.fillRect(0,0,W,H); } }
     else if(m==="shock"){ const ht=x.kwT!=null?x.kwT:(x.words.find(w=>/!/.test(w.w))||x.words[0]||{a:x.start}).a, d=T-ht; if(d>0&&d<0.14){ g.fillStyle=`rgba(255,255,255,${0.5*(1-d/0.14)})`; g.fillRect(0,0,W,H); } }
     g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
-  function grade(){ look.forEach(([op,col,al])=>{ g.globalCompositeOperation=op; if(col==="grad"){ const gr=g.createLinearGradient(0,0,W*0.3,H); gr.addColorStop(0,al[0]); gr.addColorStop(1,al[1]); g.fillStyle=gr; g.globalAlpha=1; } else { g.fillStyle=col; g.globalAlpha=al; } g.fillRect(0,0,W,H); }); g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
+  function grade(x){ const L=(x&&x.s.ed&&x.s.ed.look)?(LOOKS[x.s.ed.look]||[]):look; L.forEach(([op,col,al])=>{ g.globalCompositeOperation=op; if(col==="grad"){ const gr=g.createLinearGradient(0,0,W*0.3,H); gr.addColorStop(0,al[0]); gr.addColorStop(1,al[1]); g.fillStyle=gr; g.globalAlpha=1; } else { g.fillStyle=col; g.globalAlpha=al; } g.fillRect(0,0,W,H); }); g.globalCompositeOperation="source-over"; g.globalAlpha=1; }
   function leaks(T){ if(!on("leaks")) return; let s=0;
     tl.forEach(x=>{ if(x.i>0){ const d=Math.abs(T-(x.vs+TR/2)); if(d<1.1) s=Math.max(s,1-d/1.1); } });
     if(inTitle(T)) s=Math.max(s,0.5*Math.sin(Math.PI*clamp((T-titleStart)/TITLE)));
@@ -1497,7 +1540,7 @@ async function renderVideo(auto,PV){
     ws.forEach(x=>{ const ww=g.measureText(x.w).width; if(cur.length&&w+sp+ww>maxW){ lines.push({items:cur,width:w}); cur=[]; w=0; } const off=cur.length?w+sp:0; cur.push({x,ww,off}); w=off+ww; });
     if(cur.length) lines.push({items:cur,width:w}); return lines; }
   function subtitles(x,T){
-    if(SUB==="none"||T>=BODY_END||inTitle(T)) return;
+    if(SUB==="none"||T>=BODY_END||inTitle(T)||((x.s.ed||{}).subs==="off")) return;
     const ch=x.chunks.find(c=>T>=c.a&&T<c.b); if(!ch) return;
     const mid=val("subPos")==="middle";
     g.save(); g.textBaseline="alphabetic"; g.textAlign="left";
@@ -1548,10 +1591,10 @@ async function renderVideo(auto,PV){
       if(cx.mood==="action"){ SX+=(Math.random()-0.5)*fs*0.25*ev*CSTR; SY+=(Math.random()-0.5)*fs*0.2*ev*CSTR; }
       if(cx.mood==="shock"){ const ht=cx.kwT!=null?cx.kwT:(cx.words.find(w=>/!/.test(w.w))||cx.words[0]||{a:cx.start}).a, d=T-ht; if(d>0&&d<0.35){ const k=1-d/0.35; SX+=(Math.random()-0.5)*fs*0.6*k*CSTR; SY+=(Math.random()-0.5)*fs*0.6*k*CSTR; } } }
     prep(i); prep(i+1); Object.keys(vids).forEach(k=>{ if(+k<i-1||(+k===i-1&&T>tl[i].vs+TR)) release(+k); });
-    [i,i+1].forEach(j=>{ const v=vids[j], own=tl[j]&&tl[j].s.own; if(v&&!v.started&&T>=(own?tl[j].start:tl[j].vs)&&v.el.readyState>=2){ v.el.playbackRate=own?1:clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=0; v.el.play().catch(()=>{}); v.started=true; } });
+    [i,i+1].forEach(j=>{ const v=vids[j], own=tl[j]&&tl[j].s.own; if(v&&!v.started&&T>=(own?tl[j].start:tl[j].vs)&&v.el.readyState>=2){ const ce=tl[j].s.ed||{}; v.el.playbackRate=own?1:ce.cspeed?+ce.cspeed:clamp(tl[j].s.clip.dur/(tl[j].ve-tl[j].vs),0.6,1); v.el.currentTime=+(ce.cstart||0); v.el.play().catch(()=>{}); v.started=true; } });
     const q=i>0?(T-tl[i].vs)/TR:1;
     if(q<1) transition(tl[i-1],tl[i],T,clamp(q),tk(i)); else drawScene(tl[i],T,1);
-    grade(); moodFx(tl[i],T); leaks(T); vignette(); filmFx(n);
+    grade(tl[i]); moodFx(tl[i],T); leaks(T); vignette(); filmFx(n);
     titleCard(T); lowerThird(tl[i],T); subtitles(tl[i],T); endScreen(T); bars(T); progress(T);
   }
   prep(0); prep(1); await sleep(600); frame(0);
@@ -1567,6 +1610,7 @@ async function renderVideo(auto,PV){
     if(TITLE) boom(a,out,t0+titleStart+0.3);
     tl.forEach((x,j)=>{ if(j>0&&tk(j)!=="fade"&&tk(j)!=="cut"&&!(after&&j===1)) whoosh(a,out,t0+x.vs-0.2,tk(j)==="push"?0.12:0.2,0.8); if(on("onscreen")&&(x.s.onscreen||"").trim()) whoosh(a,out,t0+x.start+0.25,0.25); });
     if(on("endScreen")) whoosh(a,out,t0+BODY_END+0.2); }
+  tl.forEach(x=>{ const k=(x.s.ed||{}).sfx; if(k) sceneSfx(a,out,t0+Math.max(0,x.vs),k); });
   if(on("ambience")){ try{
     const n=a.createBuffer(1,a.sampleRate*4,a.sampleRate), d=n.getChannelData(0); let last=0; for(let i=0;i<d.length;i++){ last=(last+0.02*(Math.random()*2-1))/1.02; d[i]=last*3.5; }
     const ns=a.createBufferSource(); ns.buffer=n; ns.loop=true; const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=500; const ng=a.createGain(); ng.gain.value=0.06; ns.connect(lp); lp.connect(ng); ng.connect(out); ns.start(t0); ns.stop(t0+total); srcs.push(ns);
