@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.6</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.7</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -270,7 +270,8 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>🎥 Camera motion</label><select id="camMode"><option value="auto">🎯 Match the voiceover (auto)</option><option value="mixed">Mixed variety</option><option value="push_in">Slow push in</option><option value="push_fast">Fast push in</option><option value="pull_out">Pull out</option><option value="pan_left">Pan left</option><option value="pan_right">Pan right</option><option value="pan_fast">Fast pan</option><option value="tilt_up">Tilt up</option><option value="tilt_down">Tilt down</option><option value="orbit">Orbit</option><option value="drift">Floating drift</option><option value="handheld">Handheld</option></select></div>
  <div><label>Motion strength</label><select id="camStr"><option value="subtle">Subtle</option><option value="normal" selected>Normal</option><option value="strong">Strong</option></select></div>
 </div>
-<div class="chk"><input type="checkbox" id="voiceSync" checked><label for="voiceSync">🎯 Visuals follow the voice — mood effects (shock flash, tense darkness, sad colours, mystery fog), movement reacts to voice loudness</label></div>
+<div class="chk"><input type="checkbox" id="voiceSync" checked><label for="voiceSync">🎯 Visuals follow the voice — mood effects (shock flash, tense darkness, sad colours, mystery fog)</label></div>
+<div class="chk"><input type="checkbox" id="voicePulse"><label for="voicePulse">💓 Picture pulses (zooms) with voice loudness</label></div>
 <div class="chk"><input type="checkbox" id="multiShot" checked><label for="multiShot">✂️ Multi-shot — cut to a new close-up of the picture on every sentence (feels like real camera shots)</label></div>
 <div class="row">
  <div><label>💬 Subtitle style</label><select id="subStyle"><option value="karaoke">Word-by-word highlight</option><option value="pop">Big pop words (Shorts style)</option><option value="box">Classic box</option><option value="type">Typewriter</option><option value="minimal">Minimal shadow</option><option value="none">No subtitles</option></select></div>
@@ -1380,7 +1381,7 @@ async function renderVideo(auto,PV,ONE){
     const seg=x.segs[k], q=clamp((T-seg.a)/Math.max(0.6,seg.b-seg.a));
     return {z:1.32+0.22*r(1)+0.05*q, px:(r(2)-0.5)*1.4, py:(r(3)-0.5)*1.1, pop:clamp((T-seg.a)/0.18)}; }
   function envAt(x,T){ if(!x.env) return 0; const k=Math.floor((T-x.start)*30); return k>=0&&k<x.env.length?x.env[k]:0; }
-  function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1)*(on("voiceSync")?1+0.014*CSTR*envAt(x,T):1), dx=(o.dx||0)*W, dy=(o.dy||0)*H, rot=o.rot||0;
+  function drawScene(x,T,alpha,o){ o=o||{}; const j=x.i, p=clamp((T-x.vs)/(x.ve-x.vs)), zm=(o.z||1)*punch(x,T)*(SHAKE?1.03:1)*(on("voicePulse")?1+0.014*CSTR*envAt(x,T):1), dx=(o.dx||0)*W, dy=(o.dy||0)*H, rot=o.rot||0;
     const v=vids[j]; if(v&&(v.started||!x.s.img)&&v.el.readyState>=2){ const el=v.el; cover(el,el.videoWidth||W,el.videoHeight||H,(el.ended?1+0.04*p:1)*zm,0,0,alpha,dx,dy,rot); return; }
     if(!x.s.img) return;
     const im=x.bmp||x.s.img.bmp, sh=shotAt(x,T), e=x.s.ed||{}, hasF=e.fx!=null;
@@ -1413,10 +1414,10 @@ async function renderVideo(auto,PV,ONE){
       for(let k=0;k<n;k++){ const y=Math.random()*H, hh=Math.random()*H*0.08+4; g.drawImage(cv,0,y,W,hh,(Math.random()-0.5)*W*0.12*amt,y,W,hh); }
       g.globalCompositeOperation="screen"; g.fillStyle=`rgba(255,0,60,${0.2*amt})`; g.fillRect(W*0.006*amt,0,W,H); g.fillStyle=`rgba(0,200,255,${0.2*amt})`; g.fillRect(-W*0.006*amt,0,W,H); g.globalCompositeOperation="source-over"; }
   }
-  function moodFx(x,T){ if(!on("voiceSync")||!x) return; const m=x.mood, ev=envAt(x,T);
+  function moodFx(x,T){ if(!on("voiceSync","voicePulse")||!x) return; const m=x.mood, ev=envAt(x,T);
     if(m==="sad"){ g.globalCompositeOperation="saturation"; g.fillStyle="hsl(0,0%,50%)"; g.globalAlpha=0.45; g.fillRect(0,0,W,H); g.globalCompositeOperation="soft-light"; g.fillStyle="#3a5a8a"; g.globalAlpha=0.3; g.fillRect(0,0,W,H); }
     else if(m==="happy"){ g.globalCompositeOperation="soft-light"; g.fillStyle="#ffc070"; g.globalAlpha=0.3; g.fillRect(0,0,W,H); }
-    else if(m==="tense"){ const pulse=0.22+0.12*(0.5+0.5*Math.sin(T*2.4))+0.1*ev; const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25,W/2,H/2,Math.max(W,H)*0.7); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,`rgba(0,0,0,${pulse})`); g.fillStyle=vg; g.fillRect(0,0,W,H); }
+    else if(m==="tense"){ const pulse=on("voicePulse")?0.22+0.12*(0.5+0.5*Math.sin(T*2.4))+0.1*ev:0.3; const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25,W/2,H/2,Math.max(W,H)*0.7); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,`rgba(0,0,0,${pulse})`); g.fillStyle=vg; g.fillRect(0,0,W,H); }
     else if(m==="mystery"){ g.globalCompositeOperation="screen"; for(let k=0;k<3;k++){ const fx=W*(0.2+0.3*k+0.15*Math.sin(T*0.2+k*2)), fy=H*(0.6+0.2*Math.cos(T*0.15+k)), r=Math.max(W,H)*0.45; const fg=g.createRadialGradient(fx,fy,0,fx,fy,r); fg.addColorStop(0,"rgba(200,210,230,0.16)"); fg.addColorStop(1,"rgba(200,210,230,0)"); g.fillStyle=fg; g.globalAlpha=1; g.fillRect(0,0,W,H); } }
     else if(m==="reveal"){ const d=T-x.start; if(d>=0&&d<1.4){ const k=1-d/1.4, gr=g.createRadialGradient(W*0.5,H*0.35,0,W*0.5,H*0.35,Math.max(W,H)*0.7); gr.addColorStop(0,`rgba(255,230,180,${0.6*k})`); gr.addColorStop(1,"rgba(255,200,120,0)"); g.globalCompositeOperation="screen"; g.fillStyle=gr; g.fillRect(0,0,W,H); } }
     else if(m==="shock"){ const ht=x.kwT!=null?x.kwT:(x.words.find(w=>/!/.test(w.w))||x.words[0]||{a:x.start}).a, d=T-ht; if(d>0&&d<0.14){ g.fillStyle=`rgba(255,255,255,${0.5*(1-d/0.14)})`; g.fillRect(0,0,W,H); } }
