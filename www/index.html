@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.10</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.11</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -242,8 +242,8 @@ details summary{cursor:pointer;font-weight:700}
 <div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
 <div id="cloudInfo" class="muted"></div>
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
-<label>🖼️ New picture every (pictures change with the words) — <span class="muted">only for picture-style videos: works when "AI video clips" is set to None</span></label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2" selected>2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
-<button class="small" onclick="runBeats()">🖼️ Make extra pictures for all scenes</button>
+<label>🖼️ New picture every (pictures change with the words) — <span class="muted">only for picture-style videos: works when "AI video clips" is set to None</span></label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="smart" selected>🧠 Smart — AI decides from the words (best for understanding)</option><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2">2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
+<button class="small sec" onclick="planOnly()">🧠 Plan pictures (shows total first)</button><button class="small" onclick="runBeats()">🖼️ Make extra pictures for all scenes</button><div id="planBox" class="muted"></div>
 <button class="small sec" onclick="remakeAll()">🔄 Remake all pictures in the chosen theme</button>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
 <button class="small sec" onclick="copyAllPicPrompts()">📋 Copy all picture prompts (for ChatGPT app)</button>
@@ -467,7 +467,7 @@ async function http1(method,url,{headers={},json,blob=false,text=false,timeout=6
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm2",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
   return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
-function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",ed:s.ed||{},beats:(s.beats||[]).map(b=>({id:b.id,w0:b.w0,text:b.text,prompt:b.prompt})),chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
+function saveProj(){ return DB.put("proj",{chars:(S.chars||[]).map(c=>({name:c.name,look:c.look,gender:c.gender,age:c.age,vdesc:c.vdesc,voice:c.voice||"",gvoice:c.gvoice||"",hasSheet:!!c.sheet})),screenTitle:S.screenTitle,screenSub:S.screenSub,title:S.title,description:S.description,topic:S.topic,format:$("format").value,scenes:S.scenes.map(s=>({id:s.id,narration:s.narration,prompt:s.prompt,motion:s.motion,onscreen:s.onscreen,keyword:s.keyword,who:s.who||[],speaker:s.speaker||"",mood:s.mood||"",camera:s.camera||"",ed:s.ed||{},bkey:s.bkey||"",beats:(s.beats||[]).map(b=>({id:b.id,w0:b.w0,text:b.text,prompt:b.prompt})),chapter:s.chapter||"",own:!!s.own,useVideo:s.useVideo}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) return;
   Object.assign(S,{chars:p.chars||[],screenTitle:p.screenTitle||"",screenSub:p.screenSub||"",title:p.title,description:p.description,topic:p.topic}); if(p.format) $("format").value=p.format;
@@ -1150,8 +1150,8 @@ async function cloudClean(){ const J=cloudJob(); if(!J) return cloudShow("Nothin
   try{ const r=await gh("DELETE",`/git/refs/heads/job-${J.id}`); if(!r.ok&&r.status!==404&&r.status!==422) throw new Error("GitHub "+r.status);
     store("hdm2_cloudJob",""); cloudShow(`🧹 Job ${J.id} deleted from GitHub.`); }catch(e){ cloudShow("❌ "+esc(e.message)); } }
 /* ---------- 🖼️ extra pictures that follow the words ---------- */
-function PE(){ if($("vidEngine").value!=="none") return 0; return +(($("picsEvery")||{}).value)||0; }
-function beatsWanted(s){ const pe=PE(); if(!pe||s.own||s.useVideo||s.clip) return 0; const d=sceneSecs(s); return Math.max(0,Math.min(5,Math.round(d/pe)-1)); }
+function PE(){ if($("vidEngine").value!=="none") return 0; const v=(($("picsEvery")||{}).value); return v==="smart"?2:(+v||0); }
+function beatsWanted(s){ const pe=PE(); if(!pe||s.own||s.useVideo||s.clip) return 0; if(($("picsEvery")||{}).value==="smart"&&s.bkey===bkey(s)) return (s.beats||[]).length; const d=sceneSecs(s); return Math.max(0,Math.min(5,Math.round(d/pe)-1)); }
 function beatsMissing(s){ const w=beatsWanted(s); if(!w) return 0; const have=(s.beats||[]).filter(b=>b.img).length; return Math.max(0,w-have); }
 function clearBeats(s){ (s.beats||[]).forEach(b=>{ DB.del("i_"+b.id); if(b.img&&b.img.url) URL.revokeObjectURL(b.img.url); }); s.beats=[]; }
 function splitBeats(s){ const n=beatsWanted(s)+1; if(n<2) return [];
@@ -1160,31 +1160,56 @@ function splitBeats(s){ const n=beatsWanted(s)+1; if(n<2) return [];
   for(let k=1;k<n;k++){ const tgt=d*k/n; let best=0; ws.forEach((w,j)=>{ if(Math.abs(w.a-tgt)<Math.abs(ws[best].a-tgt)) best=j; }); if(best>0&&(!out.length||best>out[out.length-1].w0)) out.push({w0:best}); }
   out.forEach((b,k)=>{ const end=k+1<out.length?out[k+1].w0:ws.length; b.text=ws.slice(b.w0,end).map(w=>w.w).join(" "); }); return out; }
 const ANGLES=["close-up of the most important detail","wide establishing shot of the place","medium shot from a different angle","low-angle dramatic shot","over-the-shoulder shot","extreme close-up of hands or an object"];
-async function planBeats(list){
-  const need=list.filter(s=>beatsWanted(s)&&!(s.beats&&s.beats.length===beatsWanted(s)));
+function bkey(s){ return [($("picsEvery")||{}).value,s.narration,s.voice?s.voice.buf.duration.toFixed(2):"-"].join("|"); }
+function beatWords(s){ return s.voice?wordTimes(s):s.narration.split(/\s+/).filter(Boolean).map((w,k)=>({w,a:k/2.4,b:(k+1)/2.4})); }
+/* clean an AI split: list of word indexes where a new picture starts → beats */
+function fixSplit(s,starts){ const ws=beatWords(s), d=s.voice?s.voice.buf.duration:(ws.length?ws[ws.length-1].b:4);
+  let st=[...new Set(starts.map(n=>Math.round(+n)).filter(n=>n>0&&n<ws.length))].sort((a,b)=>a-b), out=[], last=0;
+  for(const n of st){ if(ws[n].a-ws[last].a>=1.0&&d-ws[n].a>=0.8){ out.push(n); last=n; } }
+  out=out.slice(0,6);
+  return out.map((w0,k)=>({w0,text:ws.slice(w0,k+1<out.length?out[k+1]:ws.length).map(w=>w.w).join(" ")})); }
+async function planBeats(list,force){
+  const smart=($("picsEvery")||{}).value==="smart";
+  const need=list.filter(s=>(smart?beatsWanted(s)!==0||true:beatsWanted(s))&&!s.own&&!s.useVideo&&!s.clip&&(force||s.bkey!==bkey(s)));
   if(!need.length) return;
-  need.forEach(s=>{ clearBeats(s); s.beats=splitBeats(s).map((b,k)=>({...b,id:s.id+"_b"+(k+1)+"_"+Math.random().toString(36).slice(2,6),prompt:`${s.prompt}. ${ANGLES[k%ANGLES.length]}, showing: ${b.text}`})); });
-  const todo=need.filter(s=>s.beats.length);
-  for(let c=0;c<todo.length;c+=12){ const part=todo.slice(c,c+12);
-    status(`🧠 Planning extra pictures ${Math.min(c+12,todo.length)}/${todo.length}…`);
-    const prompt=`You are the storyboard artist of a ${$("genre").value==="cartoon"?"cartoon":"documentary"} YouTube video. Each scene already has a MAIN picture prompt. Its voiceover is split into PARTS that play one after another; for EACH PART write a NEW picture prompt in ENGLISH that shows exactly what those words are about at that moment (a new subject, action or detail — not the same shot), keeping the SAME place, era, characters, clothes, lighting and art style as the main prompt. Vary the camera (close-up, wide, detail, reaction). No text or captions in the pictures. Keep each prompt under 60 words.
+  need.forEach(s=>{ clearBeats(s); s.beats=smart?[]:splitBeats(s).map((b,k)=>({...b,prompt:`${s.prompt}. ${ANGLES[k%ANGLES.length]}, showing: ${b.text}`})); });
+  const todo=smart?need:need.filter(s=>s.beats.length);
+  for(let c=0;c<todo.length;c+=10){ const part=todo.slice(c,c+10);
+    status(`🧠 Planning pictures for understanding ${Math.min(c+10,todo.length)}/${todo.length}…`);
+    const head=`You are the storyboard artist of a ${$("genre").value==="cartoon"?"cartoon":"documentary"} YouTube video made only of still pictures. Each scene already has a MAIN picture prompt (shown while the scene starts).`;
+    const prompt=smart?`${head}
+Your job: decide WHEN the picture must change so the audience instantly understands what the narrator is saying. Read each scene's numbered words. Start a NEW picture at the word where a new subject, person, place, object, action, number/date or idea begins — anything the viewer should SEE to understand. Do NOT change for filler words. Rules: each picture stays at least ~1.5 seconds (about 4+ words); never more than about 4 seconds without a new picture; at most 6 new pictures per scene; word 0 is already covered by the MAIN picture.
+For every new picture write an ENGLISH prompt (under 60 words) that shows exactly what those words describe, keeping the SAME place, era, characters, clothes, lighting and art style as MAIN. Vary the camera (close-up, wide, detail, reaction). No text or captions in pictures. Use a map/diagram-style picture only if a place or comparison is mentioned.
+Return ONLY JSON: {"scenes":[{"n":1,"cuts":[{"w":5,"prompt":"..."},{"w":11,"prompt":"..."}]}]}
+${part.map((s,k)=>{ const ws=beatWords(s); return `Scene ${k+1} (${(s.voice?s.voice.buf.duration:ws.length/2.4).toFixed(1)} s)\nMAIN: ${s.prompt}\nPEOPLE: ${(s.who||[]).join(", ")||"-"}\nWORDS: ${ws.map((w,j)=>j+":"+w.w).join(" ")}`; }).join("\n\n")}`
+    :`${head} Its voiceover is split into PARTS that play one after another; for EACH PART write a NEW picture prompt in ENGLISH that shows exactly what those words are about at that moment (a new subject, action or detail — not the same shot), keeping the SAME place, era, characters, clothes, lighting and art style as the main prompt. Vary the camera (close-up, wide, detail, reaction). No text or captions in the pictures. Keep each prompt under 60 words.
 Return ONLY JSON: {"scenes":[{"n":1,"prompts":["part 1 prompt","part 2 prompt"]}]}
 ${part.map((s,k)=>`Scene ${k+1}\nMAIN: ${s.prompt}\nPEOPLE: ${(s.who||[]).join(", ")||"-"}\n`+s.beats.map((b,j)=>`PART ${j+1} words: ${b.text}`).join("\n")).join("\n\n")}`;
-    try{ const out=await llmJSON(prompt,$("txtEngine").value,"ideas"); (out.scenes||[]).forEach(o=>{ const s=part[(+o.n||0)-1]; if(!s) return; (o.prompts||[]).forEach((pr,j)=>{ if(s.beats[j]&&pr) s.beats[j].prompt=String(pr); }); }); }
-    catch(e){ log("Extra picture plan: "+String(e.message).slice(0,120)+" → using camera-angle prompts"); } }
+    try{ const out=await llmJSON(prompt,$("txtEngine").value,"ideas");
+      (out.scenes||[]).forEach(o=>{ const s=part[(+o.n||0)-1]; if(!s) return;
+        if(smart){ const cuts=(o.cuts||[]).filter(x=>x&&x.w!=null); const bs=fixSplit(s,cuts.map(x=>x.w)); bs.forEach(b=>{ const m=cuts.find(x=>Math.round(+x.w)===b.w0); b.prompt=(m&&m.prompt)||`${s.prompt}. showing: ${b.text}`; }); s.beats=bs; }
+        else (o.prompts||[]).forEach((pr,j)=>{ if(s.beats[j]&&pr) s.beats[j].prompt=String(pr); }); }); }
+    catch(e){ log("Picture plan: "+String(e.message).slice(0,120)+" → using a simple split"); }
+    if(smart) part.forEach(s=>{ if(!s.beats.length){ const d=sceneSecs(s); if(d>=3.5){ const n=Math.min(5,Math.round(d/2.2)); const ws=beatWords(s); s.beats=fixSplit(s,Array.from({length:n-1},(_,k)=>Math.round(ws.length*(k+1)/n))).map((b,k)=>({...b,prompt:`${s.prompt}. ${ANGLES[k%ANGLES.length]}, showing: ${b.text}`})); } } }); }
+  need.forEach(s=>{ s.beats.forEach((b,k)=>{ b.id=s.id+"_b"+(k+1)+"_"+Math.random().toString(36).slice(2,6); }); s.bkey=bkey(s); });
   saveProj(); }
+function picPlanText(){ const sc=S.scenes.filter(s=>!s.own&&!s.useVideo&&!s.clip), main=S.scenes.filter(s=>!s.own).length, extra=sc.reduce((a,s)=>a+(s.beats||[]).length,0), secs=S.scenes.reduce((a,s)=>a+sceneSecs(s),0);
+  return {main,extra,total:main+extra,every:(secs/Math.max(1,main+extra)).toFixed(1)}; }
+async function planOnly(){ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos (AI video clips = None)."); if(!PE()){ setV("picsEvery","smart"); saveSettings(true); }
+  await guard(async()=>{ if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); await planBeats(S.scenes,true); }); drawScenes(); updateCost(); showPlan(); }
+function showPlan(){ const p=picPlanText(), c=estCost(); const box=$("planBox"); if(!box) return; box.innerHTML=`🧠 <b>Picture plan:</b> ${p.total} pictures in total (${p.main} main + ${p.extra} extra) · a new picture about every ${p.every} s · still to make ≈ ₹${c.inr}`; log(`🧠 Picture plan: ${p.total} pictures (${p.main} main + ${p.extra} extra), new picture every ~${p.every}s`); }
 async function makeBeat(s,b){ b.who=s.who; b.st={}; b.narration=b.text; await makeImage(b); delete b.st; }
 async function runBeatsFor(list){
   if(!PE()) return 0; if($("imgEngine").value==="chatgptapp"){ log("Extra pictures need an automatic picture engine (not ChatGPT app mode)."); return 0; }
-  await planBeats(list);
+  await planBeats(list); showPlan();
   const jobs=[]; list.forEach(s=>(s.beats||[]).forEach(b=>{ if(!b.img) jobs.push([s,b]); })); if(!jobs.length) return 0;
   let done=0, fail=0; status(`🖼️ Extra pictures 0/${jobs.length}`);
   await pool(jobs,2,async([s,b])=>{ try{ await makeBeat(s,b); done++; }catch(e){ fail++; log(`❌ Extra picture (scene ${S.scenes.indexOf(s)+1}): ${String(e.message).slice(0,120)}`); }
     status(`🖼️ Extra pictures ${done}/${jobs.length}${fail?` · ${fail} failed`:""}`); $("aBar").style.width=((done+fail)/jobs.length*100)+"%"; if((done+fail)%4===0) drawScenes(); });
   saveProj(); drawScenes(); updateCost(); return fail; }
-const runBeats=()=>guard(async()=>{ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos. Set 🎥 AI video clips → None in Settings to use them."); if(!PE()){ setV("picsEvery","2"); saveSettings(true); } if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); return runBeatsFor(S.scenes); });
+const runBeats=()=>guard(async()=>{ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos. Set 🎥 AI video clips → None in Settings to use them."); if(!PE()){ setV("picsEvery","smart"); saveSettings(true); } if(S.scenes.some(s=>!s.voice)) await runStep("v","🎙️ Voices",3); return runBeatsFor(S.scenes); });
 async function redoBeat(i,k){ const s=S.scenes[i], b=s.beats[k]; await guard(async()=>{ try{ status("🖼️ Remaking extra picture…"); await makeBeat(s,b); status("✅ Done."); }catch(e){ status("❌ "+e.message); } drawScenes(); }); }
-async function sceneBeats(i){ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos (AI video clips = None)."); const s=S.scenes[i]; if(!PE()){ setV("picsEvery","2"); saveSettings(true); } clearBeats(s); await guard(()=>runBeatsFor([s])); }
+async function sceneBeats(i){ if($("vidEngine").value!=="none") return status("🖼️ Extra pictures are only for picture-style videos (AI video clips = None)."); const s=S.scenes[i]; if(!PE()){ setV("picsEvery","smart"); saveSettings(true); } await guard(async()=>{ await planBeats([s],true); return runBeatsFor([s]); }); }
 /* ---------- runners ---------- */
 async function doStep(s,k){
   s.st[k]="run"; s.err=""; drawScenes();
