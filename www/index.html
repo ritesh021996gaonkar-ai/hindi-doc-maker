@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.11</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.12</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -206,6 +206,7 @@ details summary{cursor:pointer;font-weight:700}
  <div><label>Video type</label><select id="genre"><option value="cartoon">🎨 Cartoon horror (dialogue, like animated stories)</option><option value="crime">🕵️ Mystery &amp; true crime (SR PAY style)</option><option value="horror">👻 Horror story</option><option value="doc">📜 Documentary</option></select></div>
  <div><label>Pacing</label><select id="pacing"><option value="fast">Fast — new picture every ~4 s</option><option value="normal">Normal — ~9 s per picture</option></select></div>
 </div>
+<label>🖼️ Pictures change with the words — <span class="muted">for picture-style videos (⚙️ AI video clips = None)</span></label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="smart" selected>🧠 Smart — AI decides from the words (best for understanding)</option><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2">2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
 <label>🎨 Picture theme</label>
 <select id="picTheme2" onchange="setTheme(this.value,1)"></select>
 <p class="muted" id="themeDesc2"></p>
@@ -242,7 +243,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="cost" id="cloudBox"><b>☁️ Cloud video bot</b> — makes the 🎥 clips on GitHub while you do other things.
 <div id="cloudInfo" class="muted"></div>
 <button class="small" onclick="cloudSend()">☁️ Send to cloud bot</button><button class="small sec" onclick="cloudGet()">⬇️ Get clips</button><button class="small sec" onclick="cloudClean()">🧹 Clean up</button></div>
-<label>🖼️ New picture every (pictures change with the words) — <span class="muted">only for picture-style videos: works when "AI video clips" is set to None</span></label><select id="picsEvery" onchange="saveSettings(true);updateCost()"><option value="smart" selected>🧠 Smart — AI decides from the words (best for understanding)</option><option value="0">Off — 1 picture per scene</option><option value="1">1 second (≈5 pictures in a 5 s scene)</option><option value="1.5">1.5 seconds (≈3–4 pictures)</option><option value="2">2 seconds (≈2–3 pictures)</option><option value="3">3 seconds (≈2 pictures)</option></select>
+
 <button class="small sec" onclick="planOnly()">🧠 Plan pictures (shows total first)</button><button class="small" onclick="runBeats()">🖼️ Make extra pictures for all scenes</button><div id="planBox" class="muted"></div>
 <button class="small sec" onclick="remakeAll()">🔄 Remake all pictures in the chosen theme</button>
 <button class="small sec" onclick="exportAll()">📤 Save all pictures to Gallery (for GenV/FlixGen)</button>
@@ -415,6 +416,7 @@ function refreshUI(){
   $("elBox").style.display=el?"":"none"; $("gvBox").style.display=el?"none":"";
   updateCost();
 }
+try{ if(!localStorage.getItem("hdm2_smartMig")){ localStorage.setItem("hdm2_smartMig","1"); localStorage.removeItem("hdm2_picsEvery"); } }catch(e){}
 (function initSettings(){
   { const tp=$("textPack"); Object.entries(TEXTPACKS).forEach(([k,v])=>tp.add(new Option(v.n,k)));
     const ts=$("titleStyle"); Object.entries(TITLE_STYLES).forEach(([k,v])=>ts.add(new Option(v,k)));
