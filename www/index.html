@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.13</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.14</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -1710,7 +1710,12 @@ async function renderVideo(auto,PV,ONE){
     set(t0+BODY_END-0.4,v); set(t0+BODY_END+0.6,hi,1); set(t0+total-1.5,hi); set(t0+total,0.0001,1);
     mSrc.start(t0); }
   log(`Rendering ${Math.round(total)}s (${mime.split(";")[0]})…`);
-  await new Promise(res=>{ (function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; status(`🎬 Rendering ${Math.max(0,Math.round(T))}/${Math.round(total)}s — keep app open`); requestAnimationFrame(loop); })(); });
+  let paused=false;
+  const onVis=()=>{ if(document.hidden&&!paused&&rec.state==="recording"){ paused=true; try{ rec.pause(); }catch(e){} a.suspend(); Object.values(vids).forEach(v=>{ if(v.started) try{ v.el.pause(); }catch(e){} }); log("⏸️ Rendering paused (app minimized) — open the app to continue."); }
+    else if(!document.hidden&&paused){ a.resume().then(()=>{ paused=false; try{ rec.resume(); }catch(e){} Object.values(vids).forEach(v=>{ if(v.started) v.el.play().catch(()=>{}); }); log("▶️ Rendering continues."); }); } };
+  document.addEventListener("visibilitychange",onVis);
+  await new Promise(res=>{ (function loop(){ const T=a.currentTime-t0; if(T>=total){ res(); return; } if(T>=0) frame(T); $("rBar").style.width=(Math.max(0,T)/total*100)+"%"; status(`🎬 Rendering ${Math.max(0,Math.round(T))}/${Math.round(total)}s — keep app open (minimizing pauses it)`); requestAnimationFrame(loop); })(); });
+  document.removeEventListener("visibilitychange",onVis);
   rec.stop(); srcs.forEach(s=>{try{s.stop();}catch(e){}}); try{mSrc&&mSrc.stop();}catch(e){} Object.keys(vids).forEach(k=>release(+k)); await done;
   $("rBar").style.width="100%";
   const blob=new Blob(chunks,{type:mime.split(";")[0]}), ext=mime.includes("mp4")?"mp4":"webm";
@@ -1802,6 +1807,11 @@ function drawAna(){ const A=ANA; if(!A) return; const X=A.ai||{}, L=a=>(a||[]).m
 function useAngle(i){ const g=ANA.ai.angles[i];
   $("topic").value=`${g.topic}${g.hook?` — open with this hook (say it in Hindi): "${g.hook}"`:""} (fully original script from own research; do not copy any existing video)`;
   saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set from your original angle — tap 🚀 Make full video."); }
+
+/* ---------- keep working when minimized (Android notification service) ---------- */
+(function(){ let on=false, offT=null; setInterval(()=>{ const want=!!BUSY; if(want===on){ clearTimeout(offT); offT=null; return; }
+  if(want){ on=true; try{ const K=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.KeepAlive; K&&K.busy({on:true}).catch(()=>{}); }catch(e){} }
+  else if(!offT) offT=setTimeout(()=>{ offT=null; if(!BUSY){ on=false; try{ const K=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.KeepAlive; K&&K.busy({on:false}).catch(()=>{}); }catch(e){} } },4000); },500); })();
 
 /* ---------- 🎨 copy a video's style ---------- */
 let STYLEG=null; try{ STYLEG=JSON.parse(load("hdm2_styleGuide")||"null"); }catch(e){}
