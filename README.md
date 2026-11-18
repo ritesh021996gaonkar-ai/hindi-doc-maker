@@ -26,6 +26,11 @@ Everything you pay for (voices, pictures, clips) is saved on the phone, so closi
 
 The app shows a live estimate before you start.
 
+## 🎨 Copy a video's style (new in v6.13)
+In **📊 Analyze a video**, paste a YouTube link or pick a video file from the phone, then tap **🎨 Learn this video's style**.
+Gemini watches the first 10 minutes and learns the picture style, how often pictures change, the story structure, hook and narration.
+Tap **✅ Use this style**: the picture style, "pictures change every" timing, pacing, transitions and subtitles are set for you, and every new script follows the same structure — with your own original story and words.
+
 ## Build
 Every push to `main` builds the APK in GitHub Actions → download **HindiDocMaker-apk**.
 

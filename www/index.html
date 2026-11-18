@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.12</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.13</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -190,6 +190,12 @@ details summary{cursor:pointer;font-weight:700}
 <button id="btnAna" onclick="analyzeVideo()">🔍 Analyze why it works</button>
 <p class="muted">Reads the title, description, chapters, stats and top comments, then finds why it works, what viewers want, and original angles for <b>your own</b> video. Needs the YouTube API key in Settings. It never copies the creator's script.</p>
 <div id="anaBox"></div>
+<h3 style="margin-top:18px">🎨 Copy a video's style</h3>
+<p class="muted">Gemini <b>watches</b> the video (the YouTube link above, or a video file from your phone) and learns its picture style, pacing, story structure and narration. Your next videos then look and feel the same — with your own original script.</p>
+<label>Or pick a video file from your phone</label>
+<input id="styleFile" type="file" accept="video/*" style="width:100%">
+<button id="btnStyle" onclick="copyStyle()">🎨 Learn this video's style</button>
+<div id="styleBox"></div>
 </section>
 
 <section class="card">
@@ -587,7 +593,7 @@ ${G.rules}
 - "motion": English में कैमरा मूवमेंट (1 छोटा वाक्य, जैसे "slow push in on the hands").
 - "mood": उस दृश्य की narration का भाव — calm | tense | shock | sad | action | mystery | reveal | happy। "camera": mood से मेल खाता — push_in | pull_out | pan_left | pan_right | tilt_up | tilt_down | orbit | drift | handheld | push_fast | pan_fast (shock→push_fast, tense→push_in, sad/reveal→pull_out, action→pan_fast/handheld, mystery→drift/orbit)।
 - "onscreen": जहाँ ज़रूरी हो (तारीख, जगह, नाम) 2-5 शब्द, बाकी "".
-- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${metaRule()}${langRule()}`; }
+- "chapter": जहाँ नया अध्याय शुरू हो वहाँ 2-5 शब्दों का अध्याय नाम, बाकी ""। पहला दृश्य "chapter" के साथ शुरू हो।${styleRule()}${metaRule()}${langRule()}`; }
 function buildPrompt(topic,mins,n){ const G=GENRE[$("genre").value]||GENRE.doc;
   return `आप एक ${G.who} हैं।
 विषय: "${topic}"
@@ -602,7 +608,7 @@ async function longScript(topic,mins,n){
   const nCh=Math.max(4,Math.min(10,Math.round(mins/3.5)));
   status("✍️ Planning the story (chapters & characters)…");
   const outline=await llmJSON(`आप एक ${G.who} हैं। विषय: "${topic}"। लगभग ${mins} मिनट की ${G.kind} की पूरी योजना बनाइए — ${nCh} अध्याय (chapters)।
-${G.rules}
+${G.rules}${styleRule()}
 हर अध्याय: "title" (2-5 शब्द हिंदी) और "summary" (4-6 वाक्य: इस अध्याय में क्या-क्या होता है, कौन से सुराग़/twists, अगला अध्याय किस सवाल पर जाता है)। पहला अध्याय hook से शुरू हो, आखिरी में खुलासा और अंत।
 "characters": मुख्य किरदार (2-6) — "name" (English/Roman अक्षरों में, जैसे "Rahul") और "look" (English: उम्र, चेहरा, बाल, कपड़े — स्थायी)।
 "title": clickable हिंदी YouTube title, "screen_title": 2-4 शब्द, "screen_subtitle": 6-10 शब्द, "description": हिंदी description, "tags": 10 tags।${metaRule().replace('"chapter"','chapters का "title"')}
@@ -1796,6 +1802,93 @@ function drawAna(){ const A=ANA; if(!A) return; const X=A.ai||{}, L=a=>(a||[]).m
 function useAngle(i){ const g=ANA.ai.angles[i];
   $("topic").value=`${g.topic}${g.hook?` — open with this hook (say it in Hindi): "${g.hook}"`:""} (fully original script from own research; do not copy any existing video)`;
   saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set from your original angle — tap 🚀 Make full video."); }
+
+/* ---------- 🎨 copy a video's style ---------- */
+let STYLEG=null; try{ STYLEG=JSON.parse(load("hdm2_styleGuide")||"null"); }catch(e){}
+const STYLE_PROMPT=`You are a documentary director. Watch this video closely and describe its STYLE so a different team can make NEW, ORIGINAL videos that look and feel the same. Describe HOW it is made, not its specific story, lines or names.
+Return ONLY JSON, all in simple English:
+{"name":"3-5 word name for this style",
+"summary":"2 sentences: what kind of video this is and its look",
+"art_style":"image-generator style words for EVERY picture, 25-45 words: medium, linework, shading, colour palette, lighting, detail, how people are drawn. No subject matter, no artist/brand/channel names. End with: no text, no watermark",
+"theme":"closest of: photo, cinematic, cartoon2d, anim3d, anime, comic, horror, painting, watercolor, vintage, clay, flat",
+"seconds_per_picture":3.0,
+"genre":"closest of: doc, crime, horror, cartoon",
+"hook":"how the first 30 seconds grab the viewer",
+"structure":["6-10 generic story beats in order, e.g. modern myth hook, how scientists found out, origins, daily life and inventions, golden age, economy, decline, lessons today"],
+"narration":"voice and writing style: tone, pace, sentence length, how it talks to the viewer, how it keeps curiosity",
+"shot_types":["6-10 kinds of shots it rotates between, e.g. wide establishing shot, close-up of hands at work, cutaway diagram, top-down map, old parchment map"],
+"camera":"how pictures move (zoom/pan, speed) and change (cut/fade)",
+"transition":"closest of: cut, fade, push, zoom, mix",
+"subtitles":"closest of: none, karaoke, box, pop, minimal",
+"onscreen_text":"what text appears on screen, if any",
+"music":"background music and sound",
+"why_it_works":["3-5 short reasons viewers keep watching"]}
+seconds_per_picture = average seconds each picture stays on screen (count the cuts).`;
+async function geminiUpload(file){
+  const key=$("key").value.trim(), type=file.type||"video/mp4";
+  const up="https://generativelanguage.googleapis.com/upload/v1beta/files";
+  const r=await fetch(up,{method:"POST",headers:{"x-goog-api-key":key,"X-Goog-Upload-Protocol":"resumable","X-Goog-Upload-Command":"start","X-Goog-Upload-Header-Content-Length":String(file.size),"X-Goog-Upload-Header-Content-Type":type,"Content-Type":"application/json"},body:JSON.stringify({file:{display_name:(file.name||"video").slice(0,100)}})});
+  const url=r.headers.get("x-goog-upload-url");
+  if(!r.ok||!url){ let m=""; try{ m=errMsg(await r.json()); }catch(e){} throw new Error(`Video upload to Gemini failed (${r.status}) ${m} — or paste a YouTube link instead.`); }
+  const r2=await fetch(url,{method:"POST",headers:{"X-Goog-Upload-Command":"upload, finalize","X-Goog-Upload-Offset":"0"},body:file});
+  const j=await r2.json().catch(()=>({})); if(!r2.ok||!j.file) throw new Error("Video upload to Gemini failed: "+(errMsg(j)||r2.status));
+  let f=j.file;
+  for(let i=0;f.state==="PROCESSING"&&i<120;i++){ status("🎞️ Gemini is processing the video…"); await sleep(5000);
+    const g=await http("GET",`${GBASE}/${f.name}`,{headers:{"x-goog-api-key":key}}); if(g.ok) f=g.data; }
+  if(f.state!=="ACTIVE") throw new Error("Gemini couldn't process this video ("+(f.state||"?")+"). Try an MP4 file or a YouTube link.");
+  return {file_uri:f.uri,mime_type:type};
+}
+async function copyStyle(){
+  if(!$("key").value.trim()){ alert("Add your Gemini API key in ⚙️ Settings first."); $("setBox").open=true; return; }
+  const file=$("styleFile").files[0], id=ytId($("anaUrl").value);
+  if(!file&&!id){ alert("Paste a YouTube link above, or pick a video file."); return; }
+  if(file&&file.size>2e9){ alert("That file is over 2 GB — trim it first."); return; }
+  const btn=$("btnStyle"); btn.disabled=true; $("styleBox").innerHTML="";
+  try{
+    let fd;
+    if(file){ btn.textContent="⬆️ Uploading video…"; status(`⬆️ Uploading ${(file.size/1e6).toFixed(0)} MB to Gemini…`); fd=await geminiUpload(file); }
+    else fd={file_uri:"https://www.youtube.com/watch?v="+id};
+    btn.textContent="👀 Gemini is watching…"; status("👀 Gemini is watching the video (first 10 minutes) — 1-3 minutes…");
+    const j=await geminiAuto("text",$("mText").value,{contents:[{parts:[{file_data:fd,video_metadata:{start_offset:"0s",end_offset:"600s"}},{text:STYLE_PROMPT}]}],
+      generationConfig:{responseMimeType:"application/json",temperature:0.4,mediaResolution:"MEDIA_RESOLUTION_LOW"}});
+    const g=parseJSON(parts(j).map(p=>p.text||"").join(""));
+    if(!g.art_style) throw new Error("Gemini's answer had no style — tap again.");
+    g.seconds_per_picture=Math.min(10,Math.max(1,+g.seconds_per_picture||3.5));
+    g.src=file?file.name:`youtu.be/${id}`; g.active=false;
+    STYLEG=g; store("hdm2_styleGuide",JSON.stringify(g)); drawStyle(); status("✅ Style learned — tap ✅ Use this style.");
+  }catch(e){ log("❌ Copy style: "+e.message); $("styleBox").innerHTML=`<div class="err">${esc(e.message)}</div>`; status(""); }
+  finally{ btn.disabled=false; btn.textContent="🎨 Learn this video's style"; }
+}
+function drawStyle(){ const g=STYLEG, box=$("styleBox"); if(!box) return; if(!g){ box.innerHTML=""; return; }
+  const L=a=>(a||[]).map(x=>`<li>${esc(x)}</li>`).join("");
+  box.innerHTML=`<div class="cost"><b>🎨 ${esc(g.name||"Style")}</b> <span class="muted">from ${esc(g.src||"")}</span>${g.active?` <span class="st ok">✅ in use</span>`:""}<br>${esc(g.summary||"")}
+   <br><br><b>🖼️ Pictures:</b> ${esc(g.art_style)}
+   <br><b>⏱️ New picture every:</b> ~${(+g.seconds_per_picture).toFixed(1)} s · <b>🎥 Camera:</b> ${esc(g.camera||"")}
+   <br><b>🎣 Hook:</b> ${esc(g.hook||"")}
+   <br><b>🗣️ Narration:</b> ${esc(g.narration||"")}
+   <br><br><b>🧱 Story structure</b><ol>${L(g.structure)}</ol>
+   <b>📸 Shot types</b><ul>${L(g.shot_types)}</ul>
+   ${g.why_it_works&&g.why_it_works.length?`<b>🎯 Why it works</b><ul>${L(g.why_it_works)}</ul>`:""}
+   ${g.onscreen_text?`<b>🔤 On-screen text:</b> ${esc(g.onscreen_text)}<br>`:""}${g.music?`<b>🎵 Music:</b> ${esc(g.music)}`:""}</div>
+   <div class="row"><button class="small" onclick="useStyle()">✅ Use this style</button>${g.active?`<button class="small sec" onclick="styleOff()">✖️ Stop using it</button>`:`<button class="small sec" onclick="copyText(STYLEG.art_style)">📋 Copy picture prompt</button>`}</div>`; }
+function copyText(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>status("✅ Copied."),()=>prompt("Copy this:",t)); }
+function useStyle(){ const g=STYLEG; if(!g) return;
+  setTheme("custom"); $("imgStyle").value=g.art_style; $("realism").checked=g.theme==="photo";
+  const sp=+g.seconds_per_picture; setV("picsEvery",sp<=1.25?"1":sp<=1.75?"1.5":sp<=2.5?"2":sp<=4.5?"3":"smart");
+  setV("pacing",sp<=5?"fast":"normal");
+  if(GENRE[g.genre]) setV("genre",g.genre);
+  const okOpt=(id,v)=>v&&[...$(id).options].some(o=>o.value===v);
+  if(okOpt("trans",g.transition)) setV("trans",g.transition);
+  if(okOpt("subStyle",g.subtitles)) setV("subStyle",g.subtitles);
+  g.active=true; store("hdm2_styleGuide",JSON.stringify(g)); saveSettings(true); refreshUI(); drawStyle();
+  if(S.scenes.some(s=>s.img)) status(`✅ Style "${g.name}" is on. New scripts & pictures follow it — tap "🔄 Remake all pictures" to redo existing ones.`);
+  else status(`✅ Style "${g.name}" is on — type a topic and tap 🚀 Make full video.`);
+  if($("vidEngine").value!=="none") log(`ℹ️ "Pictures change every ${sp.toFixed(1)} s" works when ⚙️ AI video clips = None.`);
+  $("topic").scrollIntoView({behavior:"smooth",block:"center"}); }
+function styleOff(){ if(!STYLEG) return; STYLEG.active=false; store("hdm2_styleGuide",JSON.stringify(STYLEG)); drawStyle(); status("Copied style turned off. Pick a 🎨 Picture theme to change the look back."); }
+function styleRule(){ const g=STYLEG; if(!g||!g.active) return "";
+  return `\n- 🎨 Reference style (सिर्फ़ अंदाज़ कॉपी करें — उसकी कहानी, लाइनें या नाम कभी नहीं): structure: ${(g.structure||[]).join(" → ")}। Hook: ${g.hook||""}। Narration: ${g.narration||""}। "image_prompt" में ये shot types बारी-बारी से इस्तेमाल करें: ${(g.shot_types||[]).join("; ")}।`; }
+setTimeout(drawStyle,0);
 
 /* ---------- 🔥 trending ideas ---------- */
 let TRENDS={items:[],ideas:[]};
