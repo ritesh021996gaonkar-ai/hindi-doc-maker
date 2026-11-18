@@ -45,7 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.14</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v6.15</span></header>
 <main>
 
 <details class="card" id="setBox">
@@ -168,6 +168,10 @@ details summary{cursor:pointer;font-weight:700}
  <input id="ttsStyle" value="एक गंभीर, रोचक डॉक्यूमेंट्री नैरेटर की आवाज़ में, साफ़ और मध्यम गति से पढ़ें">
  <label>Clips at the same time</label><input id="par" type="number" value="2" min="1" max="4">
 </details>
+<h3>🔔 Background mode</h3>
+<p class="muted">Keeps the app working when minimized by showing a "🎬 Making your video…" notification. Final rendering still needs the app open.</p>
+<button class="small sec" onclick="testBg()">🔔 Test background notification</button>
+<div id="bgInfo"></div>
 <button onclick="saveSettings()">💾 Save settings</button>
 <div class="row"><button class="small sec" onclick="backupSettings()">📤 Backup keys &amp; settings</button><button class="small sec" onclick="restoreSettings()">📥 Restore from backup</button></div>
 <p class="muted">Settings are saved on this phone automatically. Backup = a safety copy in Files › Documents › HindiDocMaker (keep it private — it has your keys).</p>
@@ -1809,9 +1813,25 @@ function useAngle(i){ const g=ANA.ai.angles[i];
   saveSettings(true); $("topic").scrollIntoView({behavior:"smooth",block:"center"}); status("✅ Topic set from your original angle — tap 🚀 Make full video."); }
 
 /* ---------- keep working when minimized (Android notification service) ---------- */
+const KA=()=>window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.KeepAlive;
+let KA_TOLD=false;
+async function bgMode(on){ const K=KA(); if(!K) return null;
+  try{ const r=await K.busy({on}); if(on){ await sleep(800); const st=await K.status().catch(()=>({}));
+      if(st.error) log("⚠️ Background mode failed: "+st.error);
+      else if(!r.notifications){ if(!KA_TOLD) log("🔔 Notifications are off for this app, so Android may stop it when minimized → ⚙️ Settings → 🔔 Background mode → Turn on notifications."); KA_TOLD=true; }
+      else if(!KA_TOLD){ log("🔔 Background mode on — you can minimize (except during final rendering)."); KA_TOLD=true; } }
+    return r; }catch(e){ log("⚠️ Background mode: "+(e.message||e)); return null; } }
 (function(){ let on=false, offT=null; setInterval(()=>{ const want=!!BUSY; if(want===on){ clearTimeout(offT); offT=null; return; }
-  if(want){ on=true; try{ const K=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.KeepAlive; K&&K.busy({on:true}).catch(()=>{}); }catch(e){} }
-  else if(!offT) offT=setTimeout(()=>{ offT=null; if(!BUSY){ on=false; try{ const K=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.KeepAlive; K&&K.busy({on:false}).catch(()=>{}); }catch(e){} } },4000); },500); })();
+  if(want){ on=true; bgMode(true); }
+  else if(!offT) offT=setTimeout(()=>{ offT=null; if(!BUSY){ on=false; bgMode(false); } },4000); },500); })();
+async function testBg(){ const box=$("bgInfo"), K=KA();
+  if(!K){ box.innerHTML=`<div class="err">This app version has no background mode. Install the newest APK (v6.15).</div>`; return; }
+  box.textContent="Testing…"; const r=await bgMode(true); await sleep(1000); const st=await K.status().catch(e=>({error:e.message}));
+  box.innerHTML=st.error?`<div class="err">❌ Could not start: ${esc(st.error)}</div>`
+   :!st.notifications?`<div class="err">🔕 Notifications are OFF for this app — Android hides the notification and may stop the app when minimized.</div><button class="small" onclick="KA().openSettings()">🔔 Turn on notifications</button>`
+   :st.running?`<div class="cost">✅ Working — you should see "🎬 Making your video…" in your notifications for 15 s. Android ${st.android}.</div>`
+   :`<div class="err">Started, but Android didn't keep it running (Android ${st.android}). Set Settings → Apps → Hindi Doc Maker → Battery → Unrestricted.</div>`;
+  setTimeout(()=>{ if(!BUSY) bgMode(false); },15000); }
 
 /* ---------- 🎨 copy a video's style ---------- */
 let STYLEG=null; try{ STYLEG=JSON.parse(load("hdm2_styleGuide")||"null"); }catch(e){}

@@ -16,6 +16,8 @@ import android.os.PowerManager;
 public class KeepAliveService extends Service {
     private static final String CH = "hdm_work";
     private PowerManager.WakeLock lock;
+    static volatile boolean running = false;
+    static volatile String lastError = "";
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -36,8 +38,16 @@ public class KeepAliveService extends Service {
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .build();
-        if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        else startForeground(1, n);
+        try {
+            if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            else startForeground(1, n);
+            running = true;
+            lastError = "";
+        } catch (Exception e) {
+            lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (lock == null) {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             lock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "hdm:work");
@@ -48,6 +58,7 @@ public class KeepAliveService extends Service {
 
     @Override
     public void onDestroy() {
+        running = false;
         if (lock != null && lock.isHeld()) lock.release();
         lock = null;
         super.onDestroy();
