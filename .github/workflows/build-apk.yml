@@ -28,24 +28,14 @@ jobs:
           [ -d android ] || npx cap add android
           npx cap sync android
 
-      - name: Keep screen on while rendering
+      - name: Keep screen on + keep working when minimized (notification service)
         run: |
-          f=$(find android/app/src/main/java -name MainActivity.java | head -1)
-          cat > "$f" <<'EOF'
-          package in.gaonkar.hindidocmaker;
-
-          import android.os.Bundle;
-          import android.view.WindowManager;
-          import com.getcapacitor.BridgeActivity;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-              }
-          }
-          EOF
+          d=$(dirname "$(find android/app/src/main/java -name MainActivity.java | head -1)")
+          cp native/MainActivity.java native/KeepAliveService.java native/KeepAlivePlugin.java "$d/"
+          m=android/app/src/main/AndroidManifest.xml
+          grep -q KeepAliveService $m || sed -i 's#</application>#    <service android:name=".KeepAliveService" android:exported="false" android:foregroundServiceType="dataSync" />\n    </application>#' $m
+          grep -q FOREGROUND_SERVICE_DATA_SYNC $m || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n</manifest>#' $m
+          grep -n "Service\|permission" $m
 
       - name: Storage permission for older Android (10 and below)
         run: |
