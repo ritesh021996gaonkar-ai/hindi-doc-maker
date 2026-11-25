@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.7</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.8</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -250,6 +250,13 @@ let AC=null; function ac(){ if(!AC) AC=new (window.AudioContext||window.webkitAu
    ===================================================================== */
 const F={baloo:'"Baloo 2","Hind",sans-serif',hind:'"Hind","Noto Sans Devanagari",sans-serif',pop:'"Poppins","Hind",sans-serif',teko:'"Teko","Hind",sans-serif',kalam:'"Kalam","Hind",cursive',rozha:'"Rozha One","Hind",serif',bang:'"Bangers","Baloo 2",sans-serif',pixel:'"Press Start 2P",monospace',type:'"Special Elite","Courier New",monospace',marker:'"Permanent Marker","Kalam",cursive'};
 const STYLES={
+ collage:{n:"Newsroom collage",e:"📰",d:"Black-and-white cut-outs with bold yellow — like the big explainer channels",
+  art:"mixed-media editorial collage, black-and-white halftone photographs cut out with thick bright yellow outlines, bright yellow circles and torn yellow shapes behind the main subject, grungy off-white newsprint paper background with halftone dot patterns, a small technical pen-and-ink line drawing inset, bold yellow curved arrows, high-contrast monochrome photos with ONLY bright yellow (#FFE003) as accent colour, layered scrapbook composition, no text, no logos",
+  tone:"smart investigative explainer — clear, curious, confident; asks 'why' and answers with evidence",
+  text:{f:F.pop,c:"#111",bg:"#FFE003",acc:"#FFE003",box:"highlight"},music:"curious",voice:{g:"male",a:"middle_aged",w:["clear","confident","narration","professional"]},
+  fx:{p:"paper",grade:"none",flick:0},cap:{c:"#111",bg:"rgba(255,227,3,.95)"},refUrl:"refs/collage.jpg",
+  cam:{mode:"pan",spd:0.5,tp:"slide",ts:"whip",tl:0.35,notes:"Slow pans across the collage, slides between pictures and quick whip pans between scenes."},
+  checks:["black-and-white halftone photo cut-outs","thick bright yellow outlines or yellow shapes","off-white newsprint paper texture","only yellow as colour accent"]},
  stickman:{n:"Stickman",e:"✏️",d:"Simple stickman doodles on white — clear, friendly explainers",
   art:"simple hand-drawn stickman doodle illustration, black marker stick figures with round heads, plain off-white paper background, a few flat colour accents, clean minimal educational drawing, lots of empty space",
   tone:"friendly, curious and simple, like explaining to a smart friend; light humour",
@@ -1069,8 +1076,11 @@ function drawTrans(g,W,H,type,p,pb,pc,cb,cc,filter){ const e=ease(p);
 function drawPic(g,bm,W,H,c,filter){ if(!bm) return; const sc=Math.max(W/bm.width,H/bm.height)*c.s, w=bm.width*sc, h=bm.height*sc;
   g.save(); g.translate(W/2+c.x*W,H/2+c.y*H); if(c.r) g.rotate(c.r); if(filter&&filter!=="none") g.filter=filter; g.drawImage(bm,-w/2,-h/2,w,h); g.restore(); }
 /* living-picture particles */
-function makeParticles(kind,W,H){ const n=kind==="fog"?7:kind==="scan"||kind==="scratch"?0:kind==="none"?0:40; return Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,r:kind==="fog"?W*(0.25+Math.random()*0.3):1+Math.random()*(kind==="sparkle"?3:2.5),vx:(Math.random()-0.5)*(kind==="fog"?14:10),vy:kind==="chalk"?6+Math.random()*10:-(2+Math.random()*8),a:Math.random()*Math.PI*2})); }
+function makeParticles(kind,W,H){ const n=kind==="fog"?7:kind==="scan"||kind==="scratch"||kind==="paper"?0:kind==="none"?0:40; return Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,r:kind==="fog"?W*(0.25+Math.random()*0.3):1+Math.random()*(kind==="sparkle"?3:2.5),vx:(Math.random()-0.5)*(kind==="fog"?14:10),vy:kind==="chalk"?6+Math.random()*10:-(2+Math.random()*8),a:Math.random()*Math.PI*2})); }
+let GRAIN=null;
 function drawParticles(g,P_,kind,W,H,dt,t){ if(kind==="none") return;
+  if(kind==="paper"){ if(!GRAIN){ const c=document.createElement("canvas"); c.width=c.height=256; const x=c.getContext("2d"), im=x.createImageData(256,256); for(let i=0;i<im.data.length;i+=4){ const v=Math.random()*255|0; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=255; } x.putImageData(im,0,0); GRAIN=c; }
+    g.save(); g.globalAlpha=0.06; g.globalCompositeOperation="overlay"; g.fillStyle=g.createPattern(GRAIN,"repeat"); g.fillRect(0,0,W,H); g.restore(); return; }
   if(kind==="scan"){ g.save(); g.globalAlpha=0.08; g.fillStyle="#000"; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,2); g.restore(); return; }
   if(kind==="scratch"){ g.save(); g.strokeStyle="rgba(255,250,230,.25)"; g.lineWidth=1.5; for(let i=0;i<3;i++){ if(Math.random()<0.5) continue; const x=Math.random()*W; g.beginPath(); g.moveTo(x,0); g.lineTo(x+Math.random()*6-3,H); g.stroke(); } g.restore(); return; }
   g.save();
@@ -1088,7 +1098,8 @@ function textBox(g,text,x,y,size,T,u,align="left"){ if(!text) return; const a=ea
   if(T.box==="comic"){ g.rotate(-0.03); }
   const L=-bw/2, Tp=-bh/2;
   g.shadowColor="rgba(0,0,0,.35)"; g.shadowBlur=size*0.4; g.shadowOffsetY=size*0.08;
-  if(T.box==="pill"){ g.fillStyle=T.bg; rr(g,L,Tp,bw,bh,bh/2); g.fill(); }
+  if(T.box==="highlight"){ g.shadowColor="transparent"; const sw=clamp(u*2.2); g.fillStyle=T.bg; g.beginPath(); g.moveTo(L-size*0.1,Tp+size*0.08); g.lineTo(L-size*0.1+(bw+size*0.2)*sw,Tp); g.lineTo(L-size*0.1+(bw+size*0.2)*sw,-Tp-size*0.04); g.lineTo(L-size*0.1,-Tp); g.closePath(); g.fill(); }
+  else if(T.box==="pill"){ g.fillStyle=T.bg; rr(g,L,Tp,bw,bh,bh/2); g.fill(); }
   else if(T.box==="bar"){ g.fillStyle=T.bg; g.fillRect(L,Tp,bw,bh); g.shadowColor="transparent"; g.fillStyle=T.acc; g.fillRect(L,Tp,size*0.18,bh); }
   else if(T.box==="paper"){ g.fillStyle=T.bg; g.save(); g.rotate(-0.02); g.fillRect(L,Tp,bw,bh); g.restore(); g.shadowColor="transparent"; g.fillStyle=T.acc; g.globalAlpha=fade*0.85; g.fillRect(-size*0.5,Tp-size*0.18,size,size*0.36); g.globalAlpha=fade; }
   else if(T.box==="comic"){ g.fillStyle=T.bg; g.fillRect(L,Tp,bw,bh); g.shadowColor="transparent"; g.lineWidth=size*0.12; g.strokeStyle="#111"; g.strokeRect(L,Tp,bw,bh); }
@@ -1169,7 +1180,7 @@ async function renderVideo(PREV){
       try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),cur._bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){} }
     if(liv&&FX.flick){ const f=(Math.sin(tt*17)+Math.sin(tt*29.3))*0.5; g.fillStyle=`rgba(0,0,0,${clamp(0.05*FX.flick+f*0.04*FX.flick,0,0.2)})`; g.fillRect(0,0,W,H); }
     drawParticles(g,parts_,liv?FX.p||"none":"none",W,H,dt,tt);
-    vignette(g,W,H,/paper|chalk/.test(T.box)||S.music==="playful"?0.2:0.42);
+    vignette(g,W,H,/paper|chalk|highlight/.test(T.box)||S.music==="playful"?0.2:0.42);
     if(FX.bars&&P.format!=="9:16"){ g.fillStyle="#000"; g.fillRect(0,0,W,H*0.06); g.fillRect(0,H*0.94,W,H*0.06); }
     /* title: fully visible on the very first frame (good thumbnail), fades out */
     if(TITLE_ON&&tt<5.2&&M.screen_title){ const out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
@@ -1344,7 +1355,9 @@ function grabFrames(file,n=8){ return new Promise((res,rej)=>{ const v=document.
       c.toBlob(b=>{ if(b&&b.size>3000) out.push(b); i++; next(); },"image/jpeg",0.88); }catch(e){ i++; next(); } };
   v.onerror=()=>{ URL.revokeObjectURL(url); res(out); }; setTimeout(()=>done(),90000); }); }
 const REF_CACHE={};
-async function styleRefs(k){ const st=allStyles()[k]; if(!st||!st.refs) return []; if(REF_CACHE[k]) return REF_CACHE[k];
+async function styleRefs(k){ const st=allStyles()[k]; if(!st) return []; if(REF_CACHE[k]) return REF_CACHE[k];
+  if(st.refUrl&&!st.refs){ try{ const r=await fetch(st.refUrl); if(r.ok) return REF_CACHE[k]=[await r.blob()]; }catch(e){} return []; }
+  if(!st.refs) return [];
   const L=[]; for(let i=0;i<st.refs;i++){ const b=await DB.get(`ref_${k}_${i}`); if(b) L.push(b); } return REF_CACHE[k]=L; }
 const RECIPE_PROMPT=`These are still frames from one video. Write an image-generator prompt that reproduces their EXACT visual style so new pictures look like they came from the same video.
 Cover, precisely: medium (photo, 2D, 3D, painting…), line work, shading/rendering technique, colour palette (name the main colours), contrast and saturation, lighting, texture/grain, level of detail, background treatment, how people are drawn (proportions, faces, eyes), camera/framing habits.

@@ -20,8 +20,8 @@ Optional: add a **Claude API key** for the best Hindi storytelling (Gemini is us
 | 🎵 Background music — composed by the app for each style | built in | ₹0, copyright-free |
 | 🎬 Render — camera motion, living-picture effects, on-screen text, captions | on the phone | ₹0 |
 
-## 15 styles
-Stickman · Comic action (original heroes) · 3D animated · Anime · Retro pixel game · Indian miniature · Madhubani folk art · Realistic photo · Cinematic film · Watercolour storybook · Claymation · Flat infographic · Vintage newspaper · Paper cut-out · Chalkboard sketch · Dark mystery
+## 16 styles
+📰 **Newsroom collage** (black-and-white halftone cut-outs, bold yellow outlines and shapes, newsprint paper, yellow highlighter text; slow pans, whip-pan scene changes) · Stickman · Comic action (original heroes) · 3D animated · Anime · Retro pixel game · Indian miniature · Madhubani folk art · Realistic photo · Cinematic film · Watercolour storybook · Claymation · Flat infographic · Vintage newspaper · Paper cut-out · Chalkboard sketch · Dark mystery
 
 Each style sets the picture look, script tone, text design, music mood, voice type and effects.
 **🎨 Styles tab → Learn a style:** pick 1–3 example videos (or YouTube links) and Gemini makes a new style from them.
