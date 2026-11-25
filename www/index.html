@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.10</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.11</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -161,15 +161,19 @@ details summary{cursor:pointer;font-weight:700}
  <h2>🧠 Script — Google Gemini</h2>
  <label>Gemini API key (free key works) — aistudio.google.com/apikey</label>
  <input id="gemKey" type="password" placeholder="AIza...">
+ <button class="small sec" onclick="openExt('https://console.cloud.google.com/billing')">💳 Top up Gemini (UPI ok)</button><button class="small sec" onclick="openExt('https://aistudio.google.com/apikey')">🔑 Get Gemini key</button>
+ <p class="muted">Google Cloud billing accepts UPI in India — add it under Payment method, or buy prepaid Gemini API credits.</p>
  <div class="chk"><input type="checkbox" id="deep" checked><label for="deep">🔎 Deep research with Google Search before writing (needs billing turned on for the key — 5,000 searches/month free; otherwise the app reads Wikipedia instead)</label></div>
  <label>✨ Claude API key (optional — best Hindi storytelling, ≈ ₹5–15 per script) — platform.claude.com</label>
  <input id="claudeKey" type="password" placeholder="sk-ant-... (leave empty to write with Gemini, free)">
+ <button class="small sec" onclick="openExt('https://platform.claude.com/settings/billing')">💳 Top up Claude</button>
  <label>Claude model</label><input id="claudeModel" value="claude-sonnet-5-5">
 </div>
 <div class="card">
  <h2>🎙️ Voice — ElevenLabs</h2>
  <label>ElevenLabs API key — elevenlabs.io → Developers → API keys</label>
  <input id="elKey" type="password" placeholder="sk_...">
+ <button class="small sec" onclick="openExt('https://elevenlabs.io/app/subscription')">💳 ElevenLabs plan</button><button class="small sec" onclick="openExt('https://elevenlabs.io/app/settings/api-keys')">🔑 Get key</button>
  <label>Voice</label>
  <select id="elVoice"><option value="auto">🎯 Auto — best voice for each style</option></select>
  <button class="small sec" onclick="loadVoices(true)">🔄 Load my voices</button><button class="small sec" onclick="findHindiVoices()">🔎 Find Hindi voices to add</button>
@@ -184,12 +188,15 @@ details summary{cursor:pointer;font-weight:700}
  <h2>🖼️ Pictures (all free)</h2>
  <label>Pollinations key (free — enter.pollinations.ai; removes watermark, much faster)</label>
  <input id="polKey" type="password" placeholder="optional: sk_... or pk_...">
+ <button class="small sec" onclick="openExt('https://enter.pollinations.ai')">🔑 Get key / 💳 Pollen</button>
  <label>Cloudflare Account ID (free backup — dash.cloudflare.com → Workers AI)</label>
  <input id="cfAcct" placeholder="32 characters, optional">
  <label>Cloudflare API token</label>
  <input id="cfToken" type="password" placeholder="optional">
  <label>💰 fal.ai key (paid, optional — FLUX schnell ≈ ₹0.26 per picture, ~1 s each) — fal.ai → Dashboard → Keys</label>
  <input id="falKey" type="password" placeholder="optional: xxxxxxxx-xxxx:xxxxxxxx">
+ <button class="small sec" onclick="openExt('https://fal.ai/dashboard/billing')">💳 Top up fal.ai</button><button class="small sec" onclick="openExt('https://fal.ai/dashboard/keys')">🔑 Get fal.ai key</button>
+ <p class="muted">Pay on fal.ai's own page with the methods they accept.</p>
  <div class="row"><div><label>When to use fal.ai</label><select id="falMode"><option value="backup">Only when free engines run out</option><option value="first">First — fastest (paid for every picture)</option></select></div>
   <div><label>Max spend per video (₹)</label><input id="falMax" type="number" value="150" min="0" step="10"></div></div>
  <div class="chk"><input type="checkbox" id="qc" checked><label for="qc">🔍 Quality check — Gemini looks at every picture and remakes bad ones (wrong person, floating body parts, text, wrong style). Free key works.</label></div>
@@ -240,6 +247,8 @@ function log(m){ const line=new Date().toTimeString().slice(0,8)+"  "+m; const l
   ACT.push(line); if(ACT.length>40) ACT.shift(); const a=$("act"); if(a){ a.textContent=ACT.slice().reverse().join("\n"); } }
 function status(m){ $("status").textContent=m||""; if(m&&!/^🎬 Rendering|Pictures \d|^🖼️ Scene|^🎙️ Voice \d|^🧠 Planning pictures…/.test(m)&&m!==window._lastSt){ window._lastSt=m; log("▶ "+m); } }
 function setBar(f){ $("bar").style.width=Math.round(clamp(f)*100)+"%"; }
+/* open a website in the phone's browser (payments happen there, never inside this app) */
+function openExt(url){ const a=document.createElement("a"); a.href=url; a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove(); }
 function toast(m){ status(m); setTimeout(()=>{ if($("status").textContent===m) status(""); },2500); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function b64ToBytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
