@@ -52,6 +52,7 @@ nav a.on{color:var(--acc)}
 .strip img,.strip span{flex:none;width:72px;height:41px;border-radius:5px;object-fit:cover;background:#0c0e12;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
 .strip.v img,.strip.v span{width:36px;height:64px}
 video,canvas{width:100%;border-radius:10px;margin-top:10px;background:#000}
+#act{font-size:12px;color:var(--muted);white-space:pre-wrap;background:#0c0e12;border-radius:8px;padding:8px;margin-top:6px;max-height:220px;overflow:auto;line-height:1.5}
 #log{font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:200px;overflow:auto;background:#0c0e12;border-radius:8px;padding:8px;margin-top:8px}
 details summary{cursor:pointer;font-weight:700}
 .chk{display:flex;align-items:center;gap:8px;margin-top:12px}.chk input{width:auto}.chk label{margin:0}
@@ -62,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.1</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.2</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -90,10 +91,16 @@ details summary{cursor:pointer;font-weight:700}
  <div class="seg" id="peSeg"><button data-v="1" class="on">1 sec</button><button data-v="2">2 sec</button><button data-v="3">3 sec</button></div>
  <p class="muted" id="estimate"></p>
 
+ <label>Text on the video</label>
+ <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
+ <div class="chk"><input type="checkbox" id="onTxt" checked><label for="onTxt">📍 On-screen text (dates, numbers, places)</label></div>
+ <div class="chk"><input type="checkbox" id="titleOn" checked><label for="titleOn">🎬 Big title at the start</label></div>
  <button class="big" id="btnGo" onclick="go()">🚀 Make my video</button>
  <div class="steps" id="steps"></div>
  <div id="status"></div>
  <div class="bar"><div id="bar"></div></div>
+ <div id="stats" class="muted" style="margin-top:8px"></div>
+ <details id="actBox" open style="margin-top:8px"><summary class="muted">📋 What's happening (details)</summary><div id="act"></div></details>
  <div class="row"><button class="small sec" onclick="stopNow()">⏸️ Pause</button><button class="small sec" onclick="newProject()">🗑️ New video</button></div>
 </div>
 
@@ -163,8 +170,6 @@ details summary{cursor:pointer;font-weight:700}
 <div class="card">
  <h2>🎬 Video</h2>
  <label>Channel name (end screen)</label><input id="channel" placeholder="MinuteVerse">
- <label>Captions</label>
- <select id="caps"><option value="en">English captions</option><option value="hi">Hindi words (follows the voice)</option><option value="off">No captions</option></select>
  <label>Background music</label>
  <select id="music"><option value="auto">🎵 Made by the app to match the style (copyright-free)</option><option value="file">My own music file</option><option value="off">No music</option></select>
  <input type="file" id="musicFile" accept="audio/*" style="margin-top:8px">
@@ -202,8 +207,10 @@ const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const ease=x=>{ x=clamp(x); return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2; };
 const easeOut=x=>1-Math.pow(1-clamp(x),3);
 const easeBack=x=>{ x=clamp(x); const c=1.7; return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2); };
-function log(m){ const l=$("log"); l.textContent+=new Date().toTimeString().slice(0,8)+"  "+m+"\n"; l.scrollTop=l.scrollHeight; console.log(m); }
-function status(m){ $("status").textContent=m||""; }
+const ACT=[];
+function log(m){ const line=new Date().toTimeString().slice(0,8)+"  "+m; const l=$("log"); l.textContent+=line+"\n"; l.scrollTop=l.scrollHeight; console.log(m);
+  ACT.push(line); if(ACT.length>40) ACT.shift(); const a=$("act"); if(a){ a.textContent=ACT.slice().reverse().join("\n"); } }
+function status(m){ $("status").textContent=m||""; if(m&&!/^🎬 Rendering|Pictures \d|^🖼️ Scene|^🎙️ Voice \d|^🧠 Planning pictures…/.test(m)&&m!==window._lastSt){ window._lastSt=m; log("▶ "+m); } }
 function setBar(f){ $("bar").style.width=Math.round(clamp(f)*100)+"%"; }
 function toast(m){ status(m); setTimeout(()=>{ if($("status").textContent===m) status(""); },2500); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -293,7 +300,7 @@ const ST=()=>allStyles()[STYLE]||STYLES.stickman;
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","camStr","mins","format","topic"];
+const SET_IDS=["onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","camStr","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -671,16 +678,25 @@ async function planPictures(){
   let done=0;
   await pool(groups,2,async g=>{
     if(STOP) return;
-    const list=g.map(s=>({i:P.scenes.indexOf(s)+1,mood:s.mood,scene_en:s.en,beats:s.beats.map((b,k)=>({k:k+1,hindi:b.text}))}));
+    const list=g.map(s=>({i:P.scenes.indexOf(s)+1,mood:s.mood,scene_en:s.en,scene_hi:s.hi,beats:s.beats.map((b,k)=>({k:k+1,hindi:b.text}))}));
     const prompt=`You are the picture director of an Indian explainer video about "${P.topic}".
 Picture style for EVERY picture: ${ST().art}.
 Keep these looks consistent: ${P.meta.bible||"(none)"}
-For every beat (about ${P.pe} second of voiceover), describe ONE picture that shows exactly what that beat is saying, so viewers understand it without the voice. Indian people, places, clothing and era where relevant. Vary shots: wide establishing, close-up of a detail, object, map-like overview, crowd, hands at work, symbolic picture for abstract ideas. Consecutive beats of the same idea should feel like different camera angles of the same moment. NEVER put words, letters, numbers or logos inside pictures. No famous cartoon/game/movie characters or brands.
+For every beat (about ${P.pe} second of voiceover), describe ONE picture that shows exactly what that beat is saying, so a viewer understands it even with the sound off.
+MAKE EVERY PICTURE INSTANTLY RELATABLE to an ordinary Indian viewer:
+- Show the LITERAL, CONCRETE thing the words talk about — the actual monument, object, animal, food, machine, place, person or event. Only if the words are purely abstract, show a familiar everyday Indian situation that demonstrates the idea (a family at home, a crowded market, a farmer in a field, students in a classroom, a Mumbai local train, a chai stall).
+- If the words name a specific place, monument, person, object or event, NAME it in the description with its key visual features and location (e.g. "Konark Sun Temple in Odisha, giant stone chariot temple with 24 carved stone wheels and horses").
+- Real Indian settings, faces, clothes, vehicles and objects correct for the era and region.
+- ONE clear main subject, large in the frame, easy to read on a phone screen; simple uncluttered background.
+- Write each description as: main subject + what is happening + setting/place + era/time of day + camera angle.
+- Reuse the exact same wording for recurring people and places so they look the same every time.
+- Vary angles: wide establishing, medium, close-up of a detail, over-the-shoulder, top-down. Consecutive beats about the same idea = different angles of the same moment.
+NEVER put words, letters, numbers or logos inside pictures. No famous cartoon/game/movie characters or brands.
 Also choose how the camera moves to match the MEANING of the words:
 push_in (focus, important detail), pull_out (reveal something big), pan_left/pan_right (travel, time passing, a line of things), tilt_up (rise, growth, tall things, hope), tilt_down (fall, decline, digging, sadness), punch (sudden shock, big number, "but"), shake (war, earthquake, fear), drift (calm, mysterious, slow), orbit (wonder, a monument).
 "e" = 1 if this beat contains the most important word of the scene (gets a zoom punch), else 0.
 Scenes: ${JSON.stringify(list)}
-Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 15-35 words","m":"push_in","e":0}]}]}`;
+Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 20-40 words","m":"push_in","e":0}]}]}`;
     let r=null; try{ r=await askJSON(prompt,"text",0.7); }catch(e){ log("🧠 Picture plan: "+e.message); }
     for(const s of g){ const rs=r&&(r.scenes||[]).find(x=>+x.i===P.scenes.indexOf(s)+1);
       s.beats.forEach((b,k)=>{ const rb=rs&&(rs.beats||[]).find(x=>+x.k===k+1)||(rs&&rs.beats&&rs.beats[k]);
@@ -695,22 +711,39 @@ Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture descrip
    STEP 4 — PICTURES (free: Pollinations → Cloudflare; optional Gemini)
    ===================================================================== */
 function imgWH(){ return P.format==="9:16"?[576,1024]:[1024,576]; }
-function fullPrompt(b){ return `${b.p}. ${ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, no text, no letters, no watermark`; }
+function shortArt(){ return ST().art.split(/,\s*/).slice(0,4).join(", "); }
+function fullPrompt(b,simple){ const subj=simple?String(b.p).split(/[.;]/)[0].slice(0,160):String(b.p).slice(0,380);
+  return `${subj}. ${simple?shortArt():ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, no text, no letters, no watermark`; }
 function seedOf(id){ let h=0; for(const c of id) h=(h*31+c.charCodeAt(0))>>>0; return h%999999; }
-let POL_NEXT=0;
-async function imgPollinations(b){
-  const key=$("polKey").value.trim(), [w,h]=imgWH(), p=encodeURIComponent(fullPrompt(b).slice(0,900));
-  const q=`width=${w}&height=${h}&seed=${seedOf(b.id)}&nologo=true&model=flux`;
-  for(let t=0;t<5;t++){
+let POL_NEXT=0, POL_KEY_BAD=false;
+async function imgPollinations(b,model="flux",simple=false){
+  const key=POL_KEY_BAD?"":$("polKey").value.trim(), [w,h]=imgWH(), p=encodeURIComponent(fullPrompt(b,simple));
+  const q=`width=${w}&height=${h}&seed=${seedOf(b.id)+(simple?7:0)}&nologo=true&model=${model}`;
+  let last="";
+  for(let t=0;t<2;t++){
     if(!key){ const wait=POL_NEXT-Date.now(); POL_NEXT=Math.max(Date.now(),POL_NEXT)+15500; if(wait>0) await sleep(wait); }
     const url=key?`https://gen.pollinations.ai/image/${p}?${q}`:`https://image.pollinations.ai/prompt/${p}?${q}`;
-    const r=await http("GET",url,{headers:key?{Authorization:"Bearer "+key}:{},blob:true,timeout:180000});
-    if(r.ok&&r.data&&r.data.size>5000) return r.data;
-    if(r.status===401||r.status===403) throw Object.assign(new Error("Pollinations key rejected — check it in ⚙️ Settings."),{hard:1});
-    if(r.status===402) throw Object.assign(new Error("Pollinations: free allowance used up for now"),{limit:1});
-    log(`🖼️ Pollinations ${r.status||"empty"} — retrying…`); await sleep(key?4000*(t+1):16000);
+    let r; try{ r=await http("GET",url,{headers:key?{Authorization:"Bearer "+key}:{},blob:true,timeout:150000}); }catch(e){ last=e.message; await sleep(3000); continue; }
+    if(r.ok&&r.data&&r.data.size>5000&&!/text|json|html/.test(r.data.type||"")) return r.data;
+    if((r.status===401||r.status===403)&&key){ POL_KEY_BAD=true; log("🔑 Pollinations key rejected — continuing without the key (slower). Check the key in ⚙️ Settings."); return imgPollinations(b,model,simple); }
+    if(r.status===402) throw Object.assign(new Error("Pollinations: allowance used up for now"),{limit:1});
+    if(r.status===400||r.status===404) throw new Error(`Pollinations ${model}: not available (${r.status})`);
+    last=`${r.status||"empty reply"}`; await sleep(key?3000*(t+1):1000);
   }
-  throw Object.assign(new Error("Pollinations is busy"),{limit:1}); }
+  throw Object.assign(new Error(`Pollinations ${model} busy (${last})`),{busy:1}); }
+/* AI Horde: free volunteer GPUs — slow but never runs out */
+async function imgHorde(b,simple){
+  const hd={apikey:"0000000000","Client-Agent":"HindiDocMaker:7.2:android"}, wh=P.format==="9:16"?[448,768]:[768,448];
+  const r=await http("POST","https://aihorde.net/api/v2/generate/async",{headers:hd,json:{prompt:`${fullPrompt(b,simple).slice(0,700)} ### text, watermark, logo, blurry, deformed, extra fingers, bad anatomy`,params:{width:wh[0],height:wh[1],steps:20,cfg_scale:6,sampler_name:"k_euler_a",n:1},models:["AlbedoBase XL (SDXL)","Juggernaut XL","Flux.1-Schnell fp8 (Compact)"],nsfw:false,censor_nsfw:true,r2:true,slow_workers:true}});
+  if(!r.ok||!r.data||!r.data.id) throw new Error(`AI Horde ${r.status}: ${errMsg(r.data)}`);
+  const id=r.data.id;
+  for(let t=0;t<60;t++){ await sleep(t<3?4000:6000); if(STOP) throw new Error("paused");
+    const c=await http("GET",`https://aihorde.net/api/v2/generate/check/${id}`,{headers:hd}); const q=c.data||{};
+    if(q.faulted||q.is_possible===false) throw new Error("AI Horde: no free worker right now");
+    if(q.done){ const st=await http("GET",`https://aihorde.net/api/v2/generate/status/${id}`,{headers:hd}); const g_=st.data&&st.data.generations&&st.data.generations[0];
+      if(!g_||!g_.img||g_.censored) throw new Error("AI Horde: no picture returned");
+      return /^https?:/.test(g_.img)?(await http("GET",g_.img,{blob:true})).data:new Blob([b64ToBytes(g_.img)],{type:"image/webp"}); } }
+  throw new Error("AI Horde: took too long"); }
 async function httpMultipart(url,headers,fields){
   if(CH){ const B="----HDM"+uid(); const body=Object.entries(fields).map(([k,v])=>`--${B}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`).join("")+`--${B}--\r\n`;
     const r=await CH.request({method:"POST",url,headers:{...headers,"Content-Type":"multipart/form-data; boundary="+B},data:body,responseType:"json",connectTimeout:30000,readTimeout:300000});
@@ -740,31 +773,54 @@ async function cropTo(blob){ const bm=await createImageBitmap(blob); const [rw,r
   const sc=Math.min(1,1280/Math.max(w,h)), c=document.createElement("canvas"); c.width=Math.round(w*sc); c.height=Math.round(h*sc);
   c.getContext("2d").drawImage(bm,(bm.width-w)/2,(bm.height-h)/2,w,h,0,0,c.width,c.height); bm.close&&bm.close();
   return new Promise(r=>c.toBlob(r,"image/jpeg",0.9)); }
-let ENG_DOWN={};
-async function makePicture(b,first,preferCF){
-  const order=[]; if(first&&$("gemImg").checked) order.push(["Gemini",imgGemini]);
-  const pol=["Pollinations",imgPollinations], cf=["Cloudflare",imgCloudflare];
-  if($("cfAcct").value.trim()) order.push(...(preferCF?[cf,pol]:[pol,cf])); else order.push(pol);
+let ENG_DOWN={}, STAT=null;
+const ENGINES={
+  "Gemini":imgGemini,
+  "Pollinations FLUX":(b,s)=>imgPollinations(b,"flux",s),
+  "Pollinations Turbo":(b,s)=>imgPollinations(b,"turbo",s),
+  "Cloudflare":b=>imgCloudflare(b),
+  "AI Horde":(b,s)=>imgHorde(b,s)};
+function engineOrder(first,preferCF){ const cf=!!$("cfAcct").value.trim(), o=[];
+  if(first&&$("gemImg").checked) o.push("Gemini");
+  if(cf&&preferCF) o.push("Cloudflare");
+  o.push("Pollinations FLUX"); if(cf&&!preferCF) o.push("Cloudflare");
+  o.push("Pollinations Turbo","AI Horde");
+  if($("gemImg").checked&&!first) o.push("Gemini");
+  return o; }
+async function makePicture(b,first,preferCF,simple){
   let last;
-  for(const [n,fn] of order){ if(ENG_DOWN[n]&&Date.now()<ENG_DOWN[n]) continue;
-    try{ const blob=await cropTo(await fn(b)); b.img=blob; await DB.put("i_"+b.id,blob); return; }
-    catch(e){ last=e; log(`🖼️ ${n}: ${String(e.message).slice(0,120)}`); if(e.limit||e.hard) ENG_DOWN[n]=Date.now()+(e.hard?864e5:10*60000); } }
+  for(const n of engineOrder(first,preferCF)){ if(ENG_DOWN[n]&&Date.now()<ENG_DOWN[n]) continue;
+    try{ const blob=await cropTo(await ENGINES[n](b,simple)); b.img=blob; b.err=""; b.eng=n; await DB.put("i_"+b.id,blob);
+      if(STAT){ STAT.ok[n]=(STAT.ok[n]||0)+1; } return n; }
+    catch(e){ if(String(e.message)==="paused") throw e; last=e; if(STAT) STAT.retry++;
+      log(`⚠️ ${n} failed (${String(e.message).slice(0,90)}) → trying next engine`);
+      if(e.limit) ENG_DOWN[n]=Date.now()+15*60000; else if(e.busy) ENG_DOWN[n]=Date.now()+60000; else if(/not available|not set up/.test(e.message)) ENG_DOWN[n]=Date.now()+864e5; } }
   throw last||new Error("No picture engine worked"); }
+function drawStats(done,total){ if(!STAT) return; drawSteps(); const el=(Date.now()-STAT.t0)/1000, made=done-STAT.start, rate=made>0?el/made:0, left=Math.max(0,total-done)*rate;
+  $("stats").innerHTML=`🖼️ <b>${done}/${total}</b> pictures · ${Object.entries(STAT.ok).map(([k,v])=>`${k} ${v}`).join(" · ")||"starting…"}${STAT.retry?` · ${STAT.retry} retries`:""}${STAT.fail?` · <span style="color:var(--bad)">${STAT.fail} still missing</span>`:""}${made>2?`<br>⏱️ ${rate.toFixed(1)} s per picture · about <b>${left<90?Math.round(left)+" s":Math.round(left/60)+" min"}</b> left`:""}`; }
 async function makePictures(){
-  const all=P.scenes.flatMap(s=>s.beats.map((b,k)=>({b,first:k===0})));
-  const todo=all.filter(x=>!x.b.img); let done=all.length-todo.length, fails=0;
-  ENG_DOWN={};
+  const all=P.scenes.flatMap(s=>s.beats.map((b,k)=>({b,first:k===0,s})));
+  let todo=all.filter(x=>!x.b.img), done=all.length-todo.length;
+  ENG_DOWN={}; POL_KEY_BAD=false; STAT={ok:{},retry:0,fail:0,t0:Date.now(),start:done};
   const par=$("polKey").value.trim()?3:($("cfAcct").value.trim()?2:1);
-  await pool(todo,par,async (x,i)=>{
-    if(STOP) return;
-    try{ await makePicture(x.b,x.first,!$("polKey").value.trim()&&i%2===1); }catch(e){ fails++; x.b.err=e.message; }
-    done++; status(`🖼️ Pictures ${done}/${all.length}${fails?` · ${fails} failed`:""}`); setBar(done/all.length);
-    if(done%10===0){ saveProj(); drawScenes(); }
-  });
+  log(`🖼️ Making ${todo.length} pictures (${par} at a time). Engines: ${engineOrder(false,false).join(" → ")}`);
+  drawStats(done,all.length);
+  for(const pass of [1,2]){
+    if(pass===2){ todo=all.filter(x=>!x.b.img); if(!todo.length||STOP) break; ENG_DOWN={}; log(`🔁 Second try for ${todo.length} missing pictures with simpler descriptions…`); }
+    await pool(todo,par,async (x,i)=>{
+      if(STOP) return;
+      const n=P.scenes.indexOf(x.s)+1, k=x.s.beats.indexOf(x.b)+1;
+      status(`🖼️ Scene ${n}, picture ${k}: ${String(x.b.p).slice(0,70)}…`);
+      try{ const eng=await makePicture(x.b,x.first,!$("polKey").value.trim()&&i%2===1,pass===2); if(pass===1) done++; else { done++; STAT.fail=Math.max(0,STAT.fail-1); } log(`✅ Scene ${n}.${k} — ${eng}`); }
+      catch(e){ if(String(e.message)==="paused") return; x.b.err=e.message; if(pass===1){ done++; STAT.fail++; } log(`❌ Scene ${n}.${k} failed on every engine: ${String(e.message).slice(0,80)}`); }
+      setBar(done/all.length); drawStats(all.filter(y=>y.b.img).length,all.length);
+      if(done%10===0){ saveProj(); drawScenes(); }
+    });
+  }
   await saveProj(); drawScenes();
-  const miss=all.filter(x=>!x.b.img).length;
-  if(miss&&!STOP){ if(miss>all.length*0.15) throw new Error(`${miss} pictures could not be made (free engines busy). Tap 🚀 again in a few minutes to finish them.`);
-    log(`🖼️ ${miss} pictures missing — those seconds reuse the picture before them.`); }
+  const miss=all.filter(x=>!x.b.img).length; drawStats(all.length-miss,all.length);
+  if(miss&&!STOP){ if(miss>all.length*0.15) throw new Error(`${miss} pictures could not be made (free engines busy). Tap ▶️ Continue in a few minutes to finish them.`);
+    log(`🖼️ ${miss} pictures missing — those seconds show the nearest good picture instead.`); }
 }
 
 /* =====================================================================
@@ -951,7 +1007,7 @@ async function renderVideo(){
   if(mbuf){ const src=a.createBufferSource(), mg=a.createGain(); src.buffer=mbuf; src.loop=true; const v=(+$("musicVol").value||12)/100; mg.gain.setValueAtTime(0,T0); mg.gain.linearRampToValueAtTime(v,T0+1.5); mg.gain.setValueAtTime(v,T0+TOTAL-2.5); mg.gain.linearRampToValueAtTime(0,T0+TOTAL); src.connect(mg); mg.connect(master); src.start(T0); src.stop(T0+TOTAL+0.2); }
   if($("sfx").checked){ for(const s of sc.slice(1)){ const tt=T0+s._st-0.25, n=a.createBuffer(1,Math.floor(a.sampleRate*0.5),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.5; } const src=a.createBufferSource(), bp=a.createBiquadFilter(), gg=a.createGain(); src.buffer=n; bp.type="bandpass"; bp.frequency.setValueAtTime(400,tt); bp.frequency.exponentialRampToValueAtTime(3000,tt+0.45); gg.gain.value=0.12; src.connect(bp); bp.connect(gg); gg.connect(master); src.start(tt); } }
   /* captions groups */
-  const CAPS=$("caps").value;
+  const CAPS=$("caps").value, ON_TXT=$("onTxt").checked, TITLE_ON=$("titleOn").checked;
   for(const s of sc){ if(CAPS==="hi"){ const out=[]; let cur=[]; s._words.forEach(w=>{ cur.push(w); if(cur.length>=5||/[।,.!?]$/.test(w.w)){ out.push(cur); cur=[]; } }); if(cur.length) out.push(cur); s._caps=out.map((ws,i,arr)=>({text:ws.map(w=>w.w).join(" "),a:ws[0].a,b:i+1<arr.length?arr[i+1][0].a:s._end,ws})); }
     else if(CAPS==="en"&&s.en){ const ew=s.en.split(/\s+/), groups=[]; for(let i=0;i<ew.length;i+=7) groups.push(ew.slice(i,i+7).join(" ")); const d=s._end-s._st; s._caps=groups.map((x,i)=>({text:x,a:s._st+d*i/groups.length,b:s._st+d*(i+1)/groups.length})); } else s._caps=[]; }
   const parts_=makeParticles(liv?FX.p||"none":"none",W,H);
@@ -984,10 +1040,10 @@ async function renderVideo(){
       vignette(g,W,H,/paper|chalk/.test(T.box)||S.music==="playful"?0.2:0.42);
       if(FX.bars&&P.format!=="9:16"){ g.fillStyle="#000"; g.fillRect(0,0,W,H*0.06); g.fillRect(0,H*0.94,W,H*0.06); }
       /* title over the hook */
-      if(tt<5.2&&M.screen_title){ const u=clamp(tt/0.8), out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
+      if(TITLE_ON&&tt<5.2&&M.screen_title){ const u=clamp(tt/0.8), out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
         g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,u,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.globalAlpha=out*clamp((tt-0.6)/0.6); g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
       /* on-screen fact */
-      const s=cur.s, fs0=Math.max(s._st,M.screen_title?5.2:0); if(s.on&&tt>=fs0&&tt-fs0<3.2&&tt<s._end){ const u=clamp((tt-fs0)/1), out=clamp((fs0+3.2-tt)/0.4); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(54*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
+      const s=cur.s, fs0=Math.max(s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt-fs0<3.2&&tt<s._end){ const u=clamp((tt-fs0)/1), out=clamp((fs0+3.2-tt)/0.4); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(54*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
       /* captions (Hindi words light up with the voice) */
       const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
       if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
