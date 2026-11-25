@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.4</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.5</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -137,6 +137,7 @@ details summary{cursor:pointer;font-weight:700}
  <textarea id="refLinks" placeholder="https://youtu.be/..."></textarea>
  <label>Name for this style</label>
  <input id="refName" placeholder="e.g. My history style">
+ <div class="chk"><input type="checkbox" id="exact" checked><label for="exact">🎯 Copy the EXACT style — saves still frames from your video file, writes a detailed style recipe from them, and checks every new picture against them (pictures that don't match are remade)</label></div>
  <button id="btnLearn" onclick="learnStyle()">👀 Learn this style</button>
  <div id="learnBox"></div>
 </div>
@@ -340,7 +341,7 @@ function pickStyle(k){ STYLE=k; store("hdm7_style",k); drawStyleGrid(); estimate
 function drawStyleList(){ const A=allStyles();
   $("styleList").innerHTML=Object.entries(A).map(([k,s])=>`<div class="scene"><b>${s.e} ${esc(s.n)}</b>${CUSTOM[k]?` <span class="muted">(learned)</span>`:""}<div class="muted">${esc(s.d)}</div><div class="muted" style="margin-top:4px">🖼️ ${esc(s.art)}</div><div class="muted">🎙️ ${esc(s.voice.g)} · ${esc(s.voice.w.join(", "))} · 🎵 ${esc(s.music)}</div>
    <button class="small" onclick="pickStyle('${k}');showTab('make')">✅ Use</button>${CUSTOM[k]?`<button class="small sec" onclick="delStyle('${k}')">🗑️ Delete</button>`:""}</div>`).join(""); }
-function delStyle(k){ if(!confirm("Delete this learned style?")) return; delete CUSTOM[k]; store("hdm7_custom",JSON.stringify(CUSTOM)); if(STYLE===k) pickStyle("stickman"); drawStyleList(); drawStyleGrid(); }
+function delStyle(k){ if(!confirm("Delete this learned style?")) return; for(let i=0;i<(CUSTOM[k].refs||0);i++) DB.del(`ref_${k}_${i}`); delete CUSTOM[k]; store("hdm7_custom",JSON.stringify(CUSTOM)); if(STYLE===k) pickStyle("stickman"); drawStyleList(); drawStyleGrid(); }
 drawStyleGrid();
 function estimate(){ const m=+$("mins").value, n=Math.round(m*60/PE);
   const fast=!!$("polKey").value.trim(), cf=!!$("cfAcct").value.trim();
@@ -386,6 +387,7 @@ async function restore(){
     try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,a.text,false); }catch(e){}
     for(const b of s.beats||[]){ if(b.has){ const im=await DB.get("i_"+b.id); if(im) b.img=im; } delete b.has; }
   }
+  if(P.meta){ P.meta.description=cleanText(P.meta.description).replace(/\n?• [^\n]*(grounding-api-redirect|vertexaisearch)[^\n]*/g,""); }
   log(`Restored project "${P.topic}" (${P.scenes.length} scenes).`); drawAll();
 }
 async function newProject(){ if(BUSY) return alert("Tap ⏸️ Pause first."); if(P&&!confirm("Delete the current video project and start fresh?")) return; await DB.clear(); P=null; $("outBox").innerHTML=""; $("ytBox").innerHTML=""; drawAll(); status(""); setBar(0); }
@@ -497,6 +499,13 @@ Then write complete knowledge notes in English: every fact, number, date, name, 
     else { const {text}=await geminiText("text",{contents:[{parts:[{text:RESEARCH_ASK(P.topic)}]}],generationConfig:{temperature:0.3}}); R.notes+="\n\n"+text; } }
   P.research=R; await saveProj(); log(`🔎 Research done: ${(R.notes+R.video).length} characters, ${R.sources.length} sources`);
 }
+function cleanText(t){ return String(t||"").replace(/\[(?:cite|source|ref)?[:\s]*[\d,\s\-–]+\]/gi,"").replace(/【[^】]*】/g,"").replace(/https?:\/\/\S*(?:grounding-api-redirect|vertexaisearch)\S*/gi,"").replace(/\*\*|__|`/g,"").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/ {2,}/g," ").replace(/ +([.,!?।:;])/g,"$1").trim(); }
+function sourceLines(){ const seen=new Set(), out=[];
+  for(const s of (P.research&&P.research.sources)||[]){ let name=String(s.title||"").replace(/\s+—\s+Wikipedia$/,""), url=String(s.url||"");
+    if(/grounding-api-redirect|vertexaisearch/.test(url)) url="";   /* Google's long redirect links = the "codes" */
+    if(!url&&!/\./.test(name)) continue;
+    const line=url?`${name} — ${url}`:name.replace(/^www\./,""); if(!line||seen.has(line)) continue; seen.add(line); out.push("• "+line); if(out.length>=8) break; }
+  return out.length?`\n\nSources:\n${out.join("\n")}`:""; }
 /* ---------- ✍️ WRITER: outline → scenes → editor pass ---------- */
 async function claudeJSON(prompt){
   const k=$("claudeKey").value.trim();
@@ -565,8 +574,7 @@ SCENES: ${JSON.stringify(chunk)}
 Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English translation","on":""}]}`);
       let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on!=null) s.on=f.on; nfix++; } });
       log(`🧐 Editor improved ${nfix} scenes`); }catch(e){ log("🧐 Editor skipped: "+e.message); } }
-  const srcs=(P.research&&P.research.sources||[]).filter(s=>s.url).slice(0,8);
-  P.meta={title:plan.title||P.topic,description:(plan.description||"")+(srcs.length?`\n\nSources:\n${srcs.map(s=>`• ${s.title} — ${s.url}`).join("\n")}`:""),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||"",cast:(plan.cast||[]).filter(c=>c&&c.id&&c.look).slice(0,4)};
+  P.meta={title:cleanText(plan.title||P.topic),description:cleanText(plan.description||"")+sourceLines(),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||"",cast:(plan.cast||[]).filter(c=>c&&c.id&&c.look).slice(0,4)};
   P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:String(s.on||"").trim().split(/\s+/).slice(0,5).join(" "),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
   log(`✍️ Script: ${P.scenes.length} scenes — "${P.meta.title}"`);
   await saveProj();
@@ -786,7 +794,9 @@ async function imgCloudflare(b){
     throw new Error(`Cloudflare ${r.status}: ${m}`); }
   throw Object.assign(new Error("Cloudflare free limit used up for today"),{limit:1}); }
 async function imgGemini(b){
-  const j=await geminiAuto("image",{contents:[{parts:[{text:"Generate an image: "+fullPrompt(b)}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:P.format}}});
+  const refs=await styleRefs(P.style), pr=[]; for(const r_ of refs.slice(0,2)) pr.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(r_,512)}});
+  const txt=(pr.length?"Match the EXACT art style of these reference images (style only — do not copy their content). ":"")+"Generate an image: "+fullPrompt(b);
+  const j=await geminiAuto("image",{contents:[{parts:[...pr,{text:txt}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:P.format}}});
   const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("Gemini gave no picture");
   return new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}); }
 async function cropTo(blob){ const bm=await createImageBitmap(blob); const [rw,rh]=P.format==="9:16"?[9,16]:[16,9];
@@ -825,8 +835,10 @@ async function qualityCheck(){
   log(`🔍 Checking ${all.length} pictures with Gemini (8 at a time)…`);
   await pool(groups,2,async g=>{
     if(STOP) return;
-    const items=[]; for(const [k,x] of g.entries()){ items.push({text:`Picture ${k+1} — should show: ${x.b.p}${castText(x.b)?` | Characters: ${castText(x.b)}`:""}`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img)}}); }
-    items.push({text:`You are a strict picture editor for a YouTube video in "${ST().n}" style (${shortArt()}). Mark a picture BAD only if it clearly has: the wrong subject, a character who looks different from the description (age/gender/hair/clothes), a floating or disembodied body part, distorted faces/hands, nudity or shirtless people, a creepy/disturbing look, visible text/letters/signature/watermark, or a very different art style. Otherwise it is fine.
+    const refs=await styleRefs(P.style), stl=allStyles()[P.style]||{};
+    const items=[]; if(refs.length){ items.push({text:"REFERENCE FRAMES — the target art style (judge style only, not content):"}); for(const r_ of refs.slice(0,3)) items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(r_,320)}}); items.push({text:"PICTURES TO CHECK:"}); }
+    for(const [k,x] of g.entries()){ items.push({text:`Picture ${k+1} — should show: ${x.b.p}${castText(x.b)?` | Characters: ${castText(x.b)}`:""}`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img)}}); }
+    items.push({text:`You are a strict picture editor for a YouTube video in "${ST().n}" style (${shortArt()}). Mark a picture BAD only if it clearly has: the wrong subject, a character who looks different from the description (age/gender/hair/clothes), a floating or disembodied body part, distorted faces/hands, nudity or shirtless people, a creepy/disturbing look, visible text/letters/signature/watermark, or a very different art style.${refs.length?` ALSO mark it BAD if its art style does not clearly look like it came from the same video as the REFERENCE FRAMES (medium, line work, shading, colour palette, lighting, texture)${(stl.checks||[]).length?`; it must have: ${stl.checks.join("; ")}`:""}. For style failures put "style" in why.`:""} Otherwise it is fine.
 Return ONLY JSON: {"bad":[{"n":2,"why":"short reason","fix":"improved English picture description, 20-40 words"}]}`});
     try{ const j=await geminiAuto("fast",{contents:[{parts:items}],generationConfig:{responseMimeType:"application/json",temperature:0.1}});
       const r=parseJSON(parts(j).map(p=>p.text||"").join(""));
@@ -1205,6 +1217,20 @@ async function geminiUpload(file){
   let f=j.file; for(let i=0;f.state==="PROCESSING"&&i<120;i++){ await sleep(5000); const g=await http("GET",`${GBASE}/${f.name}`,{headers:{"x-goog-api-key":key}}); if(g.ok) f=g.data; }
   if(f.state!=="ACTIVE") throw new Error("Gemini couldn't process this video. Try an MP4 or a YouTube link.");
   return {file_uri:f.uri,mime_type:type}; }
+function grabFrames(file,n=8){ return new Promise((res,rej)=>{ const v=document.createElement("video"), url=URL.createObjectURL(file), out=[]; v.muted=true; v.playsInline=true; v.preload="auto"; v.src=url;
+  let i=0; const done=()=>{ URL.revokeObjectURL(url); res(out); };
+  const next=()=>{ if(i>=n) return done(); v.currentTime=Math.max(0.5,v.duration*(0.06+0.88*i/(n-1))); };
+  v.onloadedmetadata=()=>{ if(!isFinite(v.duration)||v.duration<1) return done(); next(); };
+  v.onseeked=()=>{ try{ const sc=Math.min(1,640/Math.max(v.videoWidth,v.videoHeight)), c=document.createElement("canvas"); c.width=Math.round(v.videoWidth*sc); c.height=Math.round(v.videoHeight*sc); c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+      c.toBlob(b=>{ if(b&&b.size>3000) out.push(b); i++; next(); },"image/jpeg",0.88); }catch(e){ i++; next(); } };
+  v.onerror=()=>{ URL.revokeObjectURL(url); res(out); }; setTimeout(()=>done(),90000); }); }
+const REF_CACHE={};
+async function styleRefs(k){ const st=allStyles()[k]; if(!st||!st.refs) return []; if(REF_CACHE[k]) return REF_CACHE[k];
+  const L=[]; for(let i=0;i<st.refs;i++){ const b=await DB.get(`ref_${k}_${i}`); if(b) L.push(b); } return REF_CACHE[k]=L; }
+const RECIPE_PROMPT=`These are still frames from one video. Write an image-generator prompt that reproduces their EXACT visual style so new pictures look like they came from the same video.
+Cover, precisely: medium (photo, 2D, 3D, painting…), line work, shading/rendering technique, colour palette (name the main colours), contrast and saturation, lighting, texture/grain, level of detail, background treatment, how people are drawn (proportions, faces, eyes), camera/framing habits.
+Describe ONLY the style — no subjects, no story, no names of artists, brands, shows or characters.
+Return ONLY JSON: {"recipe":"60-90 word style prompt","checks":["5 short visual traits a matching picture MUST have"]}`;
 async function learnStyle(){
   if(!$("gemKey").value.trim()){ alert("Add your Gemini key in ⚙️ Settings first."); return; }
   const files=[...$("refFiles").files].slice(0,3), links=$("refLinks").value.split(/\s+/).map(x=>(x.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/)||[])[1]).filter(Boolean).slice(0,3);
@@ -1216,9 +1242,16 @@ async function learnStyle(){
       box.innerHTML=`<p class="muted">👀 Gemini is watching video ${i+1}/${src.length} (1–3 min)…</p>`;
       const j=await geminiAuto("text",{contents:[{parts:[{file_data:fd,video_metadata:{start_offset:"0s",end_offset:"480s"}},{text:LEARN_PROMPT}]}],generationConfig:{responseMimeType:"application/json",temperature:0.3,mediaResolution:"MEDIA_RESOLUTION_LOW"}});
       res.push(parseJSON(parts(j).map(p=>p.text||"").join(""))); }
+    let frames=[];
+    if($("exact").checked&&files.length){ box.innerHTML=`<p class="muted">🎞️ Saving still frames from your video…</p>`; for(const f of files){ try{ frames.push(...await grabFrames(f,files.length>1?5:8)); }catch(e){ log("Frames: "+e.message); } } frames=frames.slice(0,10); log(`🎞️ Saved ${frames.length} reference frames`); }
     let g=res[0];
     if(res.length>1){ box.innerHTML=`<p class="muted">🧠 Combining ${res.length} videos into one style…</p>`; g=await askJSON(`Merge these style descriptions of ${res.length} videos into ONE style that captures what they share. Same JSON keys and rules.\n${JSON.stringify(res)}\nReturn ONLY the merged JSON.`,"text",0.3); }
     if(!g.art) throw new Error("Gemini's answer had no picture style — tap again.");
+    let checks=[];
+    if(frames.length){ box.innerHTML=`<p class="muted">🎯 Writing the exact style recipe from ${frames.length} frames…</p>`;
+      try{ const parts_=[]; for(const f of frames.slice(0,8)) parts_.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(f,512)}}); parts_.push({text:RECIPE_PROMPT});
+        const rj=parseJSON(parts(await geminiAuto("text",{contents:[{parts:parts_}],generationConfig:{responseMimeType:"application/json",temperature:0.2}})).map(p=>p.text||"").join(""));
+        if(rj.recipe&&rj.recipe.length>60){ g.art=rj.recipe; checks=rj.checks||[]; } }catch(e){ log("🎯 Recipe: "+e.message); } }
     const fontMap={marker:F.marker,bang:F.bang,baloo:F.baloo,pop:F.pop,teko:F.teko,kalam:F.kalam,rozha:F.rozha,pixel:F.pixel,type:F.type};
     const hex=x=>/^#[0-9a-f]{6}$/i.test(x||"")?x:null;
     const k="c_"+uid(), name=$("refName").value.trim()||"My style "+(Object.keys(CUSTOM).length+1);
@@ -1226,9 +1259,10 @@ async function learnStyle(){
     CUSTOM[k]={n:name,e:g.emoji||"⭐",d:g.summary||"Learned from your videos",art:g.art,tone:g.tone||"",guide:`Hook: ${g.hook||""}. Structure: ${(g.structure||[]).join(" → ")}.`,
       text:{f:fontMap[g.text_font]||F.pop,c:light?"#111":"#fff",bg:hex(g.text_colour)||"#e53935",acc:hex(g.accent_colour)||"#ffd400",box:["paper","bar","pill","comic","stamp","scroll","neon","pixel","chalk"].includes(g.text_style)?g.text_style:"bar"},
       music:MUSIC[g.music]?g.music:"calm",voice:{g:/female/i.test(g.voice_gender)?"female":"male",a:["young","middle_aged","old"].includes(g.voice_age)?g.voice_age:"middle_aged",w:(g.voice_words||["clear"]).map(x=>String(x).toLowerCase())},
-      fx:{p:["none","dust","sparkle","fog","chalk","scan","scratch"].includes(g.particles)?g.particles:"dust",grade:"none",flick:0},cap:{c:"#fff",bg:"rgba(0,0,0,.6)"},pe:+g.seconds_per_picture||2,cam:camFromJSON(g)};
+      fx:{p:["none","dust","sparkle","fog","chalk","scan","scratch"].includes(g.particles)?g.particles:"dust",grade:"none",flick:0},cap:{c:"#fff",bg:"rgba(0,0,0,.6)"},pe:+g.seconds_per_picture||2,cam:camFromJSON(g),refs:frames.length,checks};
+    for(const [i,f] of frames.entries()) await DB.put(`ref_${k}_${i}`,f); delete REF_CACHE[k];
     store("hdm7_custom",JSON.stringify(CUSTOM)); pickStyle(k); drawStyleList();
-    box.innerHTML=`<div class="info"><b>${esc(CUSTOM[k].e)} ${esc(name)}</b> saved and selected.<br>${esc(g.summary||"")}<br><br>🖼️ ${esc(g.art)}<br>⏱️ New picture every ~${(+g.seconds_per_picture||2).toFixed(1)} s in the originals.<br>🎥 ${esc(CUSTOM[k].cam.notes||"")} → set in 🎬 Make → 🎥 Camera &amp; transitions (you can edit it).</div>`;
+    box.innerHTML=`<div class="info"><b>${esc(CUSTOM[k].e)} ${esc(name)}</b> saved and selected.<br>${esc(g.summary||"")}<br><br>🖼️ ${esc(g.art)}<br>⏱️ New picture every ~${(+g.seconds_per_picture||2).toFixed(1)} s in the originals.${frames.length?`<br>🎯 Exact copy: <b>${frames.length} reference frames</b> saved — every new picture will be checked against them.<div class="strip">${frames.map(f=>`<img src="${URL.createObjectURL(f)}">`).join("")}</div>`:""}<br>🎥 ${esc(CUSTOM[k].cam.notes||"")} → set in 🎬 Make → 🎥 Camera &amp; transitions (you can edit it).</div>`;
   }catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; log("❌ Learn style: "+e.message); }
   finally{ btn.disabled=false; } }
 
