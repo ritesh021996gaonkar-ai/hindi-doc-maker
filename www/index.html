@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.9</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.10</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -188,6 +188,10 @@ details summary{cursor:pointer;font-weight:700}
  <input id="cfAcct" placeholder="32 characters, optional">
  <label>Cloudflare API token</label>
  <input id="cfToken" type="password" placeholder="optional">
+ <label>💰 fal.ai key (paid, optional — FLUX schnell ≈ ₹0.26 per picture, ~1 s each) — fal.ai → Dashboard → Keys</label>
+ <input id="falKey" type="password" placeholder="optional: xxxxxxxx-xxxx:xxxxxxxx">
+ <div class="row"><div><label>When to use fal.ai</label><select id="falMode"><option value="backup">Only when free engines run out</option><option value="first">First — fastest (paid for every picture)</option></select></div>
+  <div><label>Max spend per video (₹)</label><input id="falMax" type="number" value="150" min="0" step="10"></div></div>
  <div class="chk"><input type="checkbox" id="qc" checked><label for="qc">🔍 Quality check — Gemini looks at every picture and remakes bad ones (wrong person, floating body parts, text, wrong style). Free key works.</label></div>
  <div class="chk"><input type="checkbox" id="gemImg"><label for="gemImg">Use paid Gemini "Nano Banana" for the first picture of each scene (≈ ₹3.5 each, better detail)</label></div>
 </div>
@@ -227,6 +231,7 @@ const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNative
 const CH=NATIVE?(Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp):null;
 const GBASE="https://generativelanguage.googleapis.com/v1beta";
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const FAL_INR=0.003*88;   /* fal.ai FLUX schnell ≈ ₹ per picture (1 megapixel) */
 const ease=x=>{ x=clamp(x); return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2; };
 const easeOut=x=>1-Math.pow(1-clamp(x),3);
 const easeBack=x=>{ x=clamp(x); const c=1.7; return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2); };
@@ -330,7 +335,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["refAI","refReal","qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -363,8 +368,9 @@ function drawStyleList(){ const A=allStyles();
 function delStyle(k){ if(!confirm("Delete this learned style?")) return; for(let i=0;i<(CUSTOM[k].refs||0);i++) DB.del(`ref_${k}_${i}`); delete CUSTOM[k]; store("hdm7_custom",JSON.stringify(CUSTOM)); if(STYLE===k) pickStyle("stickman"); drawStyleList(); drawStyleGrid(); }
 drawStyleGrid();
 function estimate(){ const m=+$("mins").value, n=Math.round(m*60/PE);
-  const fast=!!$("polKey").value.trim(), cf=!!$("cfAcct").value.trim();
-  const mins=Math.round(n*(fast?2.5:cf?8:15.5)/60);
+  const fast=!!$("polKey").value.trim(), cf=!!$("cfAcct").value.trim(), falF=!!$("falKey").value.trim()&&$("falMode").value==="first";
+  const mins=Math.round(n*(falF?0.5:fast?2.5:cf?8:15.5)/60);
+  if(falF){ $("estimate").innerHTML=`≈ <b>${n} pictures</b> · fal.ai ≈ <b>₹${Math.round(n*FAL_INR)}</b> (limit ₹${$("falMax").value}) · about ${Math.max(1,mins)} min to make them.`; return; }
   $("estimate").innerHTML=`≈ <b>${n} pictures</b> · all free · about ${mins<60?mins+" min":(mins/60).toFixed(1)+" hours"} to make them${fast?"":" (add a free Pollinations key in ⚙️ to make it ~3× faster)"}.`; }
 estimate();
 
@@ -871,12 +877,33 @@ const ENGINES={
   "Pollinations FLUX":(b,s)=>imgPollinations(b,"flux",s),
   "Pollinations Turbo":(b,s)=>imgPollinations(b,"turbo",s),
   "Cloudflare":b=>imgCloudflare(b),
-  "AI Horde":(b,s)=>imgHorde(b,s)};
-function engineOrder(first,preferCF){ const cf=!!$("cfAcct").value.trim(), o=[];
+  "AI Horde":(b,s)=>imgHorde(b,s),
+  "fal.ai":(b,s)=>imgFal(b,s)};
+const falLeft=()=>{ const max=+$("falMax").value||0; return max-(P.falSpent||0); };
+async function imgFal(b,simple){
+  const key=$("falKey").value.trim(); if(!key) throw Object.assign(new Error("fal.ai not set up"),{hard:1});
+  if(falLeft()<FAL_INR) throw Object.assign(new Error(`fal.ai spend limit reached (₹${$("falMax").value} for this video — raise it in ⚙️ Settings)`),{limit:1});
+  const [w,h]=imgWH(), body={prompt:fullPrompt(b,simple),image_size:{width:w,height:h},num_inference_steps:4,num_images:1,enable_safety_checker:true,seed:projSeed()+(b.retry||0)*101};
+  let r, last="";
+  for(const ep of ["fal-ai/flux-1/schnell","fal-ai/flux/schnell"]){
+    for(let t=0;t<3;t++){ r=await http("POST",`https://fal.run/${ep}`,{headers:{Authorization:"Key "+key},json:body,timeout:120000});
+      if(r.ok||![429,500,502,503,504].includes(r.status)) break; await sleep(3000*(t+1)); }
+    if(r.ok) break; last=`${r.status} ${errMsg(r.data)}`; if(r.status===401||r.status===403) throw Object.assign(new Error("fal.ai key rejected — check it in ⚙️ Settings"),{hard:1});
+    if(/balance|credit|payment|exhausted|locked/i.test(last)) throw Object.assign(new Error("fal.ai: out of credit — top up at fal.ai/dashboard/billing"),{hard:1}); }
+  if(!r.ok) throw new Error("fal.ai "+last);
+  const im=r.data&&r.data.images&&r.data.images[0]; if(!im||!im.url) throw new Error("fal.ai gave no picture");
+  if(r.data.has_nsfw_concepts&&r.data.has_nsfw_concepts[0]) throw new Error("fal.ai: picture was filtered");
+  const blob=/^data:/.test(im.url)?new Blob([b64ToBytes(im.url.split(",")[1])],{type:"image/jpeg"}):(await http("GET",im.url,{blob:true,timeout:60000})).data;
+  if(!blob||blob.size<3000) throw new Error("fal.ai: empty picture");
+  P.falSpent=(P.falSpent||0)+FAL_INR; return blob; }
+function engineOrder(first,preferCF){ const cf=!!$("cfAcct").value.trim(), fal=!!$("falKey").value.trim(), o=[];
   if(first&&$("gemImg").checked) o.push("Gemini");
+  if(fal&&$("falMode").value==="first") o.push("fal.ai");
   if(cf&&preferCF) o.push("Cloudflare");
   o.push("Pollinations FLUX"); if(cf&&!preferCF) o.push("Cloudflare");
-  o.push("Pollinations Turbo","AI Horde");
+  o.push("Pollinations Turbo");
+  if(fal&&$("falMode").value!=="first") o.push("fal.ai");   /* paid backup before the slow free one */
+  o.push("AI Horde");
   if($("gemImg").checked&&!first) o.push("Gemini");
   return o; }
 const REAL_USED=new Set();
@@ -923,13 +950,13 @@ Return ONLY JSON: {"bad":[{"n":2,"why":"short reason","fix":"improved English pi
     k++; status(`🔁 Remade ${k}/${bad.length}`); setBar(k/bad.length); });
   await saveProj(); drawScenes(); }
 function drawStats(done,total){ if(!STAT) return; drawSteps(); const el=(Date.now()-STAT.t0)/1000, made=done-STAT.start, rate=made>0?el/made:0, left=Math.max(0,total-done)*rate;
-  $("stats").innerHTML=`🖼️ <b>${done}/${total}</b> pictures · ${Object.entries(STAT.ok).map(([k,v])=>`${k} ${v}`).join(" · ")||"starting…"}${STAT.retry?` · ${STAT.retry} retries`:""}${STAT.fail?` · <span style="color:var(--bad)">${STAT.fail} still missing</span>`:""}${made>2?`<br>⏱️ ${rate.toFixed(1)} s per picture · about <b>${left<90?Math.round(left)+" s":Math.round(left/60)+" min"}</b> left`:""}`; }
+  $("stats").innerHTML=`🖼️ <b>${done}/${total}</b> pictures · ${Object.entries(STAT.ok).map(([k,v])=>`${k} ${v}`).join(" · ")||"starting…"}${STAT.retry?` · ${STAT.retry} retries`:""}${P.falSpent?` · 💰 fal.ai ≈ ₹${Math.round(P.falSpent)}`:""}${STAT.fail?` · <span style="color:var(--bad)">${STAT.fail} still missing</span>`:""}${made>2?`<br>⏱️ ${rate.toFixed(1)} s per picture · about <b>${left<90?Math.round(left)+" s":Math.round(left/60)+" min"}</b> left`:""}`; }
 async function makePictures(){
   const all=P.scenes.flatMap(s=>s.beats.map((b,k)=>({b,first:k===0,s})));
   let todo=all.filter(x=>!x.b.img), done=all.length-todo.length;
   if(todo.length) P.qcDone=false;
   ENG_DOWN={}; POL_KEY_BAD=false; STAT={ok:{},retry:0,fail:0,t0:Date.now(),start:done};
-  const par=$("polKey").value.trim()?3:($("cfAcct").value.trim()?2:1);
+  const par=$("falKey").value.trim()&&$("falMode").value==="first"?4:$("polKey").value.trim()?3:($("cfAcct").value.trim()?2:1);
   log(`🖼️ Making ${todo.length} pictures (${par} at a time). Engines: ${engineOrder(false,false).join(" → ")}`);
   drawStats(done,all.length);
   for(const pass of [1,2]){
