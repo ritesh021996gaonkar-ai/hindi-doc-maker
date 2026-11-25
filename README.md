@@ -39,6 +39,11 @@ Each style sets the picture look, script tone, text design, music mood, voice ty
 - The picture "breathes" with the loudness of the voice
 - Living-picture layer: gentle sway, floating dust / sparkles / fog / chalk dust, light flicker (per style)
 
+## 🎬 Video file (v7.6)
+- Built frame by frame as a real MP4 (Android's video encoder + mp4-muxer): correct length in the gallery and YouTube, no black first frame, doesn't need to play in real time
+- First frame = title over the first picture; a separate **thumbnail** (1280×720 or 1080×1920) is saved to Pictures › HindiDocMaker for YouTube Studio
+- Old live recorder is kept only as a fallback for phones without a video encoder
+
 ## Keys (⚙️ Settings)
 - **Gemini** – aistudio.google.com/apikey
 - **ElevenLabs** – elevenlabs.io → Developers → API keys. Tap **🔎 Find Hindi voices** to add native Hindi narrators.

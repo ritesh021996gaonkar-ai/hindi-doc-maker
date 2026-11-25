@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.5</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.6</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -203,6 +203,7 @@ details summary{cursor:pointer;font-weight:700}
  <a href="#" data-t="set"><b>⚙️</b>Settings</a>
 </nav>
 
+<script src="lib/mp4-muxer.js"></script>
 <script>
 "use strict";
 /* =====================================================================
@@ -1055,102 +1056,166 @@ function textBox(g,text,x,y,size,T,u,align="left"){ if(!text) return; const a=ea
 function preview(){ if(BUSY) return alert("Wait until the current job finishes or tap ⏸️ Pause.");
   if(!P||!P.scenes||!P.scenes.some(s=>s.voice&&s.beats&&s.beats.some(b=>b.img))) return alert("Make at least the voice and first pictures first (tap 🚀, then ⏸️ Pause after a few pictures).");
   BUSY=true; STOP=false; renderVideo(15).catch(e=>status("❌ "+e.message)).finally(()=>{ BUSY=false; drawSteps(); }); }
+const FPS=30;
+function canEncode(){ return !!(window.VideoEncoder&&window.AudioEncoder&&window.VideoFrame&&window.AudioData&&window.Mp4Muxer); }
+async function pickVideoCodec(W,H){ for(const codec of ["avc1.640028","avc1.4d0028","avc1.640032","avc1.42e028"]) for(const hw of ["prefer-hardware","no-preference"]){
+    const cfg={codec,width:W,height:H,bitrate:P.format==="9:16"?5e6:6e6,framerate:FPS,avc:{format:"avc"},hardwareAcceleration:hw,latencyMode:"quality"};
+    try{ const r=await VideoEncoder.isConfigSupported(cfg); if(r.supported) return cfg; }catch(e){} } return null; }
+async function pickAudioCodec(sr){ for(const [codec,mux] of [["mp4a.40.2","aac"],["opus","opus"]]){ const cfg={codec,sampleRate:sr,numberOfChannels:1,bitrate:128000};
+    try{ const r=await AudioEncoder.isConfigSupported(cfg); if(r.supported) return {cfg,mux}; }catch(e){} } return null; }
 async function renderVideo(PREV){
   let sc=P.scenes.filter(s=>s.voice&&s.beats&&s.beats.length); if(!sc.length) throw new Error("Nothing to render yet.");
   if(PREV){ let acc=0; sc=sc.filter(s=>{ const ok=acc<PREV&&s.beats.some(b=>b.img); acc+=s.dur||0; return ok; }); }
   const S=allStyles()[P.style]||ST(), T=S.text, FX=S.fx||{}, liv=$("fx").checked, CMODE=$("camMode").value, TRP=$("trPic").value, TRS=$("trScene").value, TRL=+$("trLen").value||0.35;
-  const a=ac(), [W,H]=P.format==="9:16"?[1080,1920]:[1920,1080], cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d"); $("outCard").style.display="";
+  const [W,H]=P.format==="9:16"?[1080,1920]:[1920,1080], cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d"); $("outCard").style.display="";
   status("🔤 Loading fonts & music…");
   try{ await Promise.race([Promise.all([document.fonts.load(`40px ${T.f}`,"Aa हम"),document.fonts.load(`700 40px ${F.hind}`,"हम्पी Aa"),document.fonts.load(`800 40px ${F.pop}`,"Aa")]),sleep(5000)]); }catch(e){}
-  /* timeline */
-  const GAP=0.18, INTRO=0.25, END=3.5; let t=INTRO, TLi=0; const TL=[];
+  /* ---- timeline ---- */
+  const GAP=0.18, INTRO=0.15, END=3.5; let t=INTRO, TLi=0; const TL=[];
   for(const s of sc){ const st=t, d=s.dur; const words=wordTimes(s).map(w=>({...w,a:w.a+st,b:w.b+st}));
-    s.beats.forEach((b,k)=>{ TL.push({s,b,k,a:st+b.t0,z:st+(k+1<s.beats.length?s.beats[k+1].t0:d+GAP),sceneStart:st}); });
+    s.beats.forEach((b,k)=>{ TL.push({s,b,k,a:k===0&&TL.length===0?0:st+b.t0,z:st+(k+1<s.beats.length?s.beats[k+1].t0:d+GAP)}); });
     s._st=st; s._end=st+d+GAP; s._words=words; s._mv=sceneMove(s,TLi++,CMODE); t+=d+GAP; }
   const BODY=t, TOTAL=PREV?t:t+END;
-  /* missing pictures reuse the previous one */
   let lastImg=null; for(const x of TL){ if(x.b.img) lastImg=x.b.img; x.blob=x.b.img||lastImg; }
   const first=TL.find(x=>x.blob); if(!first) throw new Error("No pictures yet.");
   TL.forEach(x=>{ if(!x.blob) x.blob=first.blob; });
-  /* bitmap cache: only a few seconds of pictures in memory at once */
-  const BM=new Map(); const want=async x=>{ if(!BM.has(x.blob)) BM.set(x.blob,createImageBitmap(x.blob).catch(()=>null)); return BM.get(x.blob); };
-  for(const x of TL.slice(0,8)) await want(x);
-  /* audio graph */
-  const dest=a.createMediaStreamDestination(), master=a.createGain(); master.gain.value=1; master.connect(dest); if(PREV) master.connect(a.destination);
+  /* only a few seconds of pictures in memory at once */
+  const BM=new Map(); const want=x=>{ if(!BM.has(x.blob)) BM.set(x.blob,createImageBitmap(x.blob).catch(()=>null)); return BM.get(x.blob); };
+  for(const x of TL.slice(0,8)){ x._bm=await want(x); }
+  /* ---- sound (works for live playback and offline encoding) ---- */
   let mbuf=null; const mm=$("music").value;
-  try{ if(mm==="auto") mbuf=await makeMusic(S.music); else if(mm==="file"&&$("musicFile").files[0]) mbuf=await a.decodeAudioData(await $("musicFile").files[0].arrayBuffer()); }catch(e){ log("🎵 Music: "+e.message); }
-  const mime=pickMime(); if(!mime) throw new Error("This phone cannot record video (MediaRecorder missing). Update Android System WebView.");
-  const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(),...dest.stream.getAudioTracks()]);
-  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:P.format==="9:16"?7e6:9e6,audioBitsPerSecond:160000}); const chunks=[];
-  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-  const stopped=new Promise(r=>rec.onstop=r);
-  /* schedule sound */
-  const T0=a.currentTime+0.6;
-  for(const s of sc){ const src=a.createBufferSource(); src.buffer=s.voice.buf; src.connect(master); src.start(T0+s._st); }
-  if(mbuf){ const src=a.createBufferSource(), mg=a.createGain(); src.buffer=mbuf; src.loop=true; const v=(+$("musicVol").value||12)/100; mg.gain.setValueAtTime(0,T0); mg.gain.linearRampToValueAtTime(v,T0+1.5); mg.gain.setValueAtTime(v,T0+TOTAL-2.5); mg.gain.linearRampToValueAtTime(0,T0+TOTAL); src.connect(mg); mg.connect(master); src.start(T0); src.stop(T0+TOTAL+0.2); }
-  if($("sfx").checked){ for(const s of sc.slice(1)){ const tt=T0+s._st-0.25, n=a.createBuffer(1,Math.floor(a.sampleRate*0.5),a.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.5; } const src=a.createBufferSource(), bp=a.createBiquadFilter(), gg=a.createGain(); src.buffer=n; bp.type="bandpass"; bp.frequency.setValueAtTime(400,tt); bp.frequency.exponentialRampToValueAtTime(3000,tt+0.45); gg.gain.value=0.12; src.connect(bp); bp.connect(gg); gg.connect(master); src.start(tt); } }
-  /* captions groups */
+  try{ if(mm==="auto") mbuf=await makeMusic(S.music); else if(mm==="file"&&$("musicFile").files[0]) mbuf=await ac().decodeAudioData(await $("musicFile").files[0].arrayBuffer()); }catch(e){ log("🎵 Music: "+e.message); }
+  const mvol=(+$("musicVol").value||12)/100, menv=x=>mvol*clamp(Math.min(x/1.5,(TOTAL-x)/2.5));
+  const whooshBuf=ctx=>{ const n=ctx.createBuffer(1,Math.floor(ctx.sampleRate*0.5),ctx.sampleRate), d=n.getChannelData(0); for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*Math.sin(Math.PI*x)*0.5; } return n; };
+  function schedule(ctx,out,base,off,len){ /* play [off, off+len] of the video's sound starting at ctx time `base` */
+    const end=off+len;
+    for(const s of sc){ const st=s._st, du=s.voice.buf.duration; if(st+du<=off||st>=end) continue;
+      const src=ctx.createBufferSource(); src.buffer=s.voice.buf; src.connect(out); src.start(base+Math.max(0,st-off),Math.max(0,off-st)); }
+    if(mbuf){ const src=ctx.createBufferSource(), mg=ctx.createGain(); src.buffer=mbuf; src.loop=true; src.connect(mg); mg.connect(out);
+      mg.gain.setValueAtTime(menv(off),base); for(let x=0.5;x<=len+0.01;x+=0.5) mg.gain.linearRampToValueAtTime(menv(off+x),base+x);
+      src.start(base,off%mbuf.duration); src.stop(base+len+0.05); }
+    if($("sfx").checked){ for(const s of sc.slice(1)){ const w0=s._st-0.25; if(w0+0.5<=off||w0>=end) continue;
+      const src=ctx.createBufferSource(), bp=ctx.createBiquadFilter(), gg=ctx.createGain(); src.buffer=whooshBuf(ctx); bp.type="bandpass"; const at=base+w0-off;
+      bp.frequency.setValueAtTime(400,Math.max(0,at)); bp.frequency.exponentialRampToValueAtTime(3000,Math.max(0.01,at+0.45)); gg.gain.value=0.12; src.connect(bp); bp.connect(gg); gg.connect(out);
+      src.start(base+Math.max(0,w0-off),Math.max(0,off-w0)); } } }
+  /* ---- captions ---- */
   const CAPS=$("caps").value, ON_TXT=$("onTxt").checked, TITLE_ON=$("titleOn").checked;
   for(const s of sc){ if(CAPS==="hi"){ const out=[]; let cur=[]; s._words.forEach(w=>{ cur.push(w); if(cur.length>=5||/[।,.!?]$/.test(w.w)){ out.push(cur); cur=[]; } }); if(cur.length) out.push(cur); s._caps=out.map((ws,i,arr)=>({text:ws.map(w=>w.w).join(" "),a:ws[0].a,b:i+1<arr.length?arr[i+1][0].a:s._end,ws})); }
     else if(CAPS==="en"&&s.en){ const ew=s.en.split(/\s+/), groups=[]; for(let i=0;i<ew.length;i+=7) groups.push(ew.slice(i,i+7).join(" ")); const d=s._end-s._st; s._caps=groups.map((x,i)=>({text:x,a:s._st+d*i/groups.length,b:s._st+d*(i+1)/groups.length})); } else s._caps=[]; }
   const parts_=makeParticles(liv?FX.p||"none":"none",W,H);
   const U=Math.min(W,H)/1080, M=P.meta||{};
-  if(!PREV) rec.start(1000); $("cv").scrollIntoView({behavior:"smooth",block:"center"});
-  let bi=0, lastT=0, prev=null, shown=null, lastBm=null;
-  await new Promise(res=>{
-    const frame=()=>{
-      const now=a.currentTime-T0, tt=Math.max(0,now), dt=Math.min(0.1,Math.max(0,tt-lastT)); lastT=tt;
-      while(bi<TL.length-1&&TL[bi+1].a<=tt) bi++;
-      for(let j=bi;j<Math.min(TL.length,bi+8);j++) want(TL[j]);
-      if(bi>3){ const old=TL[bi-4]; if(old&&!TL.slice(bi-2,bi+8).some(x=>x.blob===old.blob)&&BM.has(old.blob)){ const p_=BM.get(old.blob); BM.delete(old.blob); p_.then(b=>b&&b.close&&b.close()); } }
-      const cur=TL[Math.min(bi,TL.length-1)];
-      if(cur!==shown){ prev=shown; shown=cur; }
-      if(!cur._bm&&BM.has(cur.blob)) BM.get(cur.blob).then(bm=>{ cur._bm=bm; });
-      g.fillStyle="#000"; g.fillRect(0,0,W,H);
-      const bm=cur._bm||(prev&&prev._bm)||lastBm;
-      const camAt=x=>{ const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
-      if(bm){ lastBm=bm; const c=camAt(cur);
-        const ty=prev&&prev._bm&&prev!==cur?(prev.s!==cur.s?TRS:TRP):"cut", p=(tt-cur.a)/TRL;
-        try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),cur._bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){}
-      }
-      /* living picture layers */
-      if(liv&&FX.flick){ const f=(Math.sin(tt*17)+Math.sin(tt*29.3))*0.5; g.fillStyle=`rgba(0,0,0,${clamp(0.05*FX.flick+f*0.04*FX.flick,0,0.2)})`; g.fillRect(0,0,W,H); }
-      drawParticles(g,parts_,liv?FX.p||"none":"none",W,H,dt,tt);
-      vignette(g,W,H,/paper|chalk/.test(T.box)||S.music==="playful"?0.2:0.42);
-      if(FX.bars&&P.format!=="9:16"){ g.fillStyle="#000"; g.fillRect(0,0,W,H*0.06); g.fillRect(0,H*0.94,W,H*0.06); }
-      /* title over the hook */
-      if(TITLE_ON&&tt<5.2&&M.screen_title){ const u=clamp(tt/0.8), out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
-        g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,u,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.globalAlpha=out*clamp((tt-0.6)/0.6); g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
-      /* on-screen fact */
-      const s=cur.s, fs0=Math.max(s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt-fs0<3.2&&tt<s._end){ const u=clamp((tt-fs0)/1), out=clamp((fs0+3.2-tt)/0.4); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(54*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
-      /* captions (Hindi words light up with the voice) */
-      const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
-      if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
-        const items=cp.ws||cp.text.split(" ").map(w=>({w})), sp=g.measureText(" ").width, maxW=W*0.84, lines=[[]]; let lw=0;
-        items.forEach(it=>{ const w=g.measureText(it.w).width; if(lw&&lw+sp+w>maxW){ lines.push([]); lw=0; } it._w=w; lines[lines.length-1].push(it); lw+=(lw?sp:0)+w; });
-        const widths=lines.map(L=>L.reduce((a,it,i)=>a+it._w+(i?sp:0),0)), lh=fs*1.3, mw=Math.max(...widths), y0=(P.format==="9:16"?H*0.72:H*0.86)-(lines.length-1)*lh/2;
-        g.fillStyle=C.bg; rr(g,W/2-mw/2-fs*0.5,y0-lh/2-fs*0.15,mw+fs,lh*lines.length+fs*0.3,fs*0.35); g.fill();
-        lines.forEach((L,i)=>{ let x=W/2-widths[i]/2; L.forEach(it=>{ g.fillStyle=it.a!=null&&tt>=it.a&&tt<it.b+0.05?T.acc:C.c; g.fillText(it.w,x,y0+i*lh); x+=it._w+sp; }); });
-        g.restore(); }
-      /* end screen */
-      if(tt>=BODY){ const u=clamp((tt-BODY)/0.6); g.fillStyle=`rgba(0,0,0,${0.55*u})`; g.fillRect(0,0,W,H);
-        textBox(g,"SUBSCRIBE",W/2,H*0.45,Math.round(86*U),{...T,box:"pill",bg:"#e53935",c:"#fff"},u,"center");
-        g.save(); g.globalAlpha=clamp((tt-BODY-0.5)/0.6); g.font=`800 ${Math.round(48*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.fillText($("channel").value||"",W/2,H*0.45+120*U); g.restore(); }
-      setBar(tt/TOTAL); if(Math.floor(tt*2)!==Math.floor((tt-dt)*2)) status(`🎬 Rendering ${Math.floor(tt)}s / ${Math.ceil(TOTAL)}s — keep the app open`);
-      if((STOP&&tt>1)||tt>=TOTAL){ if(PREV){ try{ a.suspend().then(()=>a.resume()); }catch(e){} res(); return; } rec.stop(); res(); return; }
-      requestAnimationFrame(frame); };
-    requestAnimationFrame(frame); });
-  if(PREV){ BM.forEach(p=>p.then(b=>b&&b.close&&b.close())); status("👁️ Preview finished — change camera/transitions and preview again, or tap 🚀."); return; }
-  await stopped;
-  BM.forEach(p=>p.then(b=>b&&b.close&&b.close()));
-  if(STOP) throw new Error("paused");
-  const blob=new Blob(chunks,{type:mime.split(";")[0]}), ext=/mp4/.test(mime)?"mp4":"webm";
-  const name=`${String(M.title||P.topic).replace(/[^\p{L}\p{N} _-]/gu,"").trim().slice(0,50).replace(/\s+/g,"_")||"video"}.${ext}`;
-  window._out={blob,name}; SAVED=null;
-  $("outBox").innerHTML=`<video controls playsinline src="${URL.createObjectURL(blob)}"></video><div class="row"><button onclick="saveToPhone()">💾 Save to phone</button><button class="sec" onclick="shareVideo()">📤 Share / YouTube</button></div><div id="saveState" class="muted"></div><p class="muted">${(blob.size/1e6).toFixed(0)} MB · ${Math.round(TOTAL)} s · ${ext.toUpperCase()}</p>`;
-  log(`🎬 Rendered ${name} (${(blob.size/1e6).toFixed(1)} MB)`);
-  if(NATIVE) saveToPhone();
+  /* ---- one frame ---- */
+  let bi=0, prev=null, shown=null, lastBm=null;
+  function advance(tt){ while(bi<TL.length-1&&TL[bi+1].a<=tt) bi++;
+    for(let j=bi;j<Math.min(TL.length,bi+8);j++) want(TL[j]);
+    if(bi>3){ const old=TL[bi-4]; if(old&&!TL.slice(bi-2,bi+8).some(x=>x.blob===old.blob)&&BM.has(old.blob)){ const p_=BM.get(old.blob); BM.delete(old.blob); p_.then(b=>b&&b.close&&b.close()); } }
+    const cur=TL[Math.min(bi,TL.length-1)]; if(cur!==shown){ prev=shown; shown=cur; } return cur; }
+  function drawFrame(tt,dt){
+    const cur=shown;
+    g.fillStyle="#000"; g.fillRect(0,0,W,H);
+    const bm=cur._bm||(prev&&prev._bm)||lastBm;
+    const camAt=x=>{ const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
+    if(bm){ lastBm=bm; const c=camAt(cur);
+      const ty=prev&&prev._bm&&prev!==cur?(prev.s!==cur.s?TRS:TRP):"cut", p=(tt-cur.a)/TRL;
+      try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),cur._bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){} }
+    if(liv&&FX.flick){ const f=(Math.sin(tt*17)+Math.sin(tt*29.3))*0.5; g.fillStyle=`rgba(0,0,0,${clamp(0.05*FX.flick+f*0.04*FX.flick,0,0.2)})`; g.fillRect(0,0,W,H); }
+    drawParticles(g,parts_,liv?FX.p||"none":"none",W,H,dt,tt);
+    vignette(g,W,H,/paper|chalk/.test(T.box)||S.music==="playful"?0.2:0.42);
+    if(FX.bars&&P.format!=="9:16"){ g.fillStyle="#000"; g.fillRect(0,0,W,H*0.06); g.fillRect(0,H*0.94,W,H*0.06); }
+    /* title: fully visible on the very first frame (good thumbnail), fades out */
+    if(TITLE_ON&&tt<5.2&&M.screen_title){ const out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
+      g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,1,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
+    const s=cur.s, fs0=Math.max(s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt-fs0<3.2&&tt<s._end){ const u=clamp((tt-fs0)/1), out=clamp((fs0+3.2-tt)/0.4); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(54*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
+    const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
+    if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
+      const items=cp.ws||cp.text.split(" ").map(w=>({w})), sp=g.measureText(" ").width, maxW=W*0.84, lines=[[]]; let lw=0;
+      items.forEach(it=>{ const w=g.measureText(it.w).width; if(lw&&lw+sp+w>maxW){ lines.push([]); lw=0; } it._w=w; lines[lines.length-1].push(it); lw+=(lw?sp:0)+w; });
+      const widths=lines.map(L=>L.reduce((a,it,i)=>a+it._w+(i?sp:0),0)), lh=fs*1.3, mw=Math.max(...widths), y0=(P.format==="9:16"?H*0.72:H*0.86)-(lines.length-1)*lh/2;
+      g.fillStyle=C.bg; rr(g,W/2-mw/2-fs*0.5,y0-lh/2-fs*0.15,mw+fs,lh*lines.length+fs*0.3,fs*0.35); g.fill();
+      lines.forEach((L,i)=>{ let x=W/2-widths[i]/2; L.forEach(it=>{ g.fillStyle=it.a!=null&&tt>=it.a&&tt<it.b+0.05?T.acc:C.c; g.fillText(it.w,x,y0+i*lh); x+=it._w+sp; }); });
+      g.restore(); }
+    if(tt>=BODY){ const u=clamp((tt-BODY)/0.6); g.fillStyle=`rgba(0,0,0,${0.55*u})`; g.fillRect(0,0,W,H);
+      textBox(g,"SUBSCRIBE",W/2,H*0.45,Math.round(86*U),{...T,box:"pill",bg:"#e53935",c:"#fff"},u,"center");
+      g.save(); g.globalAlpha=clamp((tt-BODY-0.5)/0.6); g.font=`800 ${Math.round(48*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.fillText($("channel").value||"",W/2,H*0.45+120*U); g.restore(); } }
+  const closeAll=()=>BM.forEach(p=>p.then(b=>b&&b.close&&b.close()));
+  $("cv").scrollIntoView({behavior:"smooth",block:"center"});
+  const name=`${String(M.title||P.topic).replace(/[^\p{L}\p{N} _-]/gu,"").trim().slice(0,50).replace(/\s+/g,"_")||"video"}`;
+
+  /* ===== A) PREVIEW or no encoder: play live (old way) ===== */
+  if(PREV||!canEncode()){
+    const a=ac(), dest=a.createMediaStreamDestination(), master=a.createGain(); master.connect(dest); if(PREV) master.connect(a.destination);
+    let rec=null, chunks=[], stopped=null, mime="";
+    if(!PREV){ mime=pickMime(); if(!mime) throw new Error("This phone cannot make video files — update Android System WebView from the Play Store.");
+      log("⚠️ This phone has no video encoder for apps — using the slower live recorder (video length may show wrong in the gallery).");
+      rec=new MediaRecorder(new MediaStream([...cv.captureStream(FPS).getVideoTracks(),...dest.stream.getAudioTracks()]),{mimeType:mime,videoBitsPerSecond:P.format==="9:16"?7e6:9e6,audioBitsPerSecond:160000});
+      rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); }; stopped=new Promise(r=>rec.onstop=r); }
+    const T0=a.currentTime+0.5; schedule(a,master,T0,0,TOTAL);
+    advance(0); drawFrame(0,0); if(rec) rec.start(1000);
+    let lastT=0;
+    await new Promise(res=>{ const frame=()=>{ const tt=Math.max(0,a.currentTime-T0), dt=Math.min(0.1,Math.max(0,tt-lastT)); lastT=tt;
+        const cur=advance(tt); if(!cur._bm&&BM.has(cur.blob)) BM.get(cur.blob).then(bm=>{ cur._bm=bm; });
+        drawFrame(tt,dt); setBar(tt/TOTAL); if(Math.floor(tt)!==Math.floor(tt-dt)) status(`${PREV?"👁️ Preview":"🎬 Rendering"} ${Math.floor(tt)}s / ${Math.ceil(TOTAL)}s`);
+        if((STOP&&tt>1)||tt>=TOTAL){ if(rec) rec.stop(); res(); return; } requestAnimationFrame(frame); }; requestAnimationFrame(frame); });
+    if(PREV){ master.disconnect(); closeAll(); status("👁️ Preview finished — change camera/transitions and preview again, or tap 🚀."); return; }
+    await stopped; closeAll(); if(STOP) throw new Error("paused");
+    return finishVideo(new Blob(chunks,{type:mime.split(";")[0]}),`${name}.${/mp4/.test(mime)?"mp4":"webm"}`,TOTAL);
+  }
+
+  /* ===== B) PROPER MP4: build it frame by frame (correct length, real first frame, faster) ===== */
+  const SR=48000, vcfg=await pickVideoCodec(W,H), acfg=await pickAudioCodec(SR);
+  if(!vcfg||!acfg) throw new Error("This phone's video encoder doesn't support HD — update Android System WebView from the Play Store.");
+  log(`🎬 Encoder: ${vcfg.codec} (${vcfg.hardwareAcceleration}) · audio ${acfg.mux}`);
+  const parts=[]; let encErr=null;
+  const target=new Mp4Muxer.StreamTarget({onData:(data,pos)=>{ const hit=parts.find(p=>pos>=p.pos&&pos+data.length<=p.pos+p.data.length); if(hit) hit.data.set(data,pos-hit.pos); else parts.push({pos,data:new Uint8Array(data)}); },chunked:true,chunkSize:2**23});
+  const muxer=new Mp4Muxer.Muxer({target,fastStart:false,firstTimestampBehavior:"offset",video:{codec:"avc",width:W,height:H,frameRate:FPS},audio:{codec:acfg.mux,numberOfChannels:1,sampleRate:SR}});
+  /* sound first: render offline in 20-second pieces, then encode */
+  const aenc=new AudioEncoder({output:(c,m)=>muxer.addAudioChunk(c,m),error:e=>encErr=e}); aenc.configure(acfg.cfg);
+  const CH_=20;
+  for(let off=0;off<TOTAL;off+=CH_){ if(STOP) break; const len=Math.min(CH_,TOTAL-off), n=Math.max(1,Math.round(len*SR));
+    status(`🎵 Mixing sound ${Math.round(off)}s / ${Math.ceil(TOTAL)}s…`);
+    const O=new OfflineAudioContext(1,n,SR); schedule(O,O.destination,0,off,len); const buf=await O.startRendering();
+    const ad=new AudioData({format:"f32-planar",sampleRate:SR,numberOfFrames:buf.length,numberOfChannels:1,timestamp:Math.round(off*1e6),data:buf.getChannelData(0)});
+    aenc.encode(ad); ad.close(); }
+  await aenc.flush(); aenc.close(); if(encErr) throw new Error("Audio encoder: "+encErr.message);
+  /* pictures */
+  const venc=new VideoEncoder({output:(c,m)=>muxer.addVideoChunk(c,m),error:e=>encErr=e}); venc.configure(vcfg);
+  const N=Math.ceil(TOTAL*FPS), t0=Date.now();
+  for(let f=0;f<N;f++){
+    if(STOP||encErr) break; const tt=f/FPS;
+    const cur=advance(tt); if(!cur._bm) cur._bm=await want(cur); if(prev&&!prev._bm&&BM.has(prev.blob)) prev._bm=await BM.get(prev.blob);
+    drawFrame(tt,1/FPS);
+    const vf=new VideoFrame(cv,{timestamp:Math.round(tt*1e6),duration:Math.round(1e6/FPS)}); venc.encode(vf,{keyFrame:f%(FPS*2)===0}); vf.close();
+    while(venc.encodeQueueSize>4) await new Promise(r=>setTimeout(r,4));
+    if(f%15===0){ const el=(Date.now()-t0)/1000, sp=f/Math.max(0.1,el)/FPS, left=(N-f)/FPS/Math.max(0.05,sp);
+      setBar(f/N); status(`🎬 Building video ${Math.floor(tt)}s / ${Math.ceil(TOTAL)}s · ${sp.toFixed(1)}× speed · ~${left<90?Math.round(left)+" s":Math.round(left/60)+" min"} left`); await sleep(0); } }
+  closeAll();
+  if(STOP){ try{ venc.close(); }catch(e){} throw new Error("paused"); }
+  await venc.flush(); venc.close(); if(encErr) throw new Error("Video encoder: "+encErr.message);
+  muxer.finalize();
+  parts.sort((x,y)=>x.pos-y.pos);
+  const blob=new Blob(parts.map(p=>p.data),{type:"video/mp4"});
+  log(`🎬 Built ${(blob.size/1e6).toFixed(1)} MB MP4 in ${Math.round((Date.now()-t0)/1000)} s`);
+  return finishVideo(blob,`${name}.mp4`,TOTAL);
 }
+/* ---------- thumbnail picture (for YouTube) ---------- */
+async function makeThumb(){
+  const sc=P.scenes.slice(0,3).flatMap(s=>s.beats).filter(b=>b.img), pick=sc.find(b=>b.e)||sc[0]; if(!pick) return null;
+  const S=allStyles()[P.style]||ST(), T=S.text, [W,H]=P.format==="9:16"?[1080,1920]:[1280,720], c=document.createElement("canvas"); c.width=W; c.height=H; const g=c.getContext("2d");
+  const bm=await createImageBitmap(pick.img); drawPic(g,bm,W,H,{s:1.05,x:0,y:0,r:0},(S.fx||{}).grade); bm.close&&bm.close();
+  const gr=g.createLinearGradient(0,H*0.35,0,H); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.78)"); g.fillStyle=gr; g.fillRect(0,0,W,H);
+  const words=String((P.meta&&P.meta.screen_title)||P.topic).toUpperCase().split(/\s+/), fs=Math.round(Math.min(W,H)*(P.format==="9:16"?0.12:0.14));
+  g.font=`${T.f===F.pixel?Math.round(fs*0.55):fs}px ${T.f}`; g.textAlign="center"; g.textBaseline="middle"; g.lineJoin="round";
+  const lines=[]; let l=""; words.forEach(w=>{ const tt=l?l+" "+w:w; if(g.measureText(tt).width>W*0.9&&l){ lines.push(l); l=w; } else l=tt; }); if(l) lines.push(l);
+  const lh=fs*1.08, y0=H*(P.format==="9:16"?0.7:0.66)-(lines.length-1)*lh/2;
+  lines.slice(0,3).forEach((L,i)=>{ const y=y0+i*lh; g.lineWidth=fs*0.16; g.strokeStyle="#000"; g.strokeText(L,W/2,y); g.fillStyle=i===lines.length-1&&lines.length>1?T.acc:"#fff"; g.fillText(L,W/2,y); });
+  return new Promise(r=>c.toBlob(r,"image/jpeg",0.92)); }
+async function finishVideo(blob,fname,TOTAL){
+  window._out={blob,name:fname}; SAVED=null;
+  let th=null; try{ th=await makeThumb(); }catch(e){ log("Thumbnail: "+e.message); } window._thumb=th?{blob:th,name:fname.replace(/\.\w+$/,"_thumbnail.jpg")}:null;
+  $("outBox").innerHTML=`<video controls playsinline src="${URL.createObjectURL(blob)}"${th?` poster="${URL.createObjectURL(th)}"`:""}></video><div class="row"><button onclick="saveToPhone()">💾 Save video</button><button class="sec" onclick="shareVideo()">📤 Share / YouTube</button></div><div id="saveState" class="muted"></div><p class="muted">${(blob.size/1e6).toFixed(0)} MB · ${Math.round(TOTAL)} s · ${fname.split(".").pop().toUpperCase()}</p>
+   ${th?`<h2 style="margin-top:14px">🖼️ Thumbnail</h2><img src="${URL.createObjectURL(th)}" style="width:100%;border-radius:10px"><div class="row"><button class="sec" onclick="saveThumb()">💾 Save thumbnail</button><button class="sec" onclick="shareThumb()">📤 Share thumbnail</button></div><p class="muted">In YouTube Studio → your video → Edit → Thumbnail → Upload file → pick this picture.</p>`:""}`;
+  log(`🎬 Video ready: ${fname} (${(blob.size/1e6).toFixed(1)} MB)`);
+  if(NATIVE){ await saveToPhone(); if(th) await saveThumb(true); } }
 
 /* ---------- save & share ---------- */
 let SAVED=null, SHARING=false;
@@ -1158,17 +1223,22 @@ async function writeFile(blob,path,dir){ const FS=Capacitor.Plugins.Filesystem, 
   for(let o=0;o<blob.size;o+=CHK){ const data=await blobToB64(blob.slice(o,o+CHK)); if(o===0) await FS.writeFile({path,data,directory:dir,recursive:true}); else await FS.appendFile({path,data,directory:dir});
     status(`💾 Saving ${Math.min(100,Math.round((o+CHK)/blob.size*100))}%…`); }
   return (await FS.getUri({path,directory:dir})).uri; }
+async function saveBlob(blob,name,kind){ /* kind: Movies | Pictures → returns {uri,where} */
+  if(!NATIVE){ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); return {uri:"",where:"Downloads"}; }
+  const FS=Capacitor.Plugins.Filesystem, stamp=new Date().toISOString().slice(0,19).replace(/[-:T]/g,""), nm=name.replace(/(\.\w+)$/,`_${stamp}$1`);
+  try{ const p=await FS.checkPermissions(); if(p.publicStorage!=="granted") await FS.requestPermissions(); }catch(e){}
+  try{ return {uri:await writeFile(blob,`${kind}/HindiDocMaker/${nm}`,"EXTERNAL_STORAGE"),where:`${kind} › HindiDocMaker`}; }
+  catch(e){ try{ return {uri:await writeFile(blob,`HindiDocMaker/${nm}`,"DOCUMENTS"),where:"Documents › HindiDocMaker"}; }
+    catch(e2){ return {uri:await writeFile(blob,nm,"CACHE"),where:"inside the app (use 📤 Share)"}; } } }
 async function saveToPhone(){
   const {blob,name}=window._out||{}; if(!blob) return;
-  if(!NATIVE){ const l=document.createElement("a"); l.href=URL.createObjectURL(blob); l.download=name; document.body.appendChild(l); l.click(); l.remove(); return; }
-  const FS=Capacitor.Plugins.Filesystem, stamp=new Date().toISOString().slice(0,19).replace(/[-:T]/g,"");
-  try{ try{ const p=await FS.checkPermissions(); if(p.publicStorage!=="granted") await FS.requestPermissions(); }catch(e){}
-    let uri, where="Movies › HindiDocMaker";
-    try{ uri=await writeFile(blob,`Movies/HindiDocMaker/${name.replace(/(\.\w+)$/,`_${stamp}$1`)}`,"EXTERNAL_STORAGE"); }
-    catch(e){ where="Documents › HindiDocMaker"; uri=await writeFile(blob,`HindiDocMaker/${name.replace(/(\.\w+)$/,`_${stamp}$1`)}`,"DOCUMENTS"); }
-    SAVED={uri,where}; status("✅ Saved to phone: "+where);
-  }catch(e){ try{ const uri=await writeFile(blob,name,"CACHE"); SAVED={uri,where:"inside the app"}; status("Saved inside the app — tap 📤 Share to send it to Gallery/YouTube."); }catch(e2){ status("❌ Save failed: "+e2.message); } }
+  try{ SAVED=await saveBlob(blob,name,"Movies"); status("✅ Video saved: "+SAVED.where); }catch(e){ status("❌ Save failed: "+e.message); }
   const sb=$("saveState"); if(sb&&SAVED) sb.innerHTML=`✅ Saved → <b>${esc(SAVED.where)}</b>`; }
+let THUMB_SAVED=null;
+async function saveThumb(quiet){ const t=window._thumb; if(!t) return;
+  try{ THUMB_SAVED=await saveBlob(t.blob,t.name,"Pictures"); if(!quiet) status("✅ Thumbnail saved: "+THUMB_SAVED.where); log("🖼️ Thumbnail saved: "+THUMB_SAVED.where); }catch(e){ status("❌ Thumbnail save failed: "+e.message); } }
+async function shareThumb(){ if(!NATIVE) return saveThumb(); if(!THUMB_SAVED) await saveThumb(true); if(!THUMB_SAVED) return;
+  try{ await Capacitor.Plugins.Share.share({title:"Thumbnail",url:THUMB_SAVED.uri,dialogTitle:"Share thumbnail"}); }catch(e){ log("Share: "+e.message); } }
 async function shareVideo(){
   if(!NATIVE) return saveToPhone();
   if(!SAVED) await saveToPhone(); if(!SAVED) return;
