@@ -62,7 +62,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.0</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.1</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -70,6 +70,11 @@ details summary{cursor:pointer;font-weight:700}
 <div class="card">
  <h2>1. What is the video about?</h2>
  <input id="topic" placeholder="e.g. How the Konark Sun Temple was built">
+ <details style="margin-top:10px"><summary class="muted">📹 Or base it on a video (optional)</summary>
+  <p class="muted">Gemini watches the whole video, learns everything in it, researches more on the web, then writes your own <b>original</b> script — it never copies the video's lines.</p>
+  <input id="srcFile" type="file" accept="video/*">
+  <input id="srcLink" placeholder="or paste a YouTube link" style="margin-top:8px">
+ </details>
  <button class="small sec" onclick="ideas()">💡 Give me Indian topic ideas</button>
  <div id="ideaBox"></div>
 
@@ -126,6 +131,10 @@ details summary{cursor:pointer;font-weight:700}
  <h2>🧠 Script — Google Gemini</h2>
  <label>Gemini API key (free key works) — aistudio.google.com/apikey</label>
  <input id="gemKey" type="password" placeholder="AIza...">
+ <div class="chk"><input type="checkbox" id="deep" checked><label for="deep">🔎 Deep research with Google Search before writing (needs billing turned on for the key — 5,000 searches/month free; otherwise the app reads Wikipedia instead)</label></div>
+ <label>✨ Claude API key (optional — best Hindi storytelling, ≈ ₹5–15 per script) — platform.claude.com</label>
+ <input id="claudeKey" type="password" placeholder="sk-ant-... (leave empty to write with Gemini, free)">
+ <label>Claude model</label><input id="claudeModel" value="claude-sonnet-5-5">
 </div>
 <div class="card">
  <h2>🎙️ Voice — ElevenLabs</h2>
@@ -284,7 +293,7 @@ const ST=()=>allStyles()[STYLE]||STYLES.stickman;
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","camStr","mins","format","topic"];
+const SET_IDS=["deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","camStr","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -292,7 +301,7 @@ function setV(id,v){ const e=$(id); if(!e||v==null) return; if(e.type==="checkbo
 function saveSettings(){ SET_IDS.forEach(id=>store("hdm7_"+id,getV(id))); store("hdm7_pe",String(PE)); estimate(); }
 let PE=+(load("hdm7_pe")||1);
 (function initSettings(){
-  const MIG={gemKey:"key",elKey:"elKey",pronDict:"pronDict",cfAcct:"cfAcct",cfToken:"cfToken",channel:"channel"};
+  const MIG={claudeKey:"claudeKey",gemKey:"key",elKey:"elKey",pronDict:"pronDict",cfAcct:"cfAcct",cfToken:"cfToken",channel:"channel"};
   for(const [n,o] of Object.entries(MIG)) if(load("hdm7_"+n)==null&&load("hdm2_"+o)) store("hdm7_"+n,load("hdm2_"+o));
   if(!load("hdm7_elVoiceList")&&load("hdm2_elVoiceList")) store("hdm7_elVoiceList",load("hdm2_elVoiceList"));
   fillVoices();
@@ -385,7 +394,7 @@ async function listModels(){ if(MODELS) return MODELS;
 function ver(n){ const m=n.match(/gemini-(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):0; }
 function rank(list,kind){ const bad=/embed|live|native-audio|computer|robotics|gemma|aqa|learnlm|veo|imagen|omni|thinking|tts/;
   const f=kind==="image"?list.filter(n=>/image/.test(n)&&!/tts/.test(n)):list.filter(n=>/^gemini/.test(n)&&!/image/.test(n)&&!bad.test(n));
-  const sc=n=>ver(n)*10+(/flash/.test(n)?3:0)-(/lite/.test(n)?(kind==="fast"?-2:1):0)+(/latest/.test(n)?0.5:0)-(/exp|preview/.test(n)?1:0);
+  const sc=n=>ver(n)*10+(/flash/.test(n)?3:0)+(kind==="smart"&&/pro/.test(n)?6:0)-(/lite/.test(n)?(kind==="fast"?-2:1):0)+(/latest/.test(n)?0.5:0)-(/exp|preview/.test(n)?1:0);
   return f.sort((a,b)=>sc(b)-sc(a)); }
 async function geminiAuto(kind,body){
   const c=rank(await listModels(),kind).slice(0,4); if(!c.length) c.push(kind==="image"?"gemini-2.5-flash-image":"gemini-2.5-flash");
@@ -408,47 +417,134 @@ async function ideas(){
    STEP 1 — SCRIPT
    ===================================================================== */
 const SCENE_SECS=11;
+function ytId(u){ return (String(u||"").match(/(?:youtu\.be\/|v=|shorts\/|live\/)([\w-]{11})/)||[])[1]||""; }
+/* ---------- 🔎 RESEARCH: video knowledge + Google Search (or Wikipedia) ---------- */
+async function geminiText(kind,body){ const j=await geminiAuto(kind,body); return {text:parts(j).map(p=>p.text||"").join(""),j}; }
+const RESEARCH_ASK=t=>`Research this topic deeply for a high-quality Hindi YouTube explainer for Indian viewers: "${t}".
+Write detailed research notes in English:
+1. Core explanation — what it is and why it matters, in simple words.
+2. 20–30 specific facts with exact numbers, dates, names and places.
+3. Timeline of key events.
+4. 6–8 surprising or little-known facts that make people say "wow".
+5. Common myths vs reality.
+6. Human stories: real people, decisions, conflicts, turning points (paraphrase, no long quotes).
+7. The India connection and why Indian viewers should care today.
+8. Debates or unknowns — give both views, mark anything uncertain.
+9. Questions viewers usually ask about this.
+Only include facts you are confident about; mark doubtful ones with (uncertain).`;
+async function wikiNotes(topic){
+  const out=[], src=[];
+  for(const lang of ["en","hi"]){
+    try{ const q=await http("GET",`https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topic)}&srlimit=${lang==="en"?3:1}&format=json&origin=*`,{timeout:30000});
+      const hits=(q.data&&q.data.query&&q.data.query.search)||[];
+      for(const h of hits){ const r=await http("GET",`https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(h.title)}&format=json&origin=*`,{timeout:30000});
+        const pg=Object.values((r.data&&r.data.query&&r.data.query.pages)||{})[0]; if(pg&&pg.extract&&pg.extract.length>500){ out.push(`### ${h.title} (${lang} Wikipedia)\n${pg.extract.slice(0,lang==="en"?45000:20000)}`); src.push({title:`${h.title} — Wikipedia`,url:`https://${lang}.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,"_"))}`}); } } }catch(e){ log("📚 Wikipedia: "+e.message); } }
+  return {text:out.join("\n\n"),src}; }
+async function research(){
+  const R={notes:"",video:"",sources:[]};
+  const file=$("srcFile").files[0], yid=ytId($("srcLink").value);
+  if(file||yid){
+    status(file?`⬆️ Uploading your video (${(file.size/1e6).toFixed(0)} MB)…`:"🔗 Opening the YouTube video…");
+    const fd=file?await geminiUpload(file):{file_uri:"https://www.youtube.com/watch?v="+yid};
+    status("👀 Gemini is watching the whole video and taking notes (1–4 min)…");
+    const {text}=await geminiText("text",{contents:[{parts:[{file_data:fd},{text:`Watch this ENTIRE video carefully (visuals and speech). First line must be: TOPIC: <the main topic in 3-8 English words>.
+Then write complete knowledge notes in English: every fact, number, date, name, place, explanation, example and claim in the video, in order, with a timeline. Mark claims that seem doubtful. Also note what makes this video interesting (hook, twists, best moments) — but do NOT copy its sentences; summarise in your own words.`}]}],generationConfig:{temperature:0.2,mediaResolution:"MEDIA_RESOLUTION_LOW",maxOutputTokens:16000}});
+    R.video=text; const m=text.match(/TOPIC:\s*(.+)/i);
+    if(!P.topic&&m){ P.topic=m[1].trim(); $("topic").value=P.topic; }
+    R.sources.push({title:file?file.name:"Reference video",url:file?"":`https://youtu.be/${yid}`});
+    log(`📹 Video notes: ${text.length} characters`);
+  }
+  if(!P.topic) throw new Error("Couldn't work out the topic — type it in the topic box.");
+  if(STOP) throw new Error("paused");
+  let got=false;
+  if($("deep").checked){
+    status("🔎 Researching on Google…");
+    try{ const asks=[RESEARCH_ASK(P.topic),`For the topic "${P.topic}": find the most recent news, latest discoveries, current numbers/statistics, and anything that changed in the last 2 years. Also 5 lesser-known stories or details most YouTube videos miss. English notes with exact facts.`];
+      for(const q of asks){ const {text,j}=await geminiText("text",{contents:[{parts:[{text:q}]}],tools:[{google_search:{}}],generationConfig:{temperature:0.3}});
+        R.notes+="\n\n"+text; const gm=j&&j.candidates&&j.candidates[0]&&j.candidates[0].groundingMetadata;
+        ((gm&&gm.groundingChunks)||[]).forEach(c=>{ if(c.web&&c.web.uri&&!R.sources.some(s=>s.title===c.web.title)) R.sources.push({title:c.web.title||c.web.uri,url:c.web.uri}); }); }
+      got=R.sources.length>(file||yid?1:0)||R.notes.length>2000; if(got) log(`🔎 Google research: ${R.sources.length} sources`);
+    }catch(e){ log("🔎 Google Search research not available on this key ("+String(e.message).slice(0,90)+") → using Wikipedia"); } }
+  if(!got){
+    status("📚 Reading Wikipedia…");
+    const w=await wikiNotes(P.topic);
+    if(w.text){ status("🧠 Studying the articles…");
+      const {text}=await geminiText("text",{contents:[{parts:[{text:`${RESEARCH_ASK(P.topic)}\n\nUse these source articles (and your own reliable knowledge):\n\n${w.text}`}]}],generationConfig:{temperature:0.3,maxOutputTokens:12000}});
+      R.notes+="\n\n"+text; R.sources.push(...w.src); }
+    else { const {text}=await geminiText("text",{contents:[{parts:[{text:RESEARCH_ASK(P.topic)}]}],generationConfig:{temperature:0.3}}); R.notes+="\n\n"+text; } }
+  P.research=R; await saveProj(); log(`🔎 Research done: ${(R.notes+R.video).length} characters, ${R.sources.length} sources`);
+}
+/* ---------- ✍️ WRITER: outline → scenes → editor pass ---------- */
+async function claudeJSON(prompt){
+  const k=$("claudeKey").value.trim();
+  let r; for(let t=0;t<3;t++){ r=await http("POST","https://api.anthropic.com/v1/messages",{headers:{"x-api-key":k,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},json:{model:$("claudeModel").value.trim()||"claude-sonnet-5-5",max_tokens:16000,system:"You are India's best Hindi YouTube explainer scriptwriter. Reply with ONE valid JSON object only, no other text.",messages:[{role:"user",content:prompt}]}});
+    if(r.ok||![429,500,502,503,529].includes(r.status)) break; log("Claude busy, retrying…"); await sleep(6000*(t+1)); }
+  if(!r.ok) throw new Error(`Claude ${r.status}: ${errMsg(r.data)}`);
+  return parseJSON((r.data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("")); }
+async function writerJSON(prompt){
+  if($("claudeKey").value.trim()){ try{ return await claudeJSON(prompt); }catch(e){ log("✨ Claude failed ("+String(e.message).slice(0,90)+") → using Gemini"); } }
+  return askJSON(prompt,"smart",0.85); }
 function styleBrief(){ const s=ST(); return `VIDEO STYLE: ${s.n} — ${s.d}. Narration tone: ${s.tone}.${s.guide?`\nLearned from reference videos (copy only the STYLE, never their story or lines): ${s.guide}`:""}`; }
-const HINDI_RULES=`- "hi" = the Hindi voiceover: modern, everyday spoken Hindi (Hindustani) the way popular Indian explainer YouTubers talk — NOT pure/shuddh Hindi. Devanagari script only.
-- Common English words that Indians say in English (technology, mobile, company, record, engineer) are written in Devanagari exactly as spoken (टेक्नोलॉजी, मोबाइल).
-- Write numbers and years as digits (1857, 25%). Never use abbreviations or symbols the voice could misread (write "किलोमीटर", "डॉक्टर", spell out "ISRO" as इसरो).
-- Short, clear sentences that are easy to say aloud. No brackets, no emojis, no stage directions.
+const HINDI_RULES=`- "hi" = the Hindi voiceover: modern, everyday spoken Hindi (Hindustani) the way India's best explainer YouTubers talk — NOT pure/shuddh Hindi. Devanagari script only.
+- Common English words Indians say in English (technology, mobile, company, record, engineer) are written in Devanagari exactly as spoken (टेक्नोलॉजी, मोबाइल).
+- Write numbers and years as digits (1857, 25%). No abbreviations or symbols the voice could misread (write किलोमीटर, डॉक्टर; ISRO → इसरो).
+- Short, clear sentences that are easy to say aloud. No brackets, emojis or stage directions.
 - A narrator talks to the viewer ("आप", "सोचिए"). There is NO on-screen host and NO character who presents the video.
-- Facts must be accurate. If something is uncertain, say so ("माना जाता है").`;
+- Use ONLY facts from the research notes or that you are certain of. Never invent numbers, names or quotes. Say "माना जाता है" for uncertain things.`;
+const CRAFT=`WHAT MAKES IT HIGHLY INTERESTING (follow all):
+- Hook in the first 2 scenes: the single most surprising fact, a bold question, or a dramatic moment — no greetings, no "आज हम बात करेंगे".
+- Open loops: raise a question early and pay it off later ("लेकिन असली राज़ अभी बाकी है…"). Keep 2–3 loops running.
+- Every scene must teach something specific (a number, name, date, cause or effect) — no filler, no repetition, no vague praise.
+- Explain hard ideas with simple Indian everyday comparisons (cricket ground, Mumbai local, chai, rupees).
+- Story over list: people, decisions, conflict, turning points, consequences.
+- Change rhythm every ~45 seconds: a twist, a myth busted, a "wow" number, or a direct question to the viewer.
+- End with a satisfying payoff, one thought-provoking line, then a short subscribe line.`;
+const SCENE_FMT=`{"hi":"Hindi voiceover","en":"natural English translation of hi","on":"optional on-screen English text, max 4 words (a key date, number, name or place) or empty","mood":"calm|curious|tense|epic|sad|happy|shock|mystery"}`;
+function notesFor(max=60000){ const R=P.research||{}; return `${R.video?`KNOWLEDGE FROM THE REFERENCE VIDEO (use the facts; write everything in your own words, never copy its lines or structure word-for-word):\n${R.video.slice(0,25000)}\n\n`:""}RESEARCH NOTES:\n${(R.notes||"").slice(0,max)}`; }
 async function writeScript(){
-  const topic=P.topic, n=Math.max(5,Math.round(P.mins*60/SCENE_SECS));
-  const base=`You are a top Indian YouTube explainer scriptwriter. Write a ${P.mins}-minute picture-based explainer video in Hindi about: "${topic}".
+  const n=Math.max(5,Math.round(P.mins*60/SCENE_SECS)), per=Math.min(n,30), nParts=Math.ceil(n/per);
+  status("🧠 Finding the most interesting angle…");
+  const plan=await writerJSON(`You are planning a ${P.mins}-minute Hindi explainer video for Indian viewers about "${P.topic}" (${n} scenes of ~${SCENE_SECS} seconds).
 ${styleBrief()}
+${CRAFT}
+${notesFor()}
+Plan the most gripping, informative version. Pick the best angle, write 3 possible hooks and choose the strongest, list the open loops, and split the video into ${nParts} part(s).
+Return ONLY JSON: {"title":"catchy English YouTube title, max 70 chars","description":"English YouTube description: 3 short paragraphs + 5 hashtags","tags":["12-15 English tags"],"screen_title":"2-5 word English title shown on screen","screen_sub":"short English line under it","visual_bible":"English: fixed looks for recurring people, places and objects (Indian faces, clothing, era)","angle":"one line","hook":"the chosen hook idea","loops":["question raised → where it is answered"],"parts":[{"scenes":${per},"covers":"what this part explains, which facts and stories it uses, and how it ends"}]}`);
+  const parts_=(plan.parts&&plan.parts.length?plan.parts:[{scenes:n,covers:"the whole video"}]); let scenes=[];
+  for(const [k,pt] of parts_.entries()){
+    if(STOP) throw new Error("paused");
+    status(`✍️ Writing part ${k+1}/${parts_.length}…`); setBar(k/(parts_.length+1));
+    const want=k===parts_.length-1?Math.max(3,n-scenes.length):Math.max(3,+pt.scenes||per);
+    const r=await writerJSON(`Write part ${k+1} of ${parts_.length} of a Hindi explainer video about "${P.topic}".
+${styleBrief()}
+Angle: ${plan.angle||""}. Hook: ${plan.hook||""}. Open loops: ${(plan.loops||[]).join(" | ")}
+Full plan: ${parts_.map((p,i)=>`Part ${i+1}: ${p.covers}`).join(" || ")}
+THIS PART: ${pt.covers}
+${k?`It continues directly after: "${scenes.slice(-3).map(s=>s.hi).join(" ")}" — no new hook or greeting.`:"Start with the hook."}${k<parts_.length-1?" Don't end the video yet; finish on a curiosity line that pulls into the next part.":""}
 RULES:
 ${HINDI_RULES}
-- Scene 1 is a strong hook (a surprising fact or question) in the first 5 seconds. Build curiosity, give a payoff, end with a short line asking viewers to subscribe.
-- Each scene = 1–3 sentences, about 22–30 Hindi words (~${SCENE_SECS} seconds spoken). Each scene should be easy to show with pictures.
-- "en" = natural English translation of "hi" (used for English captions).
-- "on" = optional on-screen text in ENGLISH, max 4 words — a key date, number, name or place (e.g. "1250 AD", "Konark, Odisha"). Empty string if none. Use it in about 1 of every 2 scenes.
-- "mood" = one of: calm, curious, tense, epic, sad, happy, shock, mystery.
-- All titles, descriptions and tags in ENGLISH.`;
-  const meta=`"title":"catchy English YouTube title, max 70 chars","description":"English YouTube description: 3 short paragraphs + 5 hashtags","tags":["10-15 English tags"],"screen_title":"2-5 word English title shown on screen","screen_sub":"short English line under it","visual_bible":"English: fixed looks for recurring people, places and objects so every picture stays consistent (Indian faces, clothing, era)"`;
-  let out;
-  if(n<=40){
-    out=await askJSON(`${base}\nWrite exactly ${n} scenes.\nReturn ONLY JSON: {${meta},"scenes":[{"hi":"...","en":"...","on":"","mood":"curious"}]}`);
-  }else{
-    const parts_=Math.ceil(n/30);
-    status("✍️ Planning the story…");
-    out=await askJSON(`${base}\nFirst make a plan: split the video into ${parts_} parts of about ${Math.round(n/parts_)} scenes each.\nReturn ONLY JSON: {${meta},"parts":["2-3 English sentences: exactly what part 1 covers", "..."]}`);
-    out.scenes=[];
-    for(const [k,plan] of (out.parts||[]).entries()){
-      if(STOP) throw new Error("paused");
-      status(`✍️ Writing part ${k+1}/${out.parts.length}…`); setBar(k/out.parts.length);
-      const prev=out.scenes.slice(-3).map(s=>s.hi).join(" ");
-      const want=k===out.parts.length-1?n-out.scenes.length:Math.round(n/out.parts.length);
-      const r=await askJSON(`${base}\nThe full plan: ${out.parts.map((p,i)=>`Part ${i+1}: ${p}`).join(" | ")}\nNow write ONLY part ${k+1} (${plan}) as exactly ${want} scenes.${k?` It continues directly after: "${prev}" — do not repeat the hook or greet again.`:""}${k<out.parts.length-1?" Do not end the video or ask to subscribe yet.":""}\nReturn ONLY JSON: {"scenes":[{"hi":"...","en":"...","on":"","mood":"curious"}]}`);
-      out.scenes.push(...(r.scenes||[]));
-    }
-  }
-  const sc=(out.scenes||[]).filter(s=>s&&String(s.hi||"").trim());
-  if(sc.length<3) throw new Error("The script came back empty — tap 🚀 again.");
-  P.meta={title:out.title||topic,description:out.description||"",tags:out.tags||[],screen_title:out.screen_title||topic,screen_sub:out.screen_sub||"",bible:out.visual_bible||""};
-  P.scenes=sc.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:String(s.on||"").trim(),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
+- Each scene = 1–3 sentences, 22–30 Hindi words (~${SCENE_SECS} s spoken), easy to show with pictures.
+- Use "on" in about half the scenes.
+${CRAFT}
+${notesFor(45000)}
+Write exactly ${want} scenes. Return ONLY JSON: {"scenes":[${SCENE_FMT}]}`);
+    scenes.push(...(r.scenes||[]).filter(s=>s&&String(s.hi||"").trim())); }
+  if(scenes.length<3) throw new Error("The script came back empty — tap 🚀 again.");
+  /* editor pass: score every scene, rewrite the weak ones, fact-check against research */
+  for(let i=0;i<scenes.length;i+=40){
+    if(STOP) throw new Error("paused");
+    status(`🧐 Editor checking scenes ${i+1}–${Math.min(scenes.length,i+40)}…`); setBar(0.9);
+    try{ const chunk=scenes.slice(i,i+40).map((s,k)=>({i:i+k+1,hi:s.hi,on:s.on||""}));
+      const ed=await writerJSON(`You are a strict YouTube script editor. Score each scene 1–10 for: interest, specific information, clarity when heard aloud, and accuracy vs the research. Rewrite every scene that scores below 8 so it becomes vivid, specific and gripping (same meaning in the story, similar length, same rules). Fix any fact that contradicts the research. Remove repetition.
+${HINDI_RULES}
+${notesFor(30000)}
+SCENES: ${JSON.stringify(chunk)}
+Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English translation","on":""}]}`);
+      let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on!=null) s.on=f.on; nfix++; } });
+      log(`🧐 Editor improved ${nfix} scenes`); }catch(e){ log("🧐 Editor skipped: "+e.message); } }
+  const srcs=(P.research&&P.research.sources||[]).filter(s=>s.url).slice(0,8);
+  P.meta={title:plan.title||P.topic,description:(plan.description||"")+(srcs.length?`\n\nSources:\n${srcs.map(s=>`• ${s.title} — ${s.url}`).join("\n")}`:""),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||""};
+  P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:String(s.on||"").trim().split(/\s+/).slice(0,5).join(" "),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
   log(`✍️ Script: ${P.scenes.length} scenes — "${P.meta.title}"`);
   await saveProj();
 }
@@ -703,11 +799,11 @@ async function makeMusic(mood){
 /* =====================================================================
    PIPELINE
    ===================================================================== */
-const STEPS=[["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["render","🎬","Final video"]];
+const STEPS=[["research","🔎","Research"],["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["render","🎬","Final video"]];
 function stepState(){ if(!P) return {};
   const sc=P.scenes||[], beats=sc.flatMap(s=>s.beats||[]);
-  return {script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
-    _d:{script:sc.length?`${sc.length} scenes`:"",voice:sc.length?`${sc.filter(s=>s.voice).length}/${sc.length}`:"",plan:beats.length?`${beats.length} pictures planned`:"",pics:beats.length?`${beats.filter(b=>b.img).length}/${beats.length}`:"",render:P.rendered?"ready":""}}; }
+  return {research:P.research?"ok":"",script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
+    _d:{research:P.research?`${(P.research.sources||[]).length} sources`:"",script:sc.length?`${sc.length} scenes`:"",voice:sc.length?`${sc.filter(s=>s.voice).length}/${sc.length}`:"",plan:beats.length?`${beats.length} pictures planned`:"",pics:beats.length?`${beats.filter(b=>b.img).length}/${beats.length}`:"",render:P.rendered?"ready":""}}; }
 let RUNNING="";
 function drawSteps(err){ const st=stepState();
   $("steps").innerHTML=STEPS.map(([k,ic,n])=>{ const s=RUNNING===k?(err?"bad":"run"):st[k]||""; return `<div class="step ${s}"><div class="ic">${s==="ok"?"✓":s==="bad"?"✕":ic}</div><div class="t">${n}</div><div class="d">${(st._d&&st._d[k])||""}</div></div>`; }).join("");
@@ -717,14 +813,17 @@ async function go(){
   if(BUSY) return;
   const topic=$("topic").value.trim();
   if(P&&P.rendered&&topic&&topic!==P.topic){ if(!confirm(`Start a NEW video about "${topic}"? (The finished video stays saved on your phone.)`)) return; await DB.clear(); P=null; $("outBox").innerHTML=""; }
-  if(!P||!P.scenes||!P.scenes.length){ if(!topic){ alert("Type a topic first (or tap 💡 for ideas)."); return; }
+  const vsrc=$("srcFile").files[0]||ytId($("srcLink").value);
+  if(!P||!P.scenes||!P.scenes.length){ if(!topic&&!vsrc){ alert("Type a topic or add a video first (or tap 💡 for ideas)."); return; }
     if(!$("gemKey").value.trim()||!$("elKey").value.trim()){ alert("Add your Gemini and ElevenLabs keys in ⚙️ Settings first."); showTab("set"); return; }
-    P={topic,style:STYLE,mins:+$("mins").value,format:$("format").value,pe:PE,scenes:[]}; }
+    if(!P||P.topic!==topic||(vsrc&&!P.research)) P={topic,style:STYLE,mins:+$("mins").value,format:$("format").value,pe:PE,scenes:[]}; }
   else if(P.style!==STYLE){ if(!confirm(`This video was started in "${(allStyles()[P.style]||{}).n}". Continue in that style? (Cancel = keep going in the new style "${ST().n}" for the remaining pictures.)`)) P.style=STYLE; else { STYLE=P.style; drawStyleGrid(); } }
   STYLE=P.style||STYLE;
   BUSY=true; STOP=false; P.rendered=false; drawSteps(); keepAlive(true);
   let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
   try{
+    if(!P.research){ RUNNING="research"; drawSteps(); await research(); drawSteps(); }
+    if(STOP) throw new Error("paused");
     if(!P.scenes.length){ RUNNING="script"; drawSteps(); status("✍️ Writing the script…"); await writeScript(); drawAll(); }
     RUNNING="voice"; drawSteps(); const vs=P.scenes.filter(s=>!s.voice); let k=0;
     await pool(vs,2,async s=>{ if(STOP) return; await makeVoice(s,P.scenes.indexOf(s)); k++; status(`🎙️ Voice ${k}/${vs.length}`); setBar(k/vs.length); drawSteps(); });

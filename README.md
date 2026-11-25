@@ -2,6 +2,14 @@
 
 **Topic → finished Hindi explainer video made of pictures.** One button. Indian topics, Hindi voiceover, English on-screen text.
 
+## Smart script (v7.1)
+1. **🔎 Research** — Gemini researches the topic with **Google Search** (needs billing on the key; 5,000 searches/month free) or, if that's not allowed, reads the full **Wikipedia** articles (English + Hindi). Sources go into the YouTube description.
+2. **📹 From a video** — upload a video or paste a YouTube link: Gemini watches the whole thing, takes complete notes, then the script is written in your **own words** (never copies its lines).
+3. **🧠 Plan** — picks the most gripping angle, 3 hooks → the best one, open loops, parts.
+4. **✍️ Write** — modern spoken Hindi, every scene teaches something specific, Indian everyday comparisons, a twist every ~45 s.
+5. **🧐 Editor** — scores every scene, rewrites weak ones, fact-checks against the research.
+Optional: add a **Claude API key** for the best Hindi storytelling (Gemini is used for free otherwise).
+
 ## How it works
 | Step | Tool | Cost |
 |---|---|---|
