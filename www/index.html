@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.8</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.9</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -399,7 +399,7 @@ async function clearProject(){ const ks=(await DB.keys())||[]; for(const k of ks
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,at:s.at||"",mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
@@ -551,7 +551,7 @@ const CRAFT=`WHAT MAKES IT HIGHLY INTERESTING (follow all):
 - Story over list: people, decisions, conflict, turning points, consequences.
 - Change rhythm every ~45 seconds: a twist, a myth busted, a "wow" number, or a direct question to the viewer.
 - End with a satisfying payoff, one thought-provoking line, then a short subscribe line.`;
-const SCENE_FMT=`{"hi":"Hindi voiceover","en":"natural English translation of hi","on":"optional on-screen English text, max 4 words (a key date, number, name or place) or empty","mood":"calm|curious|tense|epic|sad|happy|shock|mystery"}`;
+const SCENE_FMT=`{"hi":"Hindi voiceover","en":"natural English translation of hi","on":"REQUIRED on-screen English text, 2-5 words: the key fact, number, date, name or idea of THIS scene (e.g. '1250 AD', 'Built in 12 years', 'King Narasimhadeva I', '24 stone wheels')","at":"the exact Hindi word from hi at which this text should appear (the word that says it)","mood":"calm|curious|tense|epic|sad|happy|shock|mystery"}`;
 function notesFor(max=60000){ const R=P.research||{}; return `${R.video?`KNOWLEDGE FROM THE REFERENCE VIDEO (use the facts; write everything in your own words, never copy its lines or structure word-for-word):\n${R.video.slice(0,25000)}\n\n`:""}RESEARCH NOTES:\n${(R.notes||"").slice(0,max)}`; }
 async function writeScript(){
   const n=Math.max(5,Math.round(P.mins*60/SCENE_SECS)), per=Math.min(n,30), nParts=Math.ceil(n/per);
@@ -576,7 +576,7 @@ ${k?`It continues directly after: "${scenes.slice(-3).map(s=>s.hi).join(" ")}" �
 RULES:
 ${HINDI_RULES}
 - Each scene = 1–3 sentences, 22–30 Hindi words (~${SCENE_SECS} s spoken), easy to show with pictures.
-- Use "on" in about half the scenes.
+- EVERY scene MUST have "on" (2–5 English words matching what is being said) and "at" (the Hindi word in "hi" where it appears). Make each "on" different, punchy and specific — numbers, dates, names, places, key ideas.
 ${CRAFT}
 ${notesFor(45000)}
 Write exactly ${want} scenes. Return ONLY JSON: {"scenes":[${SCENE_FMT}]}`);
@@ -591,11 +591,11 @@ Write exactly ${want} scenes. Return ONLY JSON: {"scenes":[${SCENE_FMT}]}`);
 ${HINDI_RULES}
 ${notesFor(30000)}
 SCENES: ${JSON.stringify(chunk)}
-Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English translation","on":""}]}`);
-      let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on!=null) s.on=f.on; nfix++; } });
+Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English translation","on":"2-5 word English on-screen text","at":"Hindi word where it appears"}]}`);
+      let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on) s.on=f.on; if(f.at) s.at=f.at; nfix++; } });
       log(`🧐 Editor improved ${nfix} scenes`); }catch(e){ log("🧐 Editor skipped: "+e.message); } }
   P.meta={title:cleanText(plan.title||P.topic),description:cleanText(plan.description||"")+sourceLines(),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||"",cast:(plan.cast||[]).filter(c=>c&&c.id&&c.look).slice(0,4)};
-  P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:String(s.on||"").trim().split(/\s+/).slice(0,5).join(" "),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
+  P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:cleanText(s.on).split(/\s+/).slice(0,6).join(" "),at:String(s.at||"").trim(),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
   log(`✍️ Script: ${P.scenes.length} scenes — "${P.meta.title}"`);
   await saveProj();
 }
@@ -715,7 +715,17 @@ function motionFromWords(t,k,mood){ t=String(t);
   if(/भूकंप|युद्ध|लड़ाई|हमला|डर|काँप|कांप/.test(t)) return "shake";
   if(mood==="mystery"||mood==="tense") return k%2?"push_in":"drift";
   return ["push_in","drift","pan_right","pull_out","pan_left","push_in"][k%6]; }
+async function fillOnscreen(){
+  const miss=P.scenes.filter(s=>!String(s.on||"").trim()||!s.at); if(!miss.length) return;
+  status(`📍 Writing on-screen text for ${miss.length} scenes…`);
+  for(let i=0;i<miss.length;i+=30){ const g=miss.slice(i,i+30);
+    try{ const r=await askJSON(`For each scene of a Hindi explainer video about "${P.topic}", write on-screen text in ENGLISH (2–5 words): the key fact, number, date, name or idea being said — punchy and different for every scene. Also give "at": the exact Hindi word from the voiceover where the text should pop up (the word that says it). Keep existing text if it is good.
+${JSON.stringify(g.map(s=>({i:P.scenes.indexOf(s)+1,hi:s.hi,en:s.en,on:s.on||""})))}
+Return ONLY JSON: {"t":[{"i":1,"on":"1250 AD","at":"1250"}]}`,"fast",0.5);
+      (r.t||[]).forEach(x=>{ const s=P.scenes[+x.i-1]; if(s&&x.on){ s.on=cleanText(x.on).split(/\s+/).slice(0,6).join(" "); s.at=String(x.at||"").trim(); } }); }catch(e){ log("📍 On-screen text: "+e.message); } }
+  await saveProj(); log(`📍 On-screen text ready for ${P.scenes.filter(s=>s.on).length}/${P.scenes.length} scenes`); }
 async function planPictures(){
+  await fillOnscreen();
   const todo=P.scenes.filter(s=>!s.beats.length||s.beats.some(b=>!b.p));
   for(const s of todo){ if(s.beats.some(b=>b.img)) continue; s.beats=splitBeats(s).map(b=>({id:uid(),...b,p:"",m:"",e:0})); }
   const groups=[]; for(let i=0;i<todo.length;i+=6) groups.push(todo.slice(i,i+6));
@@ -1091,7 +1101,7 @@ function drawParticles(g,P_,kind,W,H,dt,t){ if(kind==="none") return;
 function vignette(g,W,H,a=0.45){ const gr=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.35,W/2,H/2,Math.max(W,H)*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(1,`rgba(0,0,0,${a})`); g.fillStyle=gr; g.fillRect(0,0,W,H); }
 /* on-screen text boxes in the style's design */
 function textBox(g,text,x,y,size,T,u,align="left"){ if(!text) return; const a=easeBack(u*1.6), fade=clamp(u*4);
-  g.save(); g.font=`${T.f===F.pixel?Math.round(size*0.62):size}px ${T.f}`; g.textBaseline="middle"; g.textAlign="left";
+  g.save(); g.font=`${T.f===F.pixel?"":"700 "}${T.f===F.pixel?Math.round(size*0.62):size}px ${T.f}`; g.textBaseline="middle"; g.textAlign="left";
   const w=g.measureText(text).width, pad=size*0.45, bw=w+pad*2, bh=size*1.45, bx=align==="center"?x-bw/2:x;
   g.globalAlpha=fade; g.translate(bx+bw/2,y); g.scale(0.6+0.4*a,0.6+0.4*a);
   if(T.box==="stamp"){ g.rotate(-0.05); }
@@ -1123,6 +1133,12 @@ async function pickVideoCodec(W,H){ for(const codec of ["avc1.640028","avc1.4d00
     try{ const r=await VideoEncoder.isConfigSupported(cfg); if(r.supported) return cfg; }catch(e){} } return null; }
 async function pickAudioCodec(sr){ for(const [codec,mux] of [["mp4a.40.2","aac"],["opus","opus"]]){ const cfg={codec,sampleRate:sr,numberOfChannels:1,bitrate:128000};
     try{ const r=await AudioEncoder.isConfigSupported(cfg); if(r.supported) return {cfg,mux}; }catch(e){} } return null; }
+function onAnchor(s,words,st,d){ const strip=w=>String(w).replace(/[^\p{L}\p{M}\p{N}]/gu,"");
+  let a=null; const at=strip(s.at||"");
+  if(at) { const w=words.find(w=>{ const c=strip(w.w); return c&&(c===at||(at.length>2&&(c.startsWith(at)||at.startsWith(c)&&c.length>2))); }); if(w) a=w.a; }
+  if(a==null&&/\d/.test(s.on||"")){ const w=words.find(w=>/\d/.test(w.w)||/(सौ|हज़ार|लाख|करोड़)/.test(w.w)); if(w) a=w.a; }
+  if(a==null) a=st+Math.min(0.6,d*0.1);
+  return Math.min(a,st+Math.max(0,d-2.2)); }   /* at least ~2 s on screen */
 async function renderVideo(PREV){
   let sc=P.scenes.filter(s=>s.voice&&s.beats&&s.beats.length); if(!sc.length) throw new Error("Nothing to render yet.");
   if(PREV){ let acc=0; sc=sc.filter(s=>{ const ok=acc<PREV&&s.beats.some(b=>b.img); acc+=s.dur||0; return ok; }); }
@@ -1134,7 +1150,7 @@ async function renderVideo(PREV){
   const GAP=0.18, INTRO=0.15, END=3.5; let t=INTRO, TLi=0; const TL=[];
   for(const s of sc){ const st=t, d=s.dur; const words=wordTimes(s).map(w=>({...w,a:w.a+st,b:w.b+st}));
     s.beats.forEach((b,k)=>{ TL.push({s,b,k,a:k===0&&TL.length===0?0:st+b.t0,z:st+(k+1<s.beats.length?s.beats[k+1].t0:d+GAP)}); });
-    s._st=st; s._end=st+d+GAP; s._words=words; s._mv=sceneMove(s,TLi++,CMODE); t+=d+GAP; }
+    s._st=st; s._end=st+d+GAP; s._words=words; s._onA=onAnchor(s,words,st,d); s._mv=sceneMove(s,TLi++,CMODE); t+=d+GAP; }
   const BODY=t, TOTAL=PREV?t:t+END;
   let lastImg=null; for(const x of TL){ if(x.b.img) lastImg=x.b.img; x.blob=x.b.img||lastImg; }
   const first=TL.find(x=>x.blob); if(!first) throw new Error("No pictures yet.");
@@ -1185,7 +1201,7 @@ async function renderVideo(PREV){
     /* title: fully visible on the very first frame (good thumbnail), fades out */
     if(TITLE_ON&&tt<5.2&&M.screen_title){ const out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
       g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,1,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
-    const s=cur.s, fs0=Math.max(s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt-fs0<3.2&&tt<s._end){ const u=clamp((tt-fs0)/1), out=clamp((fs0+3.2-tt)/0.4); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(54*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
+    const s=cur.s, fs0=Math.max(s._onA||s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt<s._end-0.12){ const u=clamp((tt-fs0)/0.8), out=clamp((s._end-0.12-tt)/0.3); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(64*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
     const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
     if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
       const items=cp.ws||cp.text.split(" ").map(w=>({w})), sp=g.measureText(" ").width, maxW=W*0.84, lines=[[]]; let lw=0;
