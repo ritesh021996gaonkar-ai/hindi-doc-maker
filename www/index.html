@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.3</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.4</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -176,6 +176,7 @@ details summary{cursor:pointer;font-weight:700}
  <input id="cfAcct" placeholder="32 characters, optional">
  <label>Cloudflare API token</label>
  <input id="cfToken" type="password" placeholder="optional">
+ <div class="chk"><input type="checkbox" id="qc" checked><label for="qc">🔍 Quality check — Gemini looks at every picture and remakes bad ones (wrong person, floating body parts, text, wrong style). Free key works.</label></div>
  <div class="chk"><input type="checkbox" id="gemImg"><label for="gemImg">Use paid Gemini "Nano Banana" for the first picture of each scene (≈ ₹3.5 each, better detail)</label></div>
 </div>
 <div class="card">
@@ -304,12 +305,12 @@ const STYLES={
 let CUSTOM={}; try{ CUSTOM=JSON.parse(localStorage.getItem("hdm7_custom")||"{}"); }catch(e){}
 const allStyles=()=>({...STYLES,...CUSTOM});
 let STYLE=localStorage.getItem("hdm7_style")||"stickman";
-const ST=()=>allStyles()[STYLE]||STYLES.stickman;
+const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles()[STYLE]||STYLES.stickman;
 
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -334,7 +335,7 @@ let PE=+(load("hdm7_pe")||1), SPD=+(load("hdm7_spd")||1);
 function showTab(t){ document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id==="t_"+t)); document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.t===t)); window.scrollTo(0,0); if(t==="style") drawStyleList(); }
 function drawStyleGrid(){ const A=allStyles();
   $("styleGrid").innerHTML=Object.entries(A).map(([k,s])=>`<div class="sty${k===STYLE?" on":""}" onclick="pickStyle('${k}')"><b>${s.e}</b>${esc(s.n)}</div>`).join("");
-  $("styleDesc").textContent=ST().d||""; }
+  $("styleDesc").textContent=(allStyles()[STYLE]||{}).d||""; }
 function pickStyle(k){ STYLE=k; store("hdm7_style",k); drawStyleGrid(); estimate(); const c=allStyles()[k].cam; if(c) applyCam(c,`style "${allStyles()[k].n}"`); }
 function drawStyleList(){ const A=allStyles();
   $("styleList").innerHTML=Object.entries(A).map(([k,s])=>`<div class="scene"><b>${s.e} ${esc(s.n)}</b>${CUSTOM[k]?` <span class="muted">(learned)</span>`:""}<div class="muted">${esc(s.d)}</div><div class="muted" style="margin-top:4px">🖼️ ${esc(s.art)}</div><div class="muted">🎙️ ${esc(s.voice.g)} · ${esc(s.voice.w.join(", "))} · 🎵 ${esc(s.music)}</div>
@@ -377,7 +378,7 @@ const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=index
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],ok:b.ok||0,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
@@ -531,7 +532,7 @@ ${styleBrief()}
 ${CRAFT}
 ${notesFor()}
 Plan the most gripping, informative version. Pick the best angle, write 3 possible hooks and choose the strongest, list the open loops, and split the video into ${nParts} part(s).
-Return ONLY JSON: {"title":"catchy English YouTube title, max 70 chars","description":"English YouTube description: 3 short paragraphs + 5 hashtags","tags":["12-15 English tags"],"screen_title":"2-5 word English title shown on screen","screen_sub":"short English line under it","visual_bible":"English: fixed looks for recurring people, places and objects (Indian faces, clothing, era)","angle":"one line","hook":"the chosen hook idea","loops":["question raised → where it is answered"],"parts":[{"scenes":${per},"covers":"what this part explains, which facts and stories it uses, and how it ends"}]}`);
+Return ONLY JSON: {"title":"catchy English YouTube title, max 70 chars","description":"English YouTube description: 3 short paragraphs + 5 hashtags","tags":["12-15 English tags"],"screen_title":"2-5 word English title shown on screen","screen_sub":"short English line under it","visual_bible":"English: fixed looks for recurring places and objects (era, colours, materials)","cast":[{"id":"A","name":"short name","look":"EXACT fixed look in English, 20-30 words: gender, age, face, hair, skin tone, build, outfit with colours. Adults unless the story is about children"}],"angle":"one line","hook":"the chosen hook idea","loops":["question raised → where it is answered"],"parts":[{"scenes":${per},"covers":"what this part explains, which facts and stories it uses, and how it ends"}]}`);
   const parts_=(plan.parts&&plan.parts.length?plan.parts:[{scenes:n,covers:"the whole video"}]); let scenes=[];
   for(const [k,pt] of parts_.entries()){
     if(STOP) throw new Error("paused");
@@ -565,7 +566,7 @@ Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English 
       let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on!=null) s.on=f.on; nfix++; } });
       log(`🧐 Editor improved ${nfix} scenes`); }catch(e){ log("🧐 Editor skipped: "+e.message); } }
   const srcs=(P.research&&P.research.sources||[]).filter(s=>s.url).slice(0,8);
-  P.meta={title:plan.title||P.topic,description:(plan.description||"")+(srcs.length?`\n\nSources:\n${srcs.map(s=>`• ${s.title} — ${s.url}`).join("\n")}`:""),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||""};
+  P.meta={title:plan.title||P.topic,description:(plan.description||"")+(srcs.length?`\n\nSources:\n${srcs.map(s=>`• ${s.title} — ${s.url}`).join("\n")}`:""),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||"",cast:(plan.cast||[]).filter(c=>c&&c.id&&c.look).slice(0,4)};
   P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:String(s.on||"").trim().split(/\s+/).slice(0,5).join(" "),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
   log(`✍️ Script: ${P.scenes.length} scenes — "${P.meta.title}"`);
   await saveProj();
@@ -697,6 +698,8 @@ async function planPictures(){
     const prompt=`You are the picture director of an Indian explainer video about "${P.topic}".
 Picture style for EVERY picture: ${ST().art}.
 Keep these looks consistent: ${P.meta.bible||"(none)"}
+RECURRING CHARACTERS (the same person must look identical in every picture): ${JSON.stringify(P.meta.cast||[])}
+In "who" list the ids of the characters visible in that picture ([] if none). Never change a character's age, gender, hair or clothes. Do not add new main characters.
 For every beat (about ${P.pe} second of voiceover), describe ONE picture that shows exactly what that beat is saying, so a viewer understands it even with the sound off.
 MAKE EVERY PICTURE INSTANTLY RELATABLE to an ordinary Indian viewer:
 - Show the LITERAL, CONCRETE thing the words talk about — the actual monument, object, animal, food, machine, place, person or event. Only if the words are purely abstract, show a familiar everyday Indian situation that demonstrates the idea (a family at home, a crowded market, a farmer in a field, students in a classroom, a Mumbai local train, a chai stall).
@@ -706,17 +709,17 @@ MAKE EVERY PICTURE INSTANTLY RELATABLE to an ordinary Indian viewer:
 - Write each description as: main subject + what is happening + setting/place + era/time of day + camera angle.
 - Reuse the exact same wording for recurring people and places so they look the same every time.
 - Vary angles: wide establishing, medium, close-up of a detail, over-the-shoulder, top-down. Consecutive beats about the same idea = different angles of the same moment.
-NEVER put words, letters, numbers or logos inside pictures. No famous cartoon/game/movie characters or brands.
+NEVER: words, letters, numbers, signatures or logos inside pictures; a hand, arm or face shown alone/floating (show the whole person doing the action); shirtless, unclothed or scary-looking people; children unless the story is about children; famous cartoon/game/movie characters or brands. Everyone fully clothed, natural anatomy, friendly normal expressions.
 Also choose how the camera moves to match the MEANING of the words:
 push_in (focus, important detail), pull_out (reveal something big), pan_left/pan_right (travel, time passing, a line of things), tilt_up (rise, growth, tall things, hope), tilt_down (fall, decline, digging, sadness), punch (sudden shock, big number, "but"), shake (war, earthquake, fear), drift (calm, mysterious, slow), orbit (wonder, a monument).
 "e" = 1 if this beat contains the most important word of the scene (gets a zoom punch), else 0.
 Scenes: ${JSON.stringify(list)}
-Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 20-40 words","m":"push_in","e":0}]}]}`;
+Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 20-40 words","who":["A"],"m":"push_in","e":0}]}]}`;
     let r=null; try{ r=await askJSON(prompt,"text",0.7); }catch(e){ log("🧠 Picture plan: "+e.message); }
     for(const s of g){ const rs=r&&(r.scenes||[]).find(x=>+x.i===P.scenes.indexOf(s)+1);
       s.beats.forEach((b,k)=>{ const rb=rs&&(rs.beats||[]).find(x=>+x.k===k+1)||(rs&&rs.beats&&rs.beats[k]);
         b.p=(rb&&rb.p)||b.p||`${s.en}${s.beats.length>1?` — ${["wide shot","close-up detail","different angle","symbolic picture"][k%4]}`:""}`;
-        b.m=MOTIONS.includes(rb&&rb.m)?rb.m:motionFromWords(b.text,k,s.mood); b.e=rb&&+rb.e?1:0; }); }
+        b.m=MOTIONS.includes(rb&&rb.m)?rb.m:motionFromWords(b.text,k,s.mood); b.e=rb&&+rb.e?1:0; b.who=Array.isArray(rb&&rb.who)?rb.who.map(String):[]; }); }
     done+=g.length; status(`🧠 Planning pictures… ${done}/${todo.length} scenes`); setBar(done/todo.length);
   });
   await saveProj();
@@ -727,13 +730,16 @@ Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture descrip
    ===================================================================== */
 function imgWH(){ return P.format==="9:16"?[576,1024]:[1024,576]; }
 function shortArt(){ return ST().art.split(/,\s*/).slice(0,4).join(", "); }
-function fullPrompt(b,simple){ const subj=simple?String(b.p).split(/[.;]/)[0].slice(0,160):String(b.p).slice(0,380);
-  return `${subj}. ${simple?shortArt():ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, no text, no letters, no watermark`; }
+function castText(b){ const C=(P.meta&&P.meta.cast)||[]; const who=new Set(b.who||[]); C.forEach(c=>{ if(c.name&&String(b.p).includes(c.name)) who.add(c.id); });
+  return C.filter(c=>who.has(c.id)).map(c=>`${c.name}: ${c.look}`).join("; "); }
+function fullPrompt(b,simple){ const subj=simple?String(b.p).split(/[.;]/)[0].slice(0,160):String(b.p).slice(0,380), cast=castText(b);
+  return `${ST().n} style illustration. ${subj}.${cast?` Characters (exact same look every time): ${cast}.`:""} Style: ${simple?shortArt():ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, one clear subject, whole bodies, fully clothed, natural anatomy, no text, no letters, no signature, no watermark`; }
+function projSeed(){ if(!P.seed){ P.seed=1+Math.floor(Math.random()*900000); } return P.seed; }
 function seedOf(id){ let h=0; for(const c of id) h=(h*31+c.charCodeAt(0))>>>0; return h%999999; }
 let POL_NEXT=0, POL_KEY_BAD=false;
 async function imgPollinations(b,model="flux",simple=false){
   const key=POL_KEY_BAD?"":$("polKey").value.trim(), [w,h]=imgWH(), p=encodeURIComponent(fullPrompt(b,simple));
-  const q=`width=${w}&height=${h}&seed=${seedOf(b.id)+(simple?7:0)}&nologo=true&model=${model}`;
+  const q=`width=${w}&height=${h}&seed=${projSeed()+(b.retry||0)*101+(simple?7:0)}&nologo=true&model=${model}`;
   let last="";
   for(let t=0;t<2;t++){
     if(!key){ const wait=POL_NEXT-Date.now(); POL_NEXT=Math.max(Date.now(),POL_NEXT)+15500; if(wait>0) await sleep(wait); }
@@ -811,11 +817,38 @@ async function makePicture(b,first,preferCF,simple){
       log(`⚠️ ${n} failed (${String(e.message).slice(0,90)}) → trying next engine`);
       if(e.limit) ENG_DOWN[n]=Date.now()+15*60000; else if(e.busy) ENG_DOWN[n]=Date.now()+60000; else if(/not available|not set up/.test(e.message)) ENG_DOWN[n]=Date.now()+864e5; } }
   throw last||new Error("No picture engine worked"); }
+async function smallJpeg(blob,max=384){ const bm=await createImageBitmap(blob), sc=Math.min(1,max/Math.max(bm.width,bm.height)), c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); c.getContext("2d").drawImage(bm,0,0,c.width,c.height); bm.close&&bm.close(); return blobToB64(await new Promise(r=>c.toBlob(r,"image/jpeg",0.8))); }
+async function qualityCheck(){
+  const all=P.scenes.flatMap(s=>s.beats.map(b=>({b,s}))).filter(x=>x.b.img&&!x.b.ok);
+  const groups=[]; for(let i=0;i<all.length;i+=8) groups.push(all.slice(i,i+8));
+  let checked=0, bad=[];
+  log(`🔍 Checking ${all.length} pictures with Gemini (8 at a time)…`);
+  await pool(groups,2,async g=>{
+    if(STOP) return;
+    const items=[]; for(const [k,x] of g.entries()){ items.push({text:`Picture ${k+1} — should show: ${x.b.p}${castText(x.b)?` | Characters: ${castText(x.b)}`:""}`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img)}}); }
+    items.push({text:`You are a strict picture editor for a YouTube video in "${ST().n}" style (${shortArt()}). Mark a picture BAD only if it clearly has: the wrong subject, a character who looks different from the description (age/gender/hair/clothes), a floating or disembodied body part, distorted faces/hands, nudity or shirtless people, a creepy/disturbing look, visible text/letters/signature/watermark, or a very different art style. Otherwise it is fine.
+Return ONLY JSON: {"bad":[{"n":2,"why":"short reason","fix":"improved English picture description, 20-40 words"}]}`});
+    try{ const j=await geminiAuto("fast",{contents:[{parts:items}],generationConfig:{responseMimeType:"application/json",temperature:0.1}});
+      const r=parseJSON(parts(j).map(p=>p.text||"").join(""));
+      (r.bad||[]).forEach(z=>{ const x=g[+z.n-1]; if(x){ bad.push(x); x.why=z.why||""; if(z.fix&&String(z.fix).length>15) x.fix=String(z.fix); } });
+      g.forEach(x=>{ if(!bad.includes(x)) x.b.ok=1; });
+    }catch(e){ log("🔍 Check skipped for a group: "+String(e.message).slice(0,90)); }
+    checked+=g.length; status(`🔍 Checked ${checked}/${all.length} pictures · ${bad.length} to remake`); setBar(checked/all.length);
+  });
+  if(!bad.length){ log("🔍 All pictures passed the check ✅"); return; }
+  log(`🔁 Remaking ${bad.length} pictures that failed the check…`); let k=0; ENG_DOWN={};
+  await pool(bad,$("polKey").value.trim()?3:1,async x=>{
+    if(STOP) return; const n=P.scenes.indexOf(x.s)+1, i=x.s.beats.indexOf(x.b)+1;
+    log(`🔁 Scene ${n}.${i}: ${x.why}`); const old=x.b.img; x.b.retry=(x.b.retry||0)+1; if(x.fix) x.b.p=x.fix;
+    try{ await makePicture(x.b,false,false,false); x.b.ok=1; }catch(e){ x.b.img=old; log(`❌ Remake failed for ${n}.${i} — keeping the old picture`); }
+    k++; status(`🔁 Remade ${k}/${bad.length}`); setBar(k/bad.length); });
+  await saveProj(); drawScenes(); }
 function drawStats(done,total){ if(!STAT) return; drawSteps(); const el=(Date.now()-STAT.t0)/1000, made=done-STAT.start, rate=made>0?el/made:0, left=Math.max(0,total-done)*rate;
   $("stats").innerHTML=`🖼️ <b>${done}/${total}</b> pictures · ${Object.entries(STAT.ok).map(([k,v])=>`${k} ${v}`).join(" · ")||"starting…"}${STAT.retry?` · ${STAT.retry} retries`:""}${STAT.fail?` · <span style="color:var(--bad)">${STAT.fail} still missing</span>`:""}${made>2?`<br>⏱️ ${rate.toFixed(1)} s per picture · about <b>${left<90?Math.round(left)+" s":Math.round(left/60)+" min"}</b> left`:""}`; }
 async function makePictures(){
   const all=P.scenes.flatMap(s=>s.beats.map((b,k)=>({b,first:k===0,s})));
   let todo=all.filter(x=>!x.b.img), done=all.length-todo.length;
+  if(todo.length) P.qcDone=false;
   ENG_DOWN={}; POL_KEY_BAD=false; STAT={ok:{},retry:0,fail:0,t0:Date.now(),start:done};
   const par=$("polKey").value.trim()?3:($("cfAcct").value.trim()?2:1);
   log(`🖼️ Making ${todo.length} pictures (${par} at a time). Engines: ${engineOrder(false,false).join(" → ")}`);
@@ -870,10 +903,10 @@ async function makeMusic(mood){
 /* =====================================================================
    PIPELINE
    ===================================================================== */
-const STEPS=[["research","🔎","Research"],["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["render","🎬","Final video"]];
+const STEPS=[["research","🔎","Research"],["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["qc","🔍","Picture quality check"],["render","🎬","Final video"]];
 function stepState(){ if(!P) return {};
   const sc=P.scenes||[], beats=sc.flatMap(s=>s.beats||[]);
-  return {research:P.research?"ok":"",script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
+  return {research:P.research?"ok":"",script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", qc:P.qcDone?"ok":"",pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
     _d:{research:P.research?`${(P.research.sources||[]).length} sources`:"",script:sc.length?`${sc.length} scenes`:"",voice:sc.length?`${sc.filter(s=>s.voice).length}/${sc.length}`:"",plan:beats.length?`${beats.length} pictures planned`:"",pics:beats.length?`${beats.filter(b=>b.img).length}/${beats.length}`:"",render:P.rendered?"ready":""}}; }
 let RUNNING="";
 function drawSteps(err){ const st=stepState();
@@ -901,6 +934,7 @@ async function go(){
     if(STOP) throw new Error("paused");
     RUNNING="plan"; drawSteps(); status("🧠 Planning pictures & camera moves…"); await planPictures(); if(STOP) throw new Error("paused"); drawAll();
     RUNNING="pics"; drawSteps(); await makePictures(); if(STOP) throw new Error("paused");
+    if($("qc").checked&&!P.qcDone){ RUNNING="qc"; drawSteps(); await qualityCheck(); if(STOP) throw new Error("paused"); P.qcDone=true; await saveProj(); }
     RUNNING="render"; drawSteps(); keepAlive(false); await renderVideo();
     P.rendered=true; await saveProj(); RUNNING=""; status("✅ Done! Save or share your video below."); setBar(1);
   }catch(e){
@@ -919,7 +953,7 @@ function drawScenes(){ if(!P||!P.scenes||!P.scenes.length){ $("scCard").style.di
 const TH=new WeakMap(); function thumb(b){ if(!TH.has(b.img)) TH.set(b.img,URL.createObjectURL(b.img)); return TH.get(b.img); }
 async function redoPic(i,k){ if(BUSY) return alert("Tap ⏸️ Pause first."); const b=P.scenes[i].beats[k];
   const p=prompt(`Picture ${k+1} of scene ${i+1} — says: "${b.text}"\n\nEdit what the picture should show, then OK to remake it:`,b.p); if(p==null) return;
-  b.p=p.trim()||b.p; status("🖼️ Remaking picture…"); try{ ENG_DOWN={}; await makePicture(b,false); P.rendered=false; await saveProj(); status("✅ Picture remade — tap ▶️ Continue to render again."); }catch(e){ status("❌ "+e.message); } drawAll(); }
+  b.p=p.trim()||b.p; b.retry=(b.retry||0)+1; status("🖼️ Remaking picture…"); try{ ENG_DOWN={}; await makePicture(b,false); P.rendered=false; await saveProj(); status("✅ Picture remade — tap ▶️ Continue to render again."); }catch(e){ status("❌ "+e.message); } drawAll(); }
 async function editScene(i){ if(BUSY) return alert("Tap ⏸️ Pause first."); const s=P.scenes[i];
   const t=prompt("Edit the Hindi voiceover for this scene (voice and pictures for this scene will be remade):",s.hi); if(t==null||t.trim()===s.hi) return;
   s.hi=t.trim(); s.voice=null; s.beats.forEach(b=>DB.del("i_"+b.id)); s.beats=[]; DB.del("a_"+s.id); P.rendered=false; await saveProj(); drawAll(); status("✏️ Saved — tap ▶️ Continue to remake this scene."); }
