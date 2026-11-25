@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.2</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.3</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -95,6 +95,17 @@ details summary{cursor:pointer;font-weight:700}
  <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
  <div class="chk"><input type="checkbox" id="onTxt" checked><label for="onTxt">📍 On-screen text (dates, numbers, places)</label></div>
  <div class="chk"><input type="checkbox" id="titleOn" checked><label for="titleOn">🎬 Big title at the start</label></div>
+ <details style="margin-top:12px" id="camBox"><summary>🎥 Camera &amp; transitions</summary>
+  <div class="info" id="camFrom" style="display:none"></div>
+  <label>Camera movement</label>
+  <select id="camMode"><option value="kenburns">🔍 Slow zoom (Ken Burns) — smooth</option><option value="smart">🎯 Follow the words — smooth moves that match each scene</option><option value="pan">↔️ Slow pan</option><option value="mixed">🎞️ Mixed gentle moves</option><option value="static">⏹️ No movement</option></select>
+  <label>Movement speed</label>
+  <div class="seg" id="spSeg"><button data-v="0.5">Slow</button><button data-v="1" class="on">Normal</button><button data-v="1.7">Fast</button></div>
+  <div class="row"><div><label>Between pictures</label><select id="trPic"><option value="cut">✂️ Cut</option><option value="fade">🌫️ Crossfade</option><option value="zoom">🔍 Zoom through</option><option value="slide">➡️ Slide</option><option value="whip">💨 Whip pan</option><option value="flash">⚡ Flash</option><option value="dip">⚫ Dip to black</option><option value="blur">💧 Blur</option></select></div><div><label>Between scenes</label><select id="trScene"><option value="cut">✂️ Cut</option><option value="fade">🌫️ Crossfade</option><option value="zoom">🔍 Zoom through</option><option value="slide">➡️ Slide</option><option value="whip">💨 Whip pan</option><option value="flash">⚡ Flash</option><option value="dip">⚫ Dip to black</option><option value="blur">💧 Blur</option></select></div></div>
+  <label>Transition length</label><select id="trLen"><option value="0.2">Quick (0.2 s)</option><option value="0.35" selected>Normal (0.35 s)</option><option value="0.6">Slow (0.6 s)</option></select>
+  <p class="muted">Tip: each scene's camera can also be changed in 📝 Script &amp; pictures below. Use 👁️ Preview to see changes before the final render.</p>
+  <button class="small sec" onclick="preview()">👁️ Preview first 15 seconds</button>
+ </details>
  <button class="big" id="btnGo" onclick="go()">🚀 Make my video</button>
  <div class="steps" id="steps"></div>
  <div id="status"></div>
@@ -175,9 +186,7 @@ details summary{cursor:pointer;font-weight:700}
  <input type="file" id="musicFile" accept="audio/*" style="margin-top:8px">
  <label>Music volume</label><input type="range" id="musicVol" min="0" max="40" value="12">
  <div class="chk"><input type="checkbox" id="sfx" checked><label for="sfx">🔊 Soft whoosh between scenes</label></div>
- <div class="chk"><input type="checkbox" id="fx" checked><label for="fx">✨ Living-picture effects (floating dust, light flicker, gentle sway)</label></div>
- <label>Camera motion strength</label>
- <select id="camStr"><option value="0.6">Gentle</option><option value="1" selected>Normal</option><option value="1.4">Strong</option></select>
+ <div class="chk"><input type="checkbox" id="fx" checked><label for="fx">✨ Living-picture effects (floating dust, sparkles, fog — no shaking or pulsing)</label></div>
 </div>
 <div class="card">
  <button onclick="saveSettings();toast('✅ Saved')">💾 Save settings</button>
@@ -262,7 +271,7 @@ const STYLES={
  cinematic:{n:"Cinematic film",e:"🎬",d:"Movie-still look — dramatic light, rich colour",
   art:"cinematic film still, anamorphic lens, dramatic volumetric lighting, rich teal and orange colour grading, shallow depth of field, epic composition",
   tone:"dramatic documentary, suspense and big reveals",
-  text:{f:F.teko,c:"#fff",bg:"#000000",acc:"#f6c66a",box:"bar"},music:"epic",voice:{g:"male",a:"middle_aged",w:["deep","dramatic","narration"]},fx:{p:"dust",grade:"contrast(1.06)",flick:0.25,bars:1},cap:{c:"#fff",bg:"rgba(0,0,0,.55)"}},
+  text:{f:F.teko,c:"#fff",bg:"#000000",acc:"#f6c66a",box:"bar"},music:"epic",voice:{g:"male",a:"middle_aged",w:["deep","dramatic","narration"]},fx:{p:"dust",grade:"contrast(1.06)",flick:0,bars:1},cap:{c:"#fff",bg:"rgba(0,0,0,.55)"}},
  watercolor:{n:"Watercolour storybook",e:"💧",d:"Soft children's-book painting — calm stories",
   art:"soft watercolour storybook illustration, gentle pastel colours, delicate ink outlines, visible paper texture, dreamy and calm",
   tone:"gentle, calm and kind, like a bedtime story full of facts",
@@ -278,7 +287,7 @@ const STYLES={
  vintage:{n:"Vintage newspaper",e:"📜",d:"Old photos & newspaper look — 1900s–1980s stories",
   art:"vintage old black and white photograph, faded sepia tones, heavy film grain, scratches, soft focus, period-accurate Indian clothing and objects, archival documentary photo",
   tone:"mysterious, 'from the old files' investigative storytelling",
-  text:{f:F.type,c:"#1a1a1a",bg:"#efe6d2",acc:"#8b0000",box:"stamp"},music:"mystery",voice:{g:"male",a:"old",w:["deep","raspy","storyteller","calm"]},fx:{p:"scratch",grade:"sepia(0.5) contrast(1.05)",flick:0.6},cap:{c:"#efe6d2",bg:"rgba(20,15,10,.72)"}},
+  text:{f:F.type,c:"#1a1a1a",bg:"#efe6d2",acc:"#8b0000",box:"stamp"},music:"mystery",voice:{g:"male",a:"old",w:["deep","raspy","storyteller","calm"]},fx:{p:"scratch",grade:"sepia(0.5) contrast(1.05)",flick:0},cap:{c:"#efe6d2",bg:"rgba(20,15,10,.72)"}},
  papercut:{n:"Paper cut-out",e:"✂️",d:"Layered paper craft — colourful and crafty",
   art:"layered paper cut-out craft illustration, stacked coloured paper layers with soft drop shadows, handmade papercraft diorama, clean shapes",
   tone:"bright, curious and creative",
@@ -290,7 +299,7 @@ const STYLES={
  horror:{n:"Dark mystery",e:"🌫️",d:"Foggy, eerie paintings — haunted places, unsolved mysteries",
   art:"dark eerie digital painting, deep shadows, thick fog and mist, cold desaturated blue tones with a single warm light, unsettling atmosphere, cinematic composition, Indian locations",
   tone:"slow suspense, whispers of mystery, cliffhangers between scenes",
-  text:{f:F.type,c:"#fff",bg:"#7a0000",acc:"#ff5252",box:"stamp"},music:"mystery",voice:{g:"male",a:"middle_aged",w:["deep","dark","whisper","suspense"]},fx:{p:"fog",grade:"contrast(1.08) saturate(0.85)",flick:0.8},cap:{c:"#fff",bg:"rgba(0,0,0,.65)"}}
+  text:{f:F.type,c:"#fff",bg:"#7a0000",acc:"#ff5252",box:"stamp"},music:"mystery",voice:{g:"male",a:"middle_aged",w:["deep","dark","whisper","suspense"]},fx:{p:"fog",grade:"contrast(1.08) saturate(0.85)",flick:0},cap:{c:"#fff",bg:"rgba(0,0,0,.65)"}}
 };
 let CUSTOM={}; try{ CUSTOM=JSON.parse(localStorage.getItem("hdm7_custom")||"{}"); }catch(e){}
 const allStyles=()=>({...STYLES,...CUSTOM});
@@ -300,13 +309,13 @@ const ST=()=>allStyles()[STYLE]||STYLES.stickman;
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","camStr","mins","format","topic"];
+const SET_IDS=["camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
 function setV(id,v){ const e=$(id); if(!e||v==null) return; if(e.type==="checkbox") e.checked=v==="1"; else { if(e.tagName==="SELECT"&&![...e.options].some(o=>o.value===v)) e.add(new Option(v,v)); e.value=v; } }
 function saveSettings(){ SET_IDS.forEach(id=>store("hdm7_"+id,getV(id))); store("hdm7_pe",String(PE)); estimate(); }
-let PE=+(load("hdm7_pe")||1);
+let PE=+(load("hdm7_pe")||1), SPD=+(load("hdm7_spd")||1);
 (function initSettings(){
   const MIG={claudeKey:"claudeKey",gemKey:"key",elKey:"elKey",pronDict:"pronDict",cfAcct:"cfAcct",cfToken:"cfToken",channel:"channel"};
   for(const [n,o] of Object.entries(MIG)) if(load("hdm7_"+n)==null&&load("hdm2_"+o)) store("hdm7_"+n,load("hdm2_"+o));
@@ -315,6 +324,9 @@ let PE=+(load("hdm7_pe")||1);
   SET_IDS.forEach(id=>{ const v=load("hdm7_"+id); if(v!==null) setV(id,v); });
   if(!$("channel").value) $("channel").value="MinuteVerse";
   document.querySelectorAll("#t_set input,#t_set select,#t_set textarea,#mins,#format,#topic").forEach(e=>e.addEventListener("change",saveSettings));
+  if(load("hdm7_trPic")==null){ $("trPic").value="cut"; $("trScene").value="fade"; }
+  document.querySelectorAll("#spSeg button").forEach(b=>{ b.classList.toggle("on",+b.dataset.v===SPD); b.onclick=()=>{ SPD=+b.dataset.v; store("hdm7_spd",String(SPD)); document.querySelectorAll("#spSeg button").forEach(x=>x.classList.toggle("on",x===b)); }; });
+  try{ const cf=JSON.parse(load("hdm7_camFrom")||"null"); if(cf) showCamFrom(cf); }catch(e){}
   document.querySelectorAll("#peSeg button").forEach(b=>{ b.classList.toggle("on",+b.dataset.v===PE); b.onclick=()=>{ PE=+b.dataset.v; document.querySelectorAll("#peSeg button").forEach(x=>x.classList.toggle("on",x===b)); saveSettings(); }; });
   document.querySelectorAll("nav a").forEach(a=>a.onclick=e=>{ e.preventDefault(); showTab(a.dataset.t); });
   if(!$("gemKey").value||!$("elKey").value) setTimeout(()=>status("👋 First add your Gemini and ElevenLabs keys in ⚙️ Settings."),300);
@@ -323,7 +335,7 @@ function showTab(t){ document.querySelectorAll(".tab").forEach(x=>x.classList.to
 function drawStyleGrid(){ const A=allStyles();
   $("styleGrid").innerHTML=Object.entries(A).map(([k,s])=>`<div class="sty${k===STYLE?" on":""}" onclick="pickStyle('${k}')"><b>${s.e}</b>${esc(s.n)}</div>`).join("");
   $("styleDesc").textContent=ST().d||""; }
-function pickStyle(k){ STYLE=k; store("hdm7_style",k); drawStyleGrid(); estimate(); }
+function pickStyle(k){ STYLE=k; store("hdm7_style",k); drawStyleGrid(); estimate(); const c=allStyles()[k].cam; if(c) applyCam(c,`style "${allStyles()[k].n}"`); }
 function drawStyleList(){ const A=allStyles();
   $("styleList").innerHTML=Object.entries(A).map(([k,s])=>`<div class="scene"><b>${s.e} ${esc(s.n)}</b>${CUSTOM[k]?` <span class="muted">(learned)</span>`:""}<div class="muted">${esc(s.d)}</div><div class="muted" style="margin-top:4px">🖼️ ${esc(s.art)}</div><div class="muted">🎙️ ${esc(s.voice.g)} · ${esc(s.voice.w.join(", "))} · 🎵 ${esc(s.music)}</div>
    <button class="small" onclick="pickStyle('${k}');showTab('make')">✅ Use</button>${CUSTOM[k]?`<button class="small sec" onclick="delStyle('${k}')">🗑️ Delete</button>`:""}</div>`).join(""); }
@@ -365,7 +377,7 @@ const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=index
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
@@ -457,6 +469,9 @@ async function research(){
     const {text}=await geminiText("text",{contents:[{parts:[{file_data:fd},{text:`Watch this ENTIRE video carefully (visuals and speech). First line must be: TOPIC: <the main topic in 3-8 English words>.
 Then write complete knowledge notes in English: every fact, number, date, name, place, explanation, example and claim in the video, in order, with a timeline. Mark claims that seem doubtful. Also note what makes this video interesting (hook, twists, best moments) — but do NOT copy its sentences; summarise in your own words.`}]}],generationConfig:{temperature:0.2,mediaResolution:"MEDIA_RESOLUTION_LOW",maxOutputTokens:16000}});
     R.video=text; const m=text.match(/TOPIC:\s*(.+)/i);
+    try{ status("🎥 Studying the video's camera moves & transitions…");
+      const cj=await geminiAuto("text",{contents:[{parts:[{file_data:fd,video_metadata:{start_offset:"0s",end_offset:"300s"}},{text:CAM_PROMPT}]}],generationConfig:{responseMimeType:"application/json",temperature:0.2}});
+      applyCam(camFromJSON(parseJSON(parts(cj).map(p=>p.text||"").join(""))),"your video"); }catch(e){ log("🎥 Camera analysis skipped: "+e.message); }
     if(!P.topic&&m){ P.topic=m[1].trim(); $("topic").value=P.topic; }
     R.sources.push({title:file?file.name:"Reference video",url:file?"":`https://youtu.be/${yid}`});
     log(`📹 Video notes: ${text.length} characters`);
@@ -899,6 +914,7 @@ function drawScenes(){ if(!P||!P.scenes||!P.scenes.length){ $("scCard").style.di
   $("scCard").style.display=""; const v=P.format==="9:16"?" v":"";
   $("scenes").innerHTML=P.scenes.map((s,i)=>`<div class="scene"><div class="muted">Scene ${i+1} · ${esc(s.mood)}${s.on?` · 📍 ${esc(s.on)}`:""}${s.voice?` · ${s.dur.toFixed(1)}s`:""}</div><div class="hi">${esc(s.hi)}</div><div class="muted">${esc(s.en)}</div>
    <div class="strip${v}">${(s.beats||[]).map((b,k)=>b.img?`<img src="${thumb(b)}" onclick="redoPic(${i},${k})" title="${esc(b.p)}">`:`<span onclick="redoPic(${i},${k})">${b.err?"⚠️":"…"}</span>`).join("")}</div>
+   <div class="row" style="align-items:center;margin-top:6px"><span class="muted" style="flex:none">🎥</span><select onchange="P.scenes[${i}].cam=this.value;saveProj()">${[["","Auto (from the settings above)"],["push_in","Zoom in"],["pull_out","Zoom out"],["pan_left","Pan left"],["pan_right","Pan right"],["tilt_up","Tilt up"],["tilt_down","Tilt down"],["static","No movement"]].map(([v,l])=>`<option value="${v}"${(s.cam||"")===v?" selected":""}>${l}</option>`).join("")}</select></div>
    <button class="small sec" onclick="editScene(${i})">✏️ Edit words</button>${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Hear</button>`:""}</div>`).join(""); }
 const TH=new WeakMap(); function thumb(b){ if(!TH.has(b.img)) TH.set(b.img,URL.createObjectURL(b.img)); return TH.get(b.img); }
 async function redoPic(i,k){ if(BUSY) return alert("Tap ⏸️ Pause first."); const b=P.scenes[i].beats[k];
@@ -923,20 +939,37 @@ async function keepAlive(on){ const K=KA(); if(!K) return; try{ await K.busy({on
 function pickMime(){ const c=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"]; return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||""; }
 function wrap(g,text,maxW){ const w=String(text).split(" "),L=[]; let l=""; w.forEach(x=>{ const t=l?l+" "+x:x; if(g.measureText(t).width>maxW&&l){L.push(l);l=x;}else l=t; }); if(l)L.push(l); return L; }
 function rr(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
-/* camera: where the picture sits at progress u (0..1) of its beat */
-function camera(m,u,S,k){ const e=ease(u); let s=1.08,x=0,y=0,r=0;
+/* camera: ONE smooth, constant-speed move per scene (pictures cut underneath it) — no pulsing */
+const SMOOTH={punch:"push_in",shake:"push_in",orbit:"pull_out",drift:"push_in"};
+function sceneMove(s,i,mode){ if(s.cam) return s.cam;
+  if(mode==="static") return "static";
+  if(mode==="kenburns") return i%2?"pull_out":"push_in";
+  if(mode==="pan") return i%2?"pan_left":"pan_right";
+  if(mode==="mixed") return ["push_in","pan_right","pull_out","pan_left","tilt_up"][i%5];
+  const m=(s.beats&&s.beats[0]&&s.beats[0].m)||motionFromWords(s.hi,i,s.mood); return SMOOTH[m]||m; }
+function camera(m,u,spd,dur){ u=clamp(u); const sm=u*u*(3-2*u)*0.25+u*0.75; /* almost linear, soft start/stop */
+  const Z=Math.min(0.16,0.022*dur*spd), A=Math.min(0.07,0.009*dur*spd);
   switch(m){
-    case "push_in": s=1.06+0.12*S*e; break;
-    case "pull_out": s=1.06+0.12*S*(1-e); break;
-    case "pan_left": s=1.14; x=0.05*S*(1-2*e); break;
-    case "pan_right": s=1.14; x=-0.05*S*(1-2*e); break;
-    case "tilt_up": s=1.14; y=0.05*S*(1-2*e); break;
-    case "tilt_down": s=1.14; y=-0.05*S*(1-2*e); break;
-    case "punch": s=1.06+0.16*S*easeOut(u*3.2)+0.03*u; break;
-    case "shake": s=1.12+0.04*e; x=Math.sin(u*61+k)*0.006*S; y=Math.cos(u*53+k)*0.006*S; r=Math.sin(u*40)*0.004*S; break;
-    case "orbit": s=1.12+0.04*e; x=0.03*S*Math.sin(e*Math.PI-1.5); r=0.012*S*(e-0.5); break;
-    default: s=1.09+0.04*e; x=0.02*S*(e-0.5); y=-0.015*S*(e-0.5); }
-  return {s,x,y,r}; }
+    case "static": return {s:1.001,x:0,y:0,r:0};
+    case "push_in": return {s:1.02+Z*sm,x:0,y:0,r:0};
+    case "pull_out": return {s:1.02+Z*(1-sm),x:0,y:0,r:0};
+    case "pan_left": return {s:1.04+A*2,x:A*(1-2*sm),y:0,r:0};
+    case "pan_right": return {s:1.04+A*2,x:-A*(1-2*sm),y:0,r:0};
+    case "tilt_up": return {s:1.04+A*2,x:0,y:A*(1-2*sm),r:0};
+    case "tilt_down": return {s:1.04+A*2,x:0,y:-A*(1-2*sm),r:0};
+    default: return {s:1.02+Z*sm,x:0,y:0,r:0}; } }
+/* transitions between two pictures: p = 0→1 */
+function drawTrans(g,W,H,type,p,pb,pc,cb,cc,filter){ const e=ease(p);
+  const D=(bm,c,extra={})=>{ if(!bm) return; const cc_={...c,s:c.s*(extra.s||1),x:c.x+(extra.x||0)}; g.save(); g.globalAlpha=extra.a==null?1:extra.a; drawPic(g,bm,W,H,cc_,extra.f||filter); g.restore(); };
+  switch(type){
+    case "fade": D(pb,pc); D(cb,cc,{a:e}); break;
+    case "dip": if(p<0.5){ D(pb,pc); g.fillStyle=`rgba(0,0,0,${p*2})`; g.fillRect(0,0,W,H); } else { D(cb,cc); g.fillStyle=`rgba(0,0,0,${(1-p)*2})`; g.fillRect(0,0,W,H); } break;
+    case "flash": D(cb,cc); g.fillStyle=`rgba(255,255,255,${Math.pow(1-p,2)*0.9})`; g.fillRect(0,0,W,H); break;
+    case "zoom": D(pb,pc,{s:1+0.35*e,a:1-e}); D(cb,cc,{s:1.18-0.18*e,a:e}); break;
+    case "slide": D(pb,pc,{x:-e}); D(cb,cc,{x:1-e}); break;
+    case "whip": { const f=`blur(${Math.round(Math.sin(Math.PI*p)*18)}px)`; D(pb,pc,{x:-e,f}); D(cb,cc,{x:1-e,f}); break; }
+    case "blur": D(pb,pc,{a:1-e,f:`blur(${Math.round(e*14)}px)`}); D(cb,cc,{a:e,f:`blur(${Math.round((1-e)*14)}px)`}); break;
+    default: D(cb,cc); } }
 function drawPic(g,bm,W,H,c,filter){ if(!bm) return; const sc=Math.max(W/bm.width,H/bm.height)*c.s, w=bm.width*sc, h=bm.height*sc;
   g.save(); g.translate(W/2+c.x*W,H/2+c.y*H); if(c.r) g.rotate(c.r); if(filter&&filter!=="none") g.filter=filter; g.drawImage(bm,-w/2,-h/2,w,h); g.restore(); }
 /* living-picture particles */
@@ -973,18 +1006,22 @@ function textBox(g,text,x,y,size,T,u,align="left"){ if(!text) return; const a=ea
   g.fillStyle=col; const shown=T.box==="stamp"||T.box==="pixel"?text.slice(0,Math.ceil(text.length*clamp(u*3))):text;
   g.fillText(shown,L+pad,size*0.04);
   g.restore(); }
-async function renderVideo(){
-  const sc=P.scenes.filter(s=>s.voice&&s.beats&&s.beats.length); if(!sc.length) throw new Error("Nothing to render yet.");
-  const S=allStyles()[P.style]||ST(), T=S.text, FX=S.fx||{}, liv=$("fx").checked, CAM=+$("camStr").value||1;
+function preview(){ if(BUSY) return alert("Wait until the current job finishes or tap ⏸️ Pause.");
+  if(!P||!P.scenes||!P.scenes.some(s=>s.voice&&s.beats&&s.beats.some(b=>b.img))) return alert("Make at least the voice and first pictures first (tap 🚀, then ⏸️ Pause after a few pictures).");
+  BUSY=true; STOP=false; renderVideo(15).catch(e=>status("❌ "+e.message)).finally(()=>{ BUSY=false; drawSteps(); }); }
+async function renderVideo(PREV){
+  let sc=P.scenes.filter(s=>s.voice&&s.beats&&s.beats.length); if(!sc.length) throw new Error("Nothing to render yet.");
+  if(PREV){ let acc=0; sc=sc.filter(s=>{ const ok=acc<PREV&&s.beats.some(b=>b.img); acc+=s.dur||0; return ok; }); }
+  const S=allStyles()[P.style]||ST(), T=S.text, FX=S.fx||{}, liv=$("fx").checked, CMODE=$("camMode").value, TRP=$("trPic").value, TRS=$("trScene").value, TRL=+$("trLen").value||0.35;
   const a=ac(), [W,H]=P.format==="9:16"?[1080,1920]:[1920,1080], cv=$("cv"); cv.width=W; cv.height=H; const g=cv.getContext("2d"); $("outCard").style.display="";
   status("🔤 Loading fonts & music…");
   try{ await Promise.race([Promise.all([document.fonts.load(`40px ${T.f}`,"Aa हम"),document.fonts.load(`700 40px ${F.hind}`,"हम्पी Aa"),document.fonts.load(`800 40px ${F.pop}`,"Aa")]),sleep(5000)]); }catch(e){}
   /* timeline */
-  const GAP=0.18, INTRO=0.25, END=3.5; let t=INTRO; const TL=[];
+  const GAP=0.18, INTRO=0.25, END=3.5; let t=INTRO, TLi=0; const TL=[];
   for(const s of sc){ const st=t, d=s.dur; const words=wordTimes(s).map(w=>({...w,a:w.a+st,b:w.b+st}));
     s.beats.forEach((b,k)=>{ TL.push({s,b,k,a:st+b.t0,z:st+(k+1<s.beats.length?s.beats[k+1].t0:d+GAP),sceneStart:st}); });
-    s._st=st; s._end=st+d+GAP; s._words=words; t+=d+GAP; }
-  const BODY=t, TOTAL=t+END;
+    s._st=st; s._end=st+d+GAP; s._words=words; s._mv=sceneMove(s,TLi++,CMODE); t+=d+GAP; }
+  const BODY=t, TOTAL=PREV?t:t+END;
   /* missing pictures reuse the previous one */
   let lastImg=null; for(const x of TL){ if(x.b.img) lastImg=x.b.img; x.blob=x.b.img||lastImg; }
   const first=TL.find(x=>x.blob); if(!first) throw new Error("No pictures yet.");
@@ -993,7 +1030,7 @@ async function renderVideo(){
   const BM=new Map(); const want=async x=>{ if(!BM.has(x.blob)) BM.set(x.blob,createImageBitmap(x.blob).catch(()=>null)); return BM.get(x.blob); };
   for(const x of TL.slice(0,8)) await want(x);
   /* audio graph */
-  const dest=a.createMediaStreamDestination(), master=a.createGain(); master.gain.value=1; master.connect(dest);
+  const dest=a.createMediaStreamDestination(), master=a.createGain(); master.gain.value=1; master.connect(dest); if(PREV) master.connect(a.destination);
   let mbuf=null; const mm=$("music").value;
   try{ if(mm==="auto") mbuf=await makeMusic(S.music); else if(mm==="file"&&$("musicFile").files[0]) mbuf=await a.decodeAudioData(await $("musicFile").files[0].arrayBuffer()); }catch(e){ log("🎵 Music: "+e.message); }
   const mime=pickMime(); if(!mime) throw new Error("This phone cannot record video (MediaRecorder missing). Update Android System WebView.");
@@ -1012,7 +1049,7 @@ async function renderVideo(){
     else if(CAPS==="en"&&s.en){ const ew=s.en.split(/\s+/), groups=[]; for(let i=0;i<ew.length;i+=7) groups.push(ew.slice(i,i+7).join(" ")); const d=s._end-s._st; s._caps=groups.map((x,i)=>({text:x,a:s._st+d*i/groups.length,b:s._st+d*(i+1)/groups.length})); } else s._caps=[]; }
   const parts_=makeParticles(liv?FX.p||"none":"none",W,H);
   const U=Math.min(W,H)/1080, M=P.meta||{};
-  rec.start(1000); $("cv").scrollIntoView({behavior:"smooth",block:"center"});
+  if(!PREV) rec.start(1000); $("cv").scrollIntoView({behavior:"smooth",block:"center"});
   let bi=0, lastT=0, prev=null, shown=null, lastBm=null;
   await new Promise(res=>{
     const frame=()=>{
@@ -1025,14 +1062,10 @@ async function renderVideo(){
       if(!cur._bm&&BM.has(cur.blob)) BM.get(cur.blob).then(bm=>{ cur._bm=bm; });
       g.fillStyle="#000"; g.fillRect(0,0,W,H);
       const bm=cur._bm||(prev&&prev._bm)||lastBm;
-      if(bm){ lastBm=bm; const u=clamp((tt-cur.a)/Math.max(0.3,cur.z-cur.a)), c=camera(cur.b.m,u,CAM,cur.k);
-        /* camera breathes with the voice + gentle living sway */
-        const sc_=cur.s, ei=Math.floor((tt-sc_._st)*30), env=sc_.env&&ei>=0&&ei<sc_.env.length?sc_.env[ei]:0;
-        c.s+=env*0.012*CAM+(cur.b.e?0.05*CAM*easeOut(u*4)*(1-u*0.6):0);
-        if(liv){ c.r+=Math.sin(tt*0.7)*0.0025; c.s+=Math.sin(tt*1.3)*0.004; }
-        try{ drawPic(g,bm,W,H,c,FX.grade); }catch(e){}
-        /* soft dissolve when a new scene starts (hard cuts inside a scene) */
-        if(prev&&prev.s!==cur.s&&prev._bm&&tt-cur.a<0.25){ try{ g.globalAlpha=1-(tt-cur.a)/0.25; drawPic(g,prev._bm,W,H,camera(prev.b.m,1,CAM,prev.k),FX.grade); }catch(e){} g.globalAlpha=1; }
+      const camAt=x=>{ const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
+      if(bm){ lastBm=bm; const c=camAt(cur);
+        const ty=prev&&prev._bm&&prev!==cur?(prev.s!==cur.s?TRS:TRP):"cut", p=(tt-cur.a)/TRL;
+        try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),cur._bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){}
       }
       /* living picture layers */
       if(liv&&FX.flick){ const f=(Math.sin(tt*17)+Math.sin(tt*29.3))*0.5; g.fillStyle=`rgba(0,0,0,${clamp(0.05*FX.flick+f*0.04*FX.flick,0,0.2)})`; g.fillRect(0,0,W,H); }
@@ -1058,10 +1091,10 @@ async function renderVideo(){
         textBox(g,"SUBSCRIBE",W/2,H*0.45,Math.round(86*U),{...T,box:"pill",bg:"#e53935",c:"#fff"},u,"center");
         g.save(); g.globalAlpha=clamp((tt-BODY-0.5)/0.6); g.font=`800 ${Math.round(48*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.fillText($("channel").value||"",W/2,H*0.45+120*U); g.restore(); }
       setBar(tt/TOTAL); if(Math.floor(tt*2)!==Math.floor((tt-dt)*2)) status(`🎬 Rendering ${Math.floor(tt)}s / ${Math.ceil(TOTAL)}s — keep the app open`);
-      if(STOP&&tt>1){ rec.stop(); res(); return; }
-      if(tt>=TOTAL){ rec.stop(); res(); return; }
+      if((STOP&&tt>1)||tt>=TOTAL){ if(PREV){ try{ a.suspend().then(()=>a.resume()); }catch(e){} res(); return; } rec.stop(); res(); return; }
       requestAnimationFrame(frame); };
     requestAnimationFrame(frame); });
+  if(PREV){ BM.forEach(p=>p.then(b=>b&&b.close&&b.close())); status("👁️ Preview finished — change camera/transitions and preview again, or tap 🚀."); return; }
   await stopped;
   BM.forEach(p=>p.then(b=>b&&b.close&&b.close()));
   if(STOP) throw new Error("paused");
@@ -1114,7 +1147,21 @@ Return ONLY JSON in simple English:
 "text_colour":"#hex main box colour","accent_colour":"#hex accent colour",
 "music":"closest of: calm, curious, playful, epic, mystery, retro, folk",
 "particles":"closest of: none, dust, sparkle, fog, chalk, scan, scratch",
-"emoji":"one emoji for this style"}`;
+"emoji":"one emoji for this style",
+"camera":"closest of: kenburns (slow zoom in/out), pan (slow sideways moves), smart (moves change with the story), mixed, static (no movement)","camera_speed":"slow, normal or fast","camera_notes":"one sentence: exactly how the camera moves on pictures (direction, speed, how long, any shake or zoom punches)","between_pictures":"closest of: cut, fade, zoom, slide, whip, flash, dip, blur","between_scenes":"closest of: cut, fade, zoom, slide, whip, flash, dip, blur","transition_secs":0.3,"transition_notes":"one sentence: how pictures and scenes change"}
+Watch the motion carefully: count cuts, check whether pictures zoom, pan or stay still, and how one picture changes to the next.`;
+const CAM_PROMPT=`Watch this video and analyse ONLY its camera movement on pictures/shots and its transitions. Watch the motion carefully: count the cuts, check whether shots zoom, pan or stay still, at what speed, and how one shot changes to the next.
+Return ONLY JSON: {"camera":"closest of: kenburns (slow zoom in/out), pan (slow sideways moves), smart (moves change with the story), mixed, static (no movement)","camera_speed":"slow, normal or fast","camera_notes":"one sentence: exactly how the camera moves on pictures (direction, speed, how long, any shake or zoom punches)","between_pictures":"closest of: cut, fade, zoom, slide, whip, flash, dip, blur","between_scenes":"closest of: cut, fade, zoom, slide, whip, flash, dip, blur","transition_secs":0.3,"transition_notes":"one sentence: how pictures and scenes change","seconds_per_picture":2.0}`;
+function camFromJSON(g){ const T=["cut","fade","zoom","slide","whip","flash","dip","blur"], M=["kenburns","pan","smart","mixed","static"];
+  return {mode:M.includes(g.camera)?g.camera:"kenburns",spd:/slow/i.test(g.camera_speed)?0.5:/fast/i.test(g.camera_speed)?1.7:1,tp:T.includes(g.between_pictures)?g.between_pictures:"cut",ts:T.includes(g.between_scenes)?g.between_scenes:"fade",tl:clamp(+g.transition_secs||0.35,0.15,0.8),notes:[g.camera_notes,g.transition_notes].filter(Boolean).join(" "),spp:+g.seconds_per_picture||0}; }
+function applyCam(c,src){ if(!c) return;
+  $("camMode").value=c.mode; $("trPic").value=c.tp; $("trScene").value=c.ts;
+  $("trLen").value=c.tl<0.28?"0.2":c.tl<0.48?"0.35":"0.6";
+  SPD=c.spd; store("hdm7_spd",String(SPD)); document.querySelectorAll("#spSeg button").forEach(x=>x.classList.toggle("on",+x.dataset.v===SPD));
+  saveSettings(); const cf={...c,src}; store("hdm7_camFrom",JSON.stringify(cf)); showCamFrom(cf); $("camBox").open=true;
+  log(`🎥 Camera & transitions copied from ${src}: ${c.mode}, ${c.tp} / ${c.ts}`); }
+function showCamFrom(c){ const b=$("camFrom"); if(!b) return; b.style.display="";
+  b.innerHTML=`🎥 <b>Set from ${esc(c.src||"your video")}</b>${c.notes?`<br>${esc(c.notes)}`:""}${c.spp?`<br>It changes picture about every ${(+c.spp).toFixed(1)} s.`:""}<br><span class="muted">You can change anything below.</span>`; }
 async function geminiUpload(file){
   const key=$("gemKey").value.trim(), type=file.type||"video/mp4", up="https://generativelanguage.googleapis.com/upload/v1beta/files";
   const r=await fetch(up,{method:"POST",headers:{"x-goog-api-key":key,"X-Goog-Upload-Protocol":"resumable","X-Goog-Upload-Command":"start","X-Goog-Upload-Header-Content-Length":String(file.size),"X-Goog-Upload-Header-Content-Type":type,"Content-Type":"application/json"},body:JSON.stringify({file:{display_name:(file.name||"video").slice(0,100)}})});
@@ -1145,9 +1192,9 @@ async function learnStyle(){
     CUSTOM[k]={n:name,e:g.emoji||"⭐",d:g.summary||"Learned from your videos",art:g.art,tone:g.tone||"",guide:`Hook: ${g.hook||""}. Structure: ${(g.structure||[]).join(" → ")}.`,
       text:{f:fontMap[g.text_font]||F.pop,c:light?"#111":"#fff",bg:hex(g.text_colour)||"#e53935",acc:hex(g.accent_colour)||"#ffd400",box:["paper","bar","pill","comic","stamp","scroll","neon","pixel","chalk"].includes(g.text_style)?g.text_style:"bar"},
       music:MUSIC[g.music]?g.music:"calm",voice:{g:/female/i.test(g.voice_gender)?"female":"male",a:["young","middle_aged","old"].includes(g.voice_age)?g.voice_age:"middle_aged",w:(g.voice_words||["clear"]).map(x=>String(x).toLowerCase())},
-      fx:{p:["none","dust","sparkle","fog","chalk","scan","scratch"].includes(g.particles)?g.particles:"dust",grade:"none",flick:0},cap:{c:"#fff",bg:"rgba(0,0,0,.6)"},pe:+g.seconds_per_picture||2};
+      fx:{p:["none","dust","sparkle","fog","chalk","scan","scratch"].includes(g.particles)?g.particles:"dust",grade:"none",flick:0},cap:{c:"#fff",bg:"rgba(0,0,0,.6)"},pe:+g.seconds_per_picture||2,cam:camFromJSON(g)};
     store("hdm7_custom",JSON.stringify(CUSTOM)); pickStyle(k); drawStyleList();
-    box.innerHTML=`<div class="info"><b>${esc(CUSTOM[k].e)} ${esc(name)}</b> saved and selected.<br>${esc(g.summary||"")}<br><br>🖼️ ${esc(g.art)}<br>⏱️ New picture every ~${(+g.seconds_per_picture||2).toFixed(1)} s in the originals.</div>`;
+    box.innerHTML=`<div class="info"><b>${esc(CUSTOM[k].e)} ${esc(name)}</b> saved and selected.<br>${esc(g.summary||"")}<br><br>🖼️ ${esc(g.art)}<br>⏱️ New picture every ~${(+g.seconds_per_picture||2).toFixed(1)} s in the originals.<br>🎥 ${esc(CUSTOM[k].cam.notes||"")} → set in 🎬 Make → 🎥 Camera &amp; transitions (you can edit it).</div>`;
   }catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; log("❌ Learn style: "+e.message); }
   finally{ btn.disabled=false; } }
 

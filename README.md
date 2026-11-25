@@ -26,7 +26,14 @@ Stickman · Comic action (original heroes) · 3D animated · Anime · Retro pixe
 Each style sets the picture look, script tone, text design, music mood, voice type and effects.
 **🎨 Styles tab → Learn a style:** pick 1–3 example videos (or YouTube links) and Gemini makes a new style from them.
 
-## Camera that follows the voice
+## 🎥 Camera & transitions (v7.3)
+- Smooth, constant-speed moves — one move per scene while pictures change underneath (no pulsing or shaking)
+- Camera: Slow zoom (Ken Burns) · Follow the words · Slow pan · Mixed · No movement — speed Slow/Normal/Fast
+- Transitions between pictures and between scenes: Cut, Crossfade, Zoom through, Slide, Whip pan, Flash, Dip to black, Blur
+- Upload a video (Styles tab or "base it on a video") → Gemini studies its camera moves and transitions and sets them for you
+- Change any scene's camera in 📝 Script & pictures · 👁️ Preview the first 15 seconds before rendering
+
+## Camera that follows the voice (older notes)
 - Words like *ऊपर / बढ़ा* → tilt up · *गिर / पतन* → tilt down · *अचानक / लेकिन* → zoom punch · *पूरा / विशाल* → pull out to reveal · *यात्रा / सफ़र* → pan · *युद्ध / भूकंप* → shake
 - The most important word of each scene gets an extra zoom punch
 - The picture "breathes" with the loudness of the voice
