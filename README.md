@@ -39,6 +39,14 @@ Each style sets the picture look, script tone, text design, music mood, voice ty
 - The picture "breathes" with the loudness of the voice
 - Living-picture layer: gentle sway, floating dust / sparkles / fog / chalk dust, light flicker (per style)
 
+## 🖼️ Reference pictures (v7.7)
+Make → 🖼️ Reference pictures: add a photo + name of a person, place or object. Gemini describes it, the script features it by name, the picture plan tags every picture that shows it.
+- 🆓 Free: free engines follow the detailed description (similar look)
+- 🎯 Exact: Gemini Nano Banana sees your photo for those pictures (≈ ₹3.5 each, billing needed)
+- 📷 Optionally your real photo is shown the first time it's mentioned
+- The quality check compares those pictures with your photo
+References and learned-style frames are kept when you start a new video.
+
 ## 🎬 Video file (v7.6)
 - Built frame by frame as a real MP4 (Android's video encoder + mp4-muxer): correct length in the gallery and YouTube, no black first frame, doesn't need to play in real time
 - First frame = title over the first picture; a separate **thumbnail** (1280×720 or 1080×1920) is saved to Pictures › HindiDocMaker for YouTube Studio

@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.6</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.7</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -95,6 +95,17 @@ details summary{cursor:pointer;font-weight:700}
  <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
  <div class="chk"><input type="checkbox" id="onTxt" checked><label for="onTxt">📍 On-screen text (dates, numbers, places)</label></div>
  <div class="chk"><input type="checkbox" id="titleOn" checked><label for="titleOn">🎬 Big title at the start</label></div>
+ <details style="margin-top:12px" id="refBox"><summary>🖼️ Reference pictures — people, places, objects</summary>
+  <p class="muted">Add a photo of a person, place or object this video is about. Gemini studies it, the script features it, and every picture that shows it is made to look like your photo.</p>
+  <div id="refList"></div>
+  <label>Name (as said in the video)</label><input id="refNm" placeholder="e.g. Konark Sun Temple / Dr. Kalam / Royal Enfield Bullet">
+  <div class="row"><div><label>What is it?</label><select id="refKind"><option value="person">🧑 Person</option><option value="place">🏛️ Place / building</option><option value="object">📦 Object / vehicle / animal</option></select></div>
+   <div><label>Photo</label><input id="refPic" type="file" accept="image/*"></div></div>
+  <button class="small" onclick="addRef()">➕ Add reference</button>
+  <label>How to use references</label>
+  <select id="refAI"><option value="free">🆓 Free — AI follows a detailed description of your photo (similar look)</option><option value="gemini">🎯 Exact — Gemini Nano Banana sees your photo (≈ ₹3.5 per picture with it; needs billing on the Gemini key)</option></select>
+  <div class="chk"><input type="checkbox" id="refReal" checked><label for="refReal">📷 Show my real photo the first time it's mentioned</label></div>
+ </details>
  <details style="margin-top:12px" id="camBox"><summary>🎥 Camera &amp; transitions</summary>
   <div class="info" id="camFrom" style="display:none"></div>
   <label>Camera movement</label>
@@ -312,7 +323,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["refAI","refReal","qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -376,11 +387,12 @@ async function http1(method,url,{headers={},json,body,blob=false,text=false,time
 }
 const DB=(()=>{ let p; const db=()=>p||(p=new Promise((res,rej)=>{ const r=indexedDB.open("hdm7",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
   const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{ const t=d.transaction("kv",mode); const st=t.objectStore("kv"); const r=fn(st); t.oncomplete=()=>res(r&&r.result); t.onerror=()=>rej(t.error); }));
-  return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}) }; })();
+  return { put:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(e=>log("Save failed: "+e.message)), get:k=>tx("readonly",s=>s.get(k)).catch(()=>null), del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>{}), clear:()=>tx("readwrite",s=>s.clear()).catch(()=>{}), keys:()=>tx("readonly",s=>s.getAllKeys()).catch(()=>[]) }; })();
+async function clearProject(){ const ks=(await DB.keys())||[]; for(const k of ks){ if(!/^(ref_|rf_)/.test(String(k))) await DB.del(k); } }
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],ok:b.ok||0,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
@@ -391,7 +403,7 @@ async function restore(){
   if(P.meta){ P.meta.description=cleanText(P.meta.description).replace(/\n?• [^\n]*(grounding-api-redirect|vertexaisearch)[^\n]*/g,""); }
   log(`Restored project "${P.topic}" (${P.scenes.length} scenes).`); drawAll();
 }
-async function newProject(){ if(BUSY) return alert("Tap ⏸️ Pause first."); if(P&&!confirm("Delete the current video project and start fresh?")) return; await DB.clear(); P=null; $("outBox").innerHTML=""; $("ytBox").innerHTML=""; drawAll(); status(""); setBar(0); }
+async function newProject(){ if(BUSY) return alert("Tap ⏸️ Pause first."); if(P&&!confirm("Delete the current video project and start fresh? (Your reference pictures and styles stay.)")) return; await clearProject(); P=null; $("outBox").innerHTML=""; $("ytBox").innerHTML=""; drawAll(); status(""); setBar(0); }
 function stopNow(){ if(BUSY){ STOP=true; status("⏸️ Pausing after the current item… tap 🚀 to continue later."); } }
 
 /* =====================================================================
@@ -517,7 +529,7 @@ async function claudeJSON(prompt){
 async function writerJSON(prompt){
   if($("claudeKey").value.trim()){ try{ return await claudeJSON(prompt); }catch(e){ log("✨ Claude failed ("+String(e.message).slice(0,90)+") → using Gemini"); } }
   return askJSON(prompt,"smart",0.85); }
-function styleBrief(){ const s=ST(); return `VIDEO STYLE: ${s.n} — ${s.d}. Narration tone: ${s.tone}.${s.guide?`\nLearned from reference videos (copy only the STYLE, never their story or lines): ${s.guide}`:""}`; }
+function styleBrief(){ const s=ST(); return `${refsBrief()}\nVIDEO STYLE: ${s.n} — ${s.d}. Narration tone: ${s.tone}.${s.guide?`\nLearned from reference videos (copy only the STYLE, never their story or lines): ${s.guide}`:""}`; }
 const HINDI_RULES=`- "hi" = the Hindi voiceover: modern, everyday spoken Hindi (Hindustani) the way India's best explainer YouTubers talk — NOT pure/shuddh Hindi. Devanagari script only.
 - Common English words Indians say in English (technology, mobile, company, record, engineer) are written in Devanagari exactly as spoken (टेक्नोलॉजी, मोबाइल).
 - Write numbers and years as digits (1857, 25%). No abbreviations or symbols the voice could misread (write किलोमीटर, डॉक्टर; ISRO → इसरो).
@@ -708,6 +720,8 @@ async function planPictures(){
 Picture style for EVERY picture: ${ST().art}.
 Keep these looks consistent: ${P.meta.bible||"(none)"}
 RECURRING CHARACTERS (the same person must look identical in every picture): ${JSON.stringify(P.meta.cast||[])}
+REFERENCE PICTURES from the creator (use them whenever the words talk about them, call them by name in "p"): ${JSON.stringify(projRefs().map(r=>({id:r.id,name:r.name,kind:r.kind,look:r.look})))}
+In "refs" list the reference ids visible in that picture ([] if none).
 In "who" list the ids of the characters visible in that picture ([] if none). Never change a character's age, gender, hair or clothes. Do not add new main characters.
 For every beat (about ${P.pe} second of voiceover), describe ONE picture that shows exactly what that beat is saying, so a viewer understands it even with the sound off.
 MAKE EVERY PICTURE INSTANTLY RELATABLE to an ordinary Indian viewer:
@@ -723,12 +737,12 @@ Also choose how the camera moves to match the MEANING of the words:
 push_in (focus, important detail), pull_out (reveal something big), pan_left/pan_right (travel, time passing, a line of things), tilt_up (rise, growth, tall things, hope), tilt_down (fall, decline, digging, sadness), punch (sudden shock, big number, "but"), shake (war, earthquake, fear), drift (calm, mysterious, slow), orbit (wonder, a monument).
 "e" = 1 if this beat contains the most important word of the scene (gets a zoom punch), else 0.
 Scenes: ${JSON.stringify(list)}
-Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 20-40 words","who":["A"],"m":"push_in","e":0}]}]}`;
+Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture description, 20-40 words","who":["A"],"refs":[],"m":"push_in","e":0}]}]}`;
     let r=null; try{ r=await askJSON(prompt,"text",0.7); }catch(e){ log("🧠 Picture plan: "+e.message); }
     for(const s of g){ const rs=r&&(r.scenes||[]).find(x=>+x.i===P.scenes.indexOf(s)+1);
       s.beats.forEach((b,k)=>{ const rb=rs&&(rs.beats||[]).find(x=>+x.k===k+1)||(rs&&rs.beats&&rs.beats[k]);
         b.p=(rb&&rb.p)||b.p||`${s.en}${s.beats.length>1?` — ${["wide shot","close-up detail","different angle","symbolic picture"][k%4]}`:""}`;
-        b.m=MOTIONS.includes(rb&&rb.m)?rb.m:motionFromWords(b.text,k,s.mood); b.e=rb&&+rb.e?1:0; b.who=Array.isArray(rb&&rb.who)?rb.who.map(String):[]; }); }
+        b.m=MOTIONS.includes(rb&&rb.m)?rb.m:motionFromWords(b.text,k,s.mood); b.e=rb&&+rb.e?1:0; b.who=Array.isArray(rb&&rb.who)?rb.who.map(String):[]; b.refs=Array.isArray(rb&&rb.refs)?rb.refs.map(String).filter(id=>projRefs().some(r=>r.id===id)):[]; }); }
     done+=g.length; status(`🧠 Planning pictures… ${done}/${todo.length} scenes`); setBar(done/todo.length);
   });
   await saveProj();
@@ -739,10 +753,37 @@ Return ONLY JSON: {"scenes":[{"i":1,"beats":[{"k":1,"p":"English picture descrip
    ===================================================================== */
 function imgWH(){ return P.format==="9:16"?[576,1024]:[1024,576]; }
 function shortArt(){ return ST().art.split(/,\s*/).slice(0,4).join(", "); }
+/* ---------- 🖼️ reference pictures (people / places / objects) ---------- */
+let REFS=[]; try{ REFS=JSON.parse(localStorage.getItem("hdm7_refs")||"[]"); }catch(e){}
+const saveRefs=()=>store("hdm7_refs",JSON.stringify(REFS));
+const REF_IMG={}; async function refImg(id){ if(!REF_IMG[id]) REF_IMG[id]=await DB.get("rf_"+id); return REF_IMG[id]; }
+async function drawRefs(){ const L=$("refList"); if(!L) return;
+  const html=[]; for(const [i,r] of REFS.entries()){ const im=await refImg(r.id);
+    html.push(`<div class="scene" style="display:flex;gap:10px;align-items:flex-start">${im?`<img src="${URL.createObjectURL(im)}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;flex:none">`:""}<div style="flex:1;min-width:0"><b>${esc(r.name)}</b> <span class="muted">${{person:"🧑",place:"🏛️",object:"📦"}[r.kind]||""}</span>
+      <textarea style="min-height:56px;margin-top:4px;font-size:13px" onchange="REFS[${i}].look=this.value;saveRefs()" placeholder="Gemini will describe it…">${esc(r.look||"")}</textarea>
+      <button class="small sec" onclick="delRef(${i})">🗑️ Remove</button></div></div>`); }
+  L.innerHTML=html.join("")||`<p class="muted">No reference pictures yet.</p>`; $("refBox").open=!!REFS.length||$("refBox").open; }
+async function addRef(){ const f=$("refPic").files[0], name=$("refNm").value.trim(), kind=$("refKind").value;
+  if(!name||!f) return alert("Type a name and pick a photo.");
+  const r={id:uid(),name,kind,look:""}; status("🖼️ Saving reference…");
+  const bm=await createImageBitmap(f), sc=Math.min(1,1024/Math.max(bm.width,bm.height)), c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); c.getContext("2d").drawImage(bm,0,0,c.width,c.height); bm.close&&bm.close();
+  const blob=await new Promise(res=>c.toBlob(res,"image/jpeg",0.9)); await DB.put("rf_"+r.id,blob); REF_IMG[r.id]=blob;
+  REFS.push(r); saveRefs(); $("refNm").value=""; $("refPic").value=""; await drawRefs();
+  if($("gemKey").value.trim()){ status(`👀 Gemini is studying "${name}"…`);
+    try{ const j=await geminiAuto("fast",{contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:await smallJpeg(blob,768)}},{text:`This photo shows the ${kind} "${name}". Describe ONLY its visual appearance so an image generator can recreate it in new scenes: ${kind==="person"?"gender, approximate age, face shape, skin tone, hair, facial hair, glasses, build, typical clothing with colours":kind==="place"?"architecture, shape, materials, colours, key landmarks/details, surroundings":"shape, colours, materials, size, distinctive parts and markings"}. 35-60 words, plain English, no opinions. Return only the description.`}]}],generationConfig:{temperature:0.2}});
+      r.look=parts(j).map(p=>p.text||"").join("").trim().slice(0,500); saveRefs(); await drawRefs(); status(`✅ "${name}" added and described.`); }
+    catch(e){ status(`Added "${name}" — type a short description of it (Gemini couldn't: ${String(e.message).slice(0,60)})`); } }
+  else status(`Added "${name}" — type a short description of how it looks.`);
+  if(P&&P.scenes&&P.scenes.length) log("ℹ️ References are used for pictures made from now on. For the whole video, start a 🗑️ New video."); }
+function delRef(i){ if(!confirm(`Remove "${REFS[i].name}"?`)) return; DB.del("rf_"+REFS[i].id); delete REF_IMG[REFS[i].id]; REFS.splice(i,1); saveRefs(); drawRefs(); }
+const projRefs=()=>REFS;
+function refsBrief(){ const R=projRefs(); return R.length?`\nThe creator has REFERENCE PICTURES of these — feature them clearly where they fit the story and call them by these exact names: ${R.map(r=>`${r.name} (${r.kind})`).join(", ")}.`:""; }
+function refText(b){ const R=projRefs(), ids=new Set(b.refs||[]); R.forEach(r=>{ if(String(b.p).toLowerCase().includes(r.name.toLowerCase())) ids.add(r.id); }); b.refs=[...ids]; return R.filter(r=>ids.has(r.id)&&r.look).map(r=>`${r.name}: ${r.look}`).join("; "); }
+setTimeout(drawRefs,0);
 function castText(b){ const C=(P.meta&&P.meta.cast)||[]; const who=new Set(b.who||[]); C.forEach(c=>{ if(c.name&&String(b.p).includes(c.name)) who.add(c.id); });
   return C.filter(c=>who.has(c.id)).map(c=>`${c.name}: ${c.look}`).join("; "); }
-function fullPrompt(b,simple){ const subj=simple?String(b.p).split(/[.;]/)[0].slice(0,160):String(b.p).slice(0,380), cast=castText(b);
-  return `${ST().n} style illustration. ${subj}.${cast?` Characters (exact same look every time): ${cast}.`:""} Style: ${simple?shortArt():ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, one clear subject, whole bodies, fully clothed, natural anatomy, no text, no letters, no signature, no watermark`; }
+function fullPrompt(b,simple){ const subj=simple?String(b.p).split(/[.;]/)[0].slice(0,160):String(b.p).slice(0,380), cast=castText(b), rt=refText(b);
+  return `${ST().n} style illustration. ${subj}.${rt?` Must look exactly like: ${rt}.`:""}${cast?` Characters (exact same look every time): ${cast}.`:""} Style: ${simple?shortArt():ST().art}. ${P.format==="9:16"?"vertical composition":"wide composition"}, one clear subject, whole bodies, fully clothed, natural anatomy, no text, no letters, no signature, no watermark`; }
 function projSeed(){ if(!P.seed){ P.seed=1+Math.floor(Math.random()*900000); } return P.seed; }
 function seedOf(id){ let h=0; for(const c of id) h=(h*31+c.charCodeAt(0))>>>0; return h%999999; }
 let POL_NEXT=0, POL_KEY_BAD=false;
@@ -795,8 +836,10 @@ async function imgCloudflare(b){
     throw new Error(`Cloudflare ${r.status}: ${m}`); }
   throw Object.assign(new Error("Cloudflare free limit used up for today"),{limit:1}); }
 async function imgGemini(b){
-  const refs=await styleRefs(P.style), pr=[]; for(const r_ of refs.slice(0,2)) pr.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(r_,512)}});
-  const txt=(pr.length?"Match the EXACT art style of these reference images (style only — do not copy their content). ":"")+"Generate an image: "+fullPrompt(b);
+  refText(b); const subj=projRefs().filter(r=>(b.refs||[]).includes(r.id)).slice(0,3), pr=[], intro=[];
+  for(const [i,r] of subj.entries()){ const im=await refImg(r.id); if(im){ pr.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(im,768)}}); intro.push(`Photo ${i+1} is ${r.name} (${r.kind}) — keep ${r.kind==="person"?"the same face, hair and build":r.kind==="place"?"the same architecture and details":"the same shape, colours and details"}.`); } }
+  const refs=await styleRefs(P.style); for(const r_ of refs.slice(0,subj.length?1:2)) pr.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(r_,512)}});
+  const txt=(intro.length?intro.join(" ")+" Show them in a NEW scene, drawn in the target art style. ":"")+(refs.length?"Match the art style of the last reference image(s) (style only — do not copy their content). ":"")+"Generate an image: "+fullPrompt(b);
   const j=await geminiAuto("image",{contents:[{parts:[...pr,{text:txt}]}],generationConfig:{responseModalities:["IMAGE"],imageConfig:{aspectRatio:P.format}}});
   const p=parts(j).find(p=>p.inlineData); if(!p) throw new Error("Gemini gave no picture");
   return new Blob([b64ToBytes(p.inlineData.data)],{type:p.inlineData.mimeType||"image/png"}); }
@@ -819,9 +862,13 @@ function engineOrder(first,preferCF){ const cf=!!$("cfAcct").value.trim(), o=[];
   o.push("Pollinations Turbo","AI Horde");
   if($("gemImg").checked&&!first) o.push("Gemini");
   return o; }
+const REAL_USED=new Set();
 async function makePicture(b,first,preferCF,simple){
-  let last;
-  for(const n of engineOrder(first,preferCF)){ if(ENG_DOWN[n]&&Date.now()<ENG_DOWN[n]) continue;
+  let last; refText(b);
+  if($("refReal").checked&&(b.refs||[]).length&&!simple&&!b.retry){ const r=projRefs().find(r=>b.refs.includes(r.id)&&!(P.realUsed||[]).includes(r.id));
+    if(r){ const im=await refImg(r.id); if(im){ P.realUsed=[...(P.realUsed||[]),r.id]; b.img=await cropTo(im); b.eng="Your photo"; b.ok=1; await DB.put("i_"+b.id,b.img); if(STAT) STAT.ok["Your photo"]=(STAT.ok["Your photo"]||0)+1; return "Your photo"; } } }
+  let order=engineOrder(first,preferCF); if((b.refs||[]).length&&$("refAI").value==="gemini") order=["Gemini",...order.filter(x=>x!=="Gemini")];
+  for(const n of order){ if(ENG_DOWN[n]&&Date.now()<ENG_DOWN[n]) continue;
     try{ const blob=await cropTo(await ENGINES[n](b,simple)); b.img=blob; b.err=""; b.eng=n; await DB.put("i_"+b.id,blob);
       if(STAT){ STAT.ok[n]=(STAT.ok[n]||0)+1; } return n; }
     catch(e){ if(String(e.message)==="paused") throw e; last=e; if(STAT) STAT.retry++;
@@ -838,8 +885,10 @@ async function qualityCheck(){
     if(STOP) return;
     const refs=await styleRefs(P.style), stl=allStyles()[P.style]||{};
     const items=[]; if(refs.length){ items.push({text:"REFERENCE FRAMES — the target art style (judge style only, not content):"}); for(const r_ of refs.slice(0,3)) items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(r_,320)}}); items.push({text:"PICTURES TO CHECK:"}); }
-    for(const [k,x] of g.entries()){ items.push({text:`Picture ${k+1} — should show: ${x.b.p}${castText(x.b)?` | Characters: ${castText(x.b)}`:""}`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img)}}); }
-    items.push({text:`You are a strict picture editor for a YouTube video in "${ST().n}" style (${shortArt()}). Mark a picture BAD only if it clearly has: the wrong subject, a character who looks different from the description (age/gender/hair/clothes), a floating or disembodied body part, distorted faces/hands, nudity or shirtless people, a creepy/disturbing look, visible text/letters/signature/watermark, or a very different art style.${refs.length?` ALSO mark it BAD if its art style does not clearly look like it came from the same video as the REFERENCE FRAMES (medium, line work, shading, colour palette, lighting, texture)${(stl.checks||[]).length?`; it must have: ${stl.checks.join("; ")}`:""}. For style failures put "style" in why.`:""} Otherwise it is fine.
+    const usedRefs=projRefs().filter(r=>g.some(x=>(x.b.refs||[]).includes(r.id))).slice(0,3);
+    for(const r of usedRefs){ const im=await refImg(r.id); if(im){ items.push({text:`REFERENCE PHOTO of ${r.name} (${r.kind}) — pictures that show ${r.name} must clearly look like this:`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(im,384)}}); } }
+    for(const [k,x] of g.entries()){ items.push({text:`Picture ${k+1} — should show: ${x.b.p}${castText(x.b)?` | Characters: ${castText(x.b)}`:""}${(x.b.refs||[]).length?` | Must look like reference: ${projRefs().filter(r=>x.b.refs.includes(r.id)).map(r=>r.name).join(", ")}`:""}`}); items.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img)}}); }
+    items.push({text:`You are a strict picture editor for a YouTube video in "${ST().n}" style (${shortArt()}). Mark a picture BAD only if it clearly has: the wrong subject, a referenced person/place/object that does not resemble its REFERENCE PHOTO, a character who looks different from the description (age/gender/hair/clothes), a floating or disembodied body part, distorted faces/hands, nudity or shirtless people, a creepy/disturbing look, visible text/letters/signature/watermark, or a very different art style.${refs.length?` ALSO mark it BAD if its art style does not clearly look like it came from the same video as the REFERENCE FRAMES (medium, line work, shading, colour palette, lighting, texture)${(stl.checks||[]).length?`; it must have: ${stl.checks.join("; ")}`:""}. For style failures put "style" in why.`:""} Otherwise it is fine.
 Return ONLY JSON: {"bad":[{"n":2,"why":"short reason","fix":"improved English picture description, 20-40 words"}]}`});
     try{ const j=await geminiAuto("fast",{contents:[{parts:items}],generationConfig:{responseMimeType:"application/json",temperature:0.1}});
       const r=parseJSON(parts(j).map(p=>p.text||"").join(""));
@@ -929,11 +978,11 @@ function drawAll(){ drawSteps(); drawScenes(); drawYT(); }
 async function go(){
   if(BUSY) return;
   const topic=$("topic").value.trim();
-  if(P&&P.rendered&&topic&&topic!==P.topic){ if(!confirm(`Start a NEW video about "${topic}"? (The finished video stays saved on your phone.)`)) return; await DB.clear(); P=null; $("outBox").innerHTML=""; }
+  if(P&&P.rendered&&topic&&topic!==P.topic){ if(!confirm(`Start a NEW video about "${topic}"? (The finished video stays saved on your phone.)`)) return; await clearProject(); P=null; $("outBox").innerHTML=""; }
   const vsrc=$("srcFile").files[0]||ytId($("srcLink").value);
   if(!P||!P.scenes||!P.scenes.length){ if(!topic&&!vsrc){ alert("Type a topic or add a video first (or tap 💡 for ideas)."); return; }
     if(!$("gemKey").value.trim()||!$("elKey").value.trim()){ alert("Add your Gemini and ElevenLabs keys in ⚙️ Settings first."); showTab("set"); return; }
-    if(!P||P.topic!==topic||(vsrc&&!P.research)) P={topic,style:STYLE,mins:+$("mins").value,format:$("format").value,pe:PE,scenes:[]}; }
+    if(!P||P.topic!==topic||(vsrc&&!P.research)) P={refs:REFS.map(r=>({...r})),topic,style:STYLE,mins:+$("mins").value,format:$("format").value,pe:PE,scenes:[]}; }
   else if(P.style!==STYLE){ if(!confirm(`This video was started in "${(allStyles()[P.style]||{}).n}". Continue in that style? (Cancel = keep going in the new style "${ST().n}" for the remaining pictures.)`)) P.style=STYLE; else { STYLE=P.style; drawStyleGrid(); } }
   STYLE=P.style||STYLE;
   BUSY=true; STOP=false; P.rendered=false; drawSteps(); keepAlive(true);
