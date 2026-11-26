@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.12</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.13</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -93,6 +93,8 @@ details summary{cursor:pointer;font-weight:700}
 
  <label>Text on the video</label>
  <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
+ <label>On-screen text animation</label>
+ <select id="txAnim"><option value="auto">✨ Auto — best animation for each text (counter, year flip, map pin, impact…)</option><option value="fact">Style box only</option><option value="secret">⌨️ Typewriter for all</option><option value="list">🔤 Word-by-word pop for all</option><option value="key">✍️ Big text + hand-drawn underline for all</option></select>
  <div class="chk"><input type="checkbox" id="onTxt" checked><label for="onTxt">📍 On-screen text (dates, numbers, places)</label></div>
  <div class="chk"><input type="checkbox" id="titleOn" checked><label for="titleOn">🎬 Big title at the start</label></div>
  <details style="margin-top:12px" id="refBox"><summary>🖼️ Reference pictures — people, places, objects</summary>
@@ -348,7 +350,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -418,7 +420,7 @@ async function clearProject(){ const ks=(await DB.keys())||[]; for(const k of ks
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,at:s.at||"",mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,at:s.at||"",k:s.k||"",mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
@@ -570,7 +572,7 @@ const CRAFT=`WHAT MAKES IT HIGHLY INTERESTING (follow all):
 - Story over list: people, decisions, conflict, turning points, consequences.
 - Change rhythm every ~45 seconds: a twist, a myth busted, a "wow" number, or a direct question to the viewer.
 - End with a satisfying payoff, one thought-provoking line, then a short subscribe line.`;
-const SCENE_FMT=`{"hi":"Hindi voiceover","en":"natural English translation of hi","on":"REQUIRED on-screen English text, 2-5 words: the key fact, number, date, name or idea of THIS scene (e.g. '1250 AD', 'Built in 12 years', 'King Narasimhadeva I', '24 stone wheels')","at":"the exact Hindi word from hi at which this text should appear (the word that says it)","mood":"calm|curious|tense|epic|sad|happy|shock|mystery"}`;
+const SCENE_FMT=`{"hi":"Hindi voiceover","en":"natural English translation of hi","on":"REQUIRED on-screen English text, 2-5 words: the key fact, number, date, name or idea of THIS scene (e.g. '1250 AD', 'Built in 12 years', 'King Narasimhadeva I', '24 stone wheels')","at":"the exact Hindi word from hi at which this text should appear (the word that says it)","k":"text animation type — one of: number (a number to count up), year (a date/year), place (a location), shock (a shocking word/phrase, 1-3 words), quote (a famous line or claim, can be up to 8 words), versus (a comparison 'A vs B'), list (several items), secret (a mystery or hidden fact), key (a key name or idea to underline), fact (anything else)","mood":"calm|curious|tense|epic|sad|happy|shock|mystery"}`;
 function notesFor(max=60000){ const R=P.research||{}; return `${R.video?`KNOWLEDGE FROM THE REFERENCE VIDEO (use the facts; write everything in your own words, never copy its lines or structure word-for-word):\n${R.video.slice(0,25000)}\n\n`:""}RESEARCH NOTES:\n${(R.notes||"").slice(0,max)}`; }
 async function writeScript(){
   const n=Math.max(5,Math.round(P.mins*60/SCENE_SECS)), per=Math.min(n,30), nParts=Math.ceil(n/per);
@@ -611,10 +613,10 @@ ${HINDI_RULES}
 ${notesFor(30000)}
 SCENES: ${JSON.stringify(chunk)}
 Return ONLY JSON: {"fix":[{"i":3,"score":6,"hi":"rewritten Hindi","en":"English translation","on":"2-5 word English on-screen text","at":"Hindi word where it appears"}]}`);
-      let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on) s.on=f.on; if(f.at) s.at=f.at; nfix++; } });
+      let nfix=0; (ed.fix||[]).forEach(f=>{ const s=scenes[+f.i-1]; if(s&&f.hi&&String(f.hi).trim().length>10){ s.hi=String(f.hi).trim(); if(f.en) s.en=f.en; if(f.on) s.on=f.on; if(f.at) s.at=f.at; if(f.k) s.k=f.k; nfix++; } });
       log(`🧐 Editor improved ${nfix} scenes`); }catch(e){ log("🧐 Editor skipped: "+e.message); } }
   P.meta={title:cleanText(plan.title||P.topic),description:cleanText(plan.description||"")+sourceLines(),tags:plan.tags||[],screen_title:plan.screen_title||P.topic,screen_sub:plan.screen_sub||"",bible:plan.visual_bible||"",cast:(plan.cast||[]).filter(c=>c&&c.id&&c.look).slice(0,4)};
-  P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:cleanText(s.on).split(/\s+/).slice(0,6).join(" "),at:String(s.at||"").trim(),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
+  P.scenes=scenes.map(s=>({id:uid(),hi:String(s.hi).trim(),en:String(s.en||"").trim(),on:cleanText(s.on).split(/\s+/).slice(0,s.k==="quote"?9:6).join(" "),at:String(s.at||"").trim(),k:String(s.k||"").toLowerCase(),mood:String(s.mood||"calm").toLowerCase(),beats:[]}));
   log(`✍️ Script: ${P.scenes.length} scenes — "${P.meta.title}"`);
   await saveProj();
 }
@@ -735,13 +737,14 @@ function motionFromWords(t,k,mood){ t=String(t);
   if(mood==="mystery"||mood==="tense") return k%2?"push_in":"drift";
   return ["push_in","drift","pan_right","pull_out","pan_left","push_in"][k%6]; }
 async function fillOnscreen(){
-  const miss=P.scenes.filter(s=>!String(s.on||"").trim()||!s.at); if(!miss.length) return;
+  const miss=P.scenes.filter(s=>!String(s.on||"").trim()||!s.at||!s.k); if(!miss.length) return;
   status(`📍 Writing on-screen text for ${miss.length} scenes…`);
   for(let i=0;i<miss.length;i+=30){ const g=miss.slice(i,i+30);
     try{ const r=await askJSON(`For each scene of a Hindi explainer video about "${P.topic}", write on-screen text in ENGLISH (2–5 words): the key fact, number, date, name or idea being said — punchy and different for every scene. Also give "at": the exact Hindi word from the voiceover where the text should pop up (the word that says it). Keep existing text if it is good.
 ${JSON.stringify(g.map(s=>({i:P.scenes.indexOf(s)+1,hi:s.hi,en:s.en,on:s.on||""})))}
-Return ONLY JSON: {"t":[{"i":1,"on":"1250 AD","at":"1250"}]}`,"fast",0.5);
-      (r.t||[]).forEach(x=>{ const s=P.scenes[+x.i-1]; if(s&&x.on){ s.on=cleanText(x.on).split(/\s+/).slice(0,6).join(" "); s.at=String(x.at||"").trim(); } }); }catch(e){ log("📍 On-screen text: "+e.message); } }
+Also give "k", the animation type: number (a number to count up), year (a date/year), place (a location), shock (a shocking word/phrase, 1-3 words), quote (a famous line or claim, can be up to 8 words), versus (a comparison 'A vs B'), list (several items), secret (a mystery or hidden fact), key (a key name or idea to underline), fact (anything else). Use a good mix of types across the video.
+Return ONLY JSON: {"t":[{"i":1,"on":"1250 AD","at":"1250","k":"year"}]}`,"fast",0.5);
+      (r.t||[]).forEach(x=>{ const s=P.scenes[+x.i-1]; if(s&&x.on){ s.on=cleanText(x.on).split(/\s+/).slice(0,6).join(" "); s.at=String(x.at||"").trim(); s.k=String(x.k||"").toLowerCase(); } }); }catch(e){ log("📍 On-screen text: "+e.message); } }
   await saveProj(); log(`📍 On-screen text ready for ${P.scenes.filter(s=>s.on).length}/${P.scenes.length} scenes`); }
 async function planPictures(){
   await fillOnscreen();
@@ -1193,6 +1196,60 @@ async function pickVideoCodec(W,H){ for(const codec of ["avc1.640028","avc1.4d00
     try{ const r=await VideoEncoder.isConfigSupported(cfg); if(r.supported) return cfg; }catch(e){} } return null; }
 async function pickAudioCodec(sr){ for(const [codec,mux] of [["mp4a.40.2","aac"],["opus","opus"]]){ const cfg={codec,sampleRate:sr,numberOfChannels:1,bitrate:128000};
     try{ const r=await AudioEncoder.isConfigSupported(cfg); if(r.supported) return {cfg,mux}; }catch(e){} } return null; }
+/* ================= ✨ KINETIC ON-SCREEN TEXT ================= */
+const KINDS=["number","year","place","shock","quote","versus","list","secret","key","fact"];
+function textKind(s){ const k=String(s.k||"").toLowerCase(), t=String(s.on||"");
+  if(KINDS.includes(k)){ if(k==="number"&&!/\d/.test(t)) return "fact"; if(k==="versus"&&!/\s(vs\.?|versus|v\/s)\s/i.test(t)) return "fact"; return k; }
+  if(/\s(vs\.?|versus|v\/s)\s/i.test(t)) return "versus";
+  if(/^["“'].+["”']$/.test(t)) return "quote";
+  if(/^(in\s)?\d{3,4}\s*(AD|BC|BCE|CE)?$/i.test(t)) return "year";
+  if(/\d/.test(t)) return "number";
+  if(s.mood==="shock") return "shock"; if(s.mood==="mystery"||s.mood==="tense") return "secret";
+  return "fact"; }
+const easeBounce=x=>{ x=clamp(x); const n=7.5625,d=2.75; if(x<1/d) return n*x*x; if(x<2/d) return n*(x-=1.5/d)*x+0.75; if(x<2.5/d) return n*(x-=2.25/d)*x+0.9375; return n*(x-=2.625/d)*x+0.984375; };
+function lightColor(c){ const m=String(c).match(/^#([0-9a-f]{6})$/i); if(!m) return false; const v=parseInt(m[1],16); return ((v>>16)+((v>>8)&255)+(v&255))>600; }
+function drawKinetic(g,kind,text,el,left,W,H,U,T,V){
+  const X0=V?W/2:70*U, Y0=V?H*0.19:H*0.14, AL=V?"center":"left", RED=lightColor(T.acc)&&T.acc!=="#FFE003"?"#e53935":T.acc;
+  g.save(); g.globalAlpha=clamp(left/0.3);
+  switch(kind){
+  case "number":{ const m=text.match(/(\d[\d,]*(?:\.\d+)?)/); if(!m){ textBox(g,text,X0,Y0,Math.round(64*U),T,clamp(el/0.8),AL); break; }
+    const raw=m[1], val=parseFloat(raw.replace(/,/g,"")), dec=(raw.split(".")[1]||"").length, pr=easeOut(clamp((el-0.1)/1.1));
+    const cur=val*pr, fmt=/,/.test(raw)||val>=10000?cur.toLocaleString("en-IN",{minimumFractionDigits:dec,maximumFractionDigits:dec}):cur.toFixed(dec);
+    const pop=el>1.2&&el<1.45?1+0.08*Math.sin((el-1.2)/0.25*Math.PI):1;
+    g.translate(X0,Y0); g.scale(pop,pop); textBox(g,text.replace(raw,fmt),0,0,Math.round(84*U),T,clamp(el/0.5),AL); break; }
+  case "year":{ const fs=Math.round(88*U); g.font=`700 ${fs}px ${T.f}`; g.textBaseline="middle"; const tw=g.measureText(text).width, pad=fs*0.4, bx=V?X0-tw/2-pad:X0;
+    g.fillStyle=T.bg; rr(g,bx,Y0-fs*0.72,tw+pad*2,fs*1.44,fs*0.18); g.fill();
+    let x=bx+pad; [...text].forEach((ch,i)=>{ const cw=g.measureText(ch).width, p=clamp((el-0.08*i)/0.35), sy=p<1?Math.max(0.02,Math.abs(Math.cos((1-p)*Math.PI))):1;
+      g.save(); g.translate(x+cw/2,Y0); g.scale(1,sy); g.fillStyle=p<0.5?"rgba(0,0,0,.35)":T.c; g.textAlign="center"; g.fillText(ch,0,fs*0.04); g.restore(); x+=cw; });
+    g.strokeStyle="rgba(0,0,0,.25)"; g.lineWidth=2*U; g.beginPath(); g.moveTo(bx,Y0); g.lineTo(bx+tw+pad*2,Y0); g.stroke(); break; }
+  case "place":{ const fs=Math.round(58*U); g.font=`700 ${fs}px ${T.f}`; const tw=g.measureText(text).width, px=V?W/2-(tw+fs*2.4)/2:X0+18*U, py=Y0-(1-easeBounce(clamp(el/0.55)))*H*0.18;
+    g.fillStyle=RED; g.beginPath(); g.arc(px,py-22*U,20*U,Math.PI,0); g.lineTo(px,py+16*U); g.closePath(); g.fill(); g.beginPath(); g.arc(px,py-22*U,20*U,0,Math.PI*2); g.fill(); g.fillStyle="#fff"; g.beginPath(); g.arc(px,py-22*U,8*U,0,Math.PI*2); g.fill();
+    const lp=easeOut(clamp((el-0.45)/0.3)), lx=px+28*U, len=fs*0.9*lp; g.strokeStyle=RED; g.lineWidth=5*U; g.lineCap="round"; if(lp>0){ g.beginPath(); g.moveTo(lx,Y0-22*U); g.lineTo(lx+len,Y0-22*U); g.stroke(); }
+    if(el>0.65) textBox(g,text,lx+fs*0.9+8*U,Y0-22*U,fs,T,clamp((el-0.65)/0.6),"left"); break; }
+  case "shock":{ if(el>2.3) break; const fs=Math.round((V?110:150)*U), sc=1+1.5*(1-easeOut(clamp(el/0.22))), sh=el>0.22&&el<0.6?Math.sin(el*95)*9*U*(1-(el-0.22)/0.38):0;
+    g.globalAlpha*=clamp((2.3-el)/0.3)*clamp(el/0.08); g.translate(W/2+sh,H*0.42); g.scale(sc,sc); g.font=`900 ${fs}px ${T.f===F.pixel?F.bang:T.f}`; g.textAlign="center"; g.textBaseline="middle"; g.lineJoin="round";
+    const t=text.toUpperCase(); g.lineWidth=fs*0.14; g.strokeStyle="#000"; g.strokeText(t,0,0); g.fillStyle=lightColor(T.acc)?T.acc:"#ff3b30"; g.fillText(t,0,0); break; }
+  case "secret":{ const fs=Math.round(52*U); g.font=`${fs}px ${F.type}`; g.textBaseline="middle"; const tw=g.measureText(text).width, pad=fs*0.5, bx=V?X0-tw/2-pad:X0, n=Math.floor(el*16);
+    g.fillStyle="rgba(10,10,10,.82)"; g.fillRect(bx,Y0-fs*0.75,tw+pad*2+fs*0.4,fs*1.5); g.strokeStyle=RED; g.lineWidth=3*U; g.strokeRect(bx,Y0-fs*0.75,tw+pad*2+fs*0.4,fs*1.5);
+    const shown=text.slice(0,n); g.fillStyle="#e8ffe8"; g.fillText(shown,bx+pad,Y0+fs*0.04); if(Math.floor(el*2.4)%2===0){ g.fillRect(bx+pad+g.measureText(shown).width+4*U,Y0-fs*0.42,fs*0.45,fs*0.84); } break; }
+  case "quote":{ const fs=Math.round(46*U), cw=V?W*0.8:W*0.42, cx=V?W*0.1:W*0.53, cy=V?H*0.1:H*0.1, sl=(1-easeOut(clamp(el/0.5)))*W*0.35;
+    g.font=`${fs}px ${F.rozha}`; const lines=wrap(g,text.replace(/^["“']|["”']$/g,""),cw-fs*1.6).slice(0,4), ch=fs*1.3*lines.length+fs*1.6;
+    g.translate(cx+cw/2+sl,cy+ch/2); g.rotate(-0.025); g.shadowColor="rgba(0,0,0,.35)"; g.shadowBlur=18*U; g.fillStyle="#fbf6ea"; g.fillRect(-cw/2,-ch/2,cw,ch); g.shadowColor="transparent";
+    g.fillStyle=RED; g.font=`${fs*2.6}px ${F.rozha}`; g.textBaseline="top"; g.fillText("“",-cw/2+fs*0.3,-ch/2-fs*0.4);
+    g.fillStyle="#222"; g.font=`${fs}px ${F.rozha}`; g.textBaseline="middle"; lines.forEach((l,i)=>g.fillText(l,-cw/2+fs*0.8,-ch/2+fs*1.1+i*fs*1.3+fs*0.4)); break; }
+  case "versus":{ const parts=text.split(/\s+(?:vs\.?|versus|v\/s)\s+/i), fs=Math.round((V?52:60)*U), y=V?H*0.2:H*0.16, mid=W/2, gap=fs*1.6, pa=easeOut(clamp(el/0.45)), pb=easeOut(clamp((el-0.15)/0.45));
+    g.font=`700 ${fs}px ${T.f}`; const wa=g.measureText(parts[0]||"").width+fs, wb=g.measureText(parts[1]||"").width+fs;
+    textBox(g,parts[0]||"",mid-gap-wa/2-(1-pa)*W*0.5,y,fs,T,1,"center"); textBox(g,parts[1]||"",mid+gap+wb/2+(1-pb)*W*0.5,y,fs,{...T,bg:T.acc&&T.acc!==T.bg?T.acc:T.bg,c:lightColor(T.acc)?"#111":"#fff"},1,"center");
+    const vp=easeBack(clamp((el-0.4)/0.35)); if(vp>0){ g.save(); g.translate(mid,y); g.scale(vp,vp); g.fillStyle="#111"; g.beginPath(); g.arc(0,0,fs*0.85,0,Math.PI*2); g.fill(); g.strokeStyle="#fff"; g.lineWidth=4*U; g.stroke(); g.fillStyle="#fff"; g.font=`900 ${fs*0.8}px ${F.bang}`; g.textAlign="center"; g.textBaseline="middle"; g.fillText("VS",0,fs*0.04); g.restore(); } break; }
+  case "list":{ const words=text.split(/\s+/), fs=Math.round(56*U); g.font=`700 ${fs}px ${T.f}`; g.textBaseline="middle"; const ws=words.map(w=>g.measureText(w).width+fs*0.7), gapw=fs*0.25;
+    const total=ws.reduce((a,b)=>a+b+gapw,0)-gapw; let x=V?W/2-Math.min(total,W*0.9)/2:X0, y=Y0;
+    words.forEach((w,i)=>{ if(x+ws[i]>W*0.95){ x=V?W*0.05:X0; y+=fs*1.5; } const p=clamp((el-i*0.17)/0.3); if(p>0){ const sc=easeBack(p); g.save(); g.translate(x+ws[i]/2,y); g.scale(sc,sc);
+      g.fillStyle=i%2?T.acc:T.bg; rr(g,-ws[i]/2,-fs*0.68,ws[i],fs*1.36,fs*0.3); g.fill(); g.fillStyle=lightColor(i%2?T.acc:T.bg)?"#111":"#fff"; g.textAlign="center"; g.fillText(w,0,fs*0.04); g.restore(); } x+=ws[i]+gapw; }); break; }
+  case "key":{ const fs=Math.round(76*U); g.font=`800 ${fs}px ${T.f}`; g.textBaseline="middle"; g.textAlign=AL; const tw=g.measureText(text).width, x0=V?X0-tw/2:X0, a=clamp(el/0.35);
+    g.globalAlpha*=a; g.lineJoin="round"; g.lineWidth=fs*0.12; g.strokeStyle="rgba(0,0,0,.85)"; g.strokeText(text,X0,Y0); g.fillStyle="#fff"; g.fillText(text,X0,Y0);
+    const up=easeOut(clamp((el-0.3)/0.55)); if(up>0){ g.strokeStyle=RED; g.lineWidth=9*U; g.lineCap="round"; g.beginPath(); const yU=Y0+fs*0.62, n=24; for(let i=0;i<=n*up;i++){ const xx=x0-8*U+(tw+16*U)*i/n, yy=yU+Math.sin(i*0.9)*3*U+(i/n)*4*U; i?g.lineTo(xx,yy):g.moveTo(xx,yy); } g.stroke(); } break; }
+  default: textBox(g,text,X0,Y0,Math.round(64*U),T,clamp(el/0.8),AL); }
+  g.restore(); }
 function onAnchor(s,words,st,d){ const strip=w=>String(w).replace(/[^\p{L}\p{M}\p{N}]/gu,"");
   let a=null; const at=strip(s.at||"");
   if(at) { const w=words.find(w=>{ const c=strip(w.w); return c&&(c===at||(at.length>2&&(c.startsWith(at)||at.startsWith(c)&&c.length>2))); }); if(w) a=w.a; }
@@ -1235,7 +1292,7 @@ async function renderVideo(PREV){
       bp.frequency.setValueAtTime(400,Math.max(0,at)); bp.frequency.exponentialRampToValueAtTime(3000,Math.max(0.01,at+0.45)); gg.gain.value=0.12; src.connect(bp); bp.connect(gg); gg.connect(out);
       src.start(base+Math.max(0,w0-off),Math.max(0,off-w0)); } } }
   /* ---- captions ---- */
-  const CAPS=$("caps").value, ON_TXT=$("onTxt").checked, TITLE_ON=$("titleOn").checked;
+  const CAPS=$("caps").value, ON_TXT=$("onTxt").checked, TITLE_ON=$("titleOn").checked, TXA=$("txAnim").value;
   for(const s of sc){ if(CAPS==="hi"){ const out=[]; let cur=[]; s._words.forEach(w=>{ cur.push(w); if(cur.length>=5||/[।,.!?]$/.test(w.w)){ out.push(cur); cur=[]; } }); if(cur.length) out.push(cur); s._caps=out.map((ws,i,arr)=>({text:ws.map(w=>w.w).join(" "),a:ws[0].a,b:i+1<arr.length?arr[i+1][0].a:s._end,ws})); }
     else if(CAPS==="en"&&s.en){ const ew=s.en.split(/\s+/), groups=[]; for(let i=0;i<ew.length;i+=7) groups.push(ew.slice(i,i+7).join(" ")); const d=s._end-s._st; s._caps=groups.map((x,i)=>({text:x,a:s._st+d*i/groups.length,b:s._st+d*(i+1)/groups.length})); } else s._caps=[]; }
   const parts_=makeParticles(liv?FX.p||"none":"none",W,H);
@@ -1261,7 +1318,7 @@ async function renderVideo(PREV){
     /* title: fully visible on the very first frame (good thumbnail), fades out */
     if(TITLE_ON&&tt<5.2&&M.screen_title){ const out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
       g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,1,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
-    const s=cur.s, fs0=Math.max(s._onA||s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt<s._end-0.12){ const u=clamp((tt-fs0)/0.8), out=clamp((s._end-0.12-tt)/0.3); g.save(); g.globalAlpha=out; textBox(g,s.on,P.format==="9:16"?W/2:70*U,P.format==="9:16"?H*0.18:H*0.13,Math.round(64*U),T,u,P.format==="9:16"?"center":"left"); g.restore(); }
+    const s=cur.s, fs0=Math.max(s._onA||s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt<s._end-0.12){ try{ drawKinetic(g,TXA==="auto"?textKind(s):TXA,s.on,tt-fs0,s._end-0.12-tt,W,H,U,T,P.format==="9:16"); }catch(e){} }
     const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
     if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
       const items=cp.ws||cp.text.split(" ").map(w=>({w})), sp=g.measureText(" ").width, maxW=W*0.84, lines=[[]]; let lw=0;
