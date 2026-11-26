@@ -1,40 +1,70 @@
-# Hindi Doc Maker v2 (Android)
+# Hindi Doc Maker v7 (Android)
 
-One tap: **topic → finished Hindi documentary video**, using real AI tools for each job:
+**Topic → finished Hindi explainer video made of pictures.** One button. Indian topics, Hindi voiceover, English on-screen text.
 
-| Job | Tool |
-|---|---|
-| Script, title, description, tags | Google Gemini |
-| Pictures (first frame of every shot) | Google Gemini image ("Nano Banana") |
-| Hindi voiceover + exact subtitles | ElevenLabs (or Gemini voice) |
-| Video clips (picture → moving shot) | Gemini Omni Flash (Flow's model) · xAI Grok Imagine · Kling AI |
-| Final edit (clips + voice + subtitles + title + music) | Done on the phone |
+## Smart script (v7.1)
+1. **🔎 Research** — Gemini researches the topic with **Google Search** (needs billing on the key; 5,000 searches/month free) or, if that's not allowed, reads the full **Wikipedia** articles (English + Hindi). Sources go into the YouTube description.
+2. **📹 From a video** — upload a video or paste a YouTube link: Gemini watches the whole thing, takes complete notes, then the script is written in your **own words** (never copies its lines).
+3. **🧠 Plan** — picks the most gripping angle, 3 hooks → the best one, open loops, parts.
+4. **✍️ Write** — modern spoken Hindi, every scene teaches something specific, Indian everyday comparisons, a twist every ~45 s.
+5. **🧐 Editor** — scores every scene, rewrites weak ones, fact-checks against the research.
+Optional: add a **Claude API key** for the best Hindi storytelling (Gemini is used for free otherwise).
 
-Everything you pay for (voices, pictures, clips) is saved on the phone, so closing the app never loses paid work.
+## How it works
+| Step | Tool | Cost |
+|---|---|---|
+| ✍️ Script in modern spoken Hindi + English captions & YouTube text | Google Gemini (free key works) | ₹0 |
+| 🎙️ Voiceover — voice picked automatically to suit the style | ElevenLabs (Multilingual v2 = fewest Hindi mistakes) | your plan |
+| 🧠 Picture plan — one picture per 1/2/3 seconds of voice + camera move that matches the words | Gemini | ₹0 |
+| 🖼️ Pictures | Pollinations (FLUX) → Cloudflare FLUX backup | ₹0 |
+| 🎵 Background music — composed by the app for each style | built in | ₹0, copyright-free |
+| 🎬 Render — camera motion, living-picture effects, on-screen text, captions | on the phone | ₹0 |
 
-## Keys you need
-- **Gemini** – aistudio.google.com/apikey → turn on billing (pictures and Omni video are not on the free tier).
-- **ElevenLabs** – elevenlabs.io → Developers → API keys. Add a Hindi voice from the Voice Library, then tap "Load my voices" in the app.
-- **Grok** (optional) – console.x.ai · **Kling** (optional) – app.klingai.com/global/dev
+## 16 styles
+📰 **Newsroom collage** (black-and-white halftone cut-outs, bold yellow outlines and shapes, newsprint paper, yellow highlighter text; slow pans, whip-pan scene changes) · Stickman · Comic action (original heroes) · 3D animated · Anime · Retro pixel game · Indian miniature · Madhubani folk art · Realistic photo · Cinematic film · Watercolour storybook · Claymation · Flat infographic · Vintage newspaper · Paper cut-out · Chalkboard sketch · Dark mystery
 
-## Rough cost for a 3-minute video (20 clips)
-- Omni Flash 720p ≈ $20 · 360p ≈ $7
-- Grok 720p ≈ $14 · 480p ≈ $10
-- Kling std ≈ $17–25
-- Pictures ≈ $1.20 · Voice: ~2,700 characters from your ElevenLabs plan
-- Cheaper: Settings → "AI video for" → every 2nd scene / first 3 scenes; the other scenes use pictures with camera motion.
+Each style sets the picture look, script tone, text design, music mood, voice type and effects.
+**🎨 Styles tab → Learn a style:** pick 1–3 example videos (or YouTube links) and Gemini makes a new style from them.
 
-The app shows a live estimate before you start.
+## 🧍 Gestures & moving clips (v7.14) — free
+- **Living people:** Gemini (free key) marks face, eyes, mouth, hands and body in pictures with people; the app makes eyes blink, body breathe, head nod/tilt and hands gesture (bigger on key moments). Optional lips that move with the voice.
+- **Real AI moving clips:** the hook + 4 or 8 key moments are sent to your Kaggle bot (doc-video-bot) and come back as real moving clips (₹0, your free GPU hours). You can close the app while it works, or tap ⏩ to render without waiting.
 
-## 🎨 Copy a video's style (new in v6.13)
-In **📊 Analyze a video**, paste a YouTube link or pick a video file from the phone, then tap **🎨 Learn this video's style**.
-Gemini watches the first 10 minutes and learns the picture style, how often pictures change, the story structure, hook and narration.
-Tap **✅ Use this style**: the picture style, "pictures change every" timing, pacing, transitions and subtitles are set for you, and every new script follows the same structure — with your own original story and words.
+## 🎥 Camera & transitions (v7.3)
+- Smooth, constant-speed moves — one move per scene while pictures change underneath (no pulsing or shaking)
+- Camera: Slow zoom (Ken Burns) · Follow the words · Slow pan · Mixed · No movement — speed Slow/Normal/Fast
+- Transitions between pictures and between scenes: Cut, Crossfade, Zoom through, Slide, Whip pan, Flash, Dip to black, Blur
+- Upload a video (Styles tab or "base it on a video") → Gemini studies its camera moves and transitions and sets them for you
+- Change any scene's camera in 📝 Script & pictures · 👁️ Preview the first 15 seconds before rendering
+
+## Camera that follows the voice (older notes)
+- Words like *ऊपर / बढ़ा* → tilt up · *गिर / पतन* → tilt down · *अचानक / लेकिन* → zoom punch · *पूरा / विशाल* → pull out to reveal · *यात्रा / सफ़र* → pan · *युद्ध / भूकंप* → shake
+- The most important word of each scene gets an extra zoom punch
+- The picture "breathes" with the loudness of the voice
+- Living-picture layer: gentle sway, floating dust / sparkles / fog / chalk dust, light flicker (per style)
+
+## 🖼️ Reference pictures (v7.7)
+Make → 🖼️ Reference pictures: add a photo + name of a person, place or object. Gemini describes it, the script features it by name, the picture plan tags every picture that shows it.
+- 🆓 Free: free engines follow the detailed description (similar look)
+- 🎯 Exact: Gemini Nano Banana sees your photo for those pictures (≈ ₹3.5 each, billing needed)
+- 📷 Optionally your real photo is shown the first time it's mentioned
+- The quality check compares those pictures with your photo
+References and learned-style frames are kept when you start a new video.
+
+## 🎬 Video file (v7.6)
+- Built frame by frame as a real MP4 (Android's video encoder + mp4-muxer): correct length in the gallery and YouTube, no black first frame, doesn't need to play in real time
+- First frame = title over the first picture; a separate **thumbnail** (1280×720 or 1080×1920) is saved to Pictures › HindiDocMaker for YouTube Studio
+- Old live recorder is kept only as a fallback for phones without a video encoder
+
+## Keys (⚙️ Settings)
+- **Gemini** – aistudio.google.com/apikey
+- **ElevenLabs** – elevenlabs.io → Developers → API keys. Tap **🔎 Find Hindi voices** to add native Hindi narrators.
+- **Pollinations** (optional, free) – enter.pollinations.ai → removes watermark, ~3× faster
+- **Cloudflare** (optional, free backup) – Account ID + Workers AI token
+- Keys from older versions are carried over automatically.
+
+## Time
+A 5-minute video at 1 picture/second = ~300 pictures. Without a Pollinations key ≈ 80 min of picture making (≈ 40 min with Cloudflare added); with a key ≈ 15 min. You can minimise the app while pictures are made, pause any time and continue later — nothing is lost. Final rendering runs in real time with the app open.
 
 ## Build
 Every push to `main` builds the APK in GitHub Actions → download **HindiDocMaker-apk**.
-
-## ☁️ Cloud video bot (new in v5.3)
-Let GitHub make the AI clips while your phone is locked. The bot lives in a separate repo, **doc-video-bot** (see its README for the 10-minute setup).
-Then in the app: ⚙️ Settings → ☁️ Cloud video bot → GitHub token + repo → tap **☁️ Send to cloud bot**, later **⬇️ Get clips**.
-**🆓 v5.4:** pick "My own model — Kaggle free GPU" as the bot engine to make clips at ₹0 with open-source LTX-Video or Wan 2.2.
