@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.15</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.16</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -94,7 +94,7 @@ details summary{cursor:pointer;font-weight:700}
  <label>Text on the video</label>
  <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
  <label>Movement in pictures</label>
- <div class="chk"><input type="checkbox" id="puppet" checked><label for="puppet">🧍 Living people — eyes blink, body breathes, head nods, hands gesture (free)</label></div>
+ <div class="chk"><input type="checkbox" id="puppet"><label for="puppet">🧍 Living people — blink, breathe, small head &amp; hand moves (free · cartoon styles only — realistic photos use 🎬 clips instead)</label></div>
  <div class="chk"><input type="checkbox" id="lips"><label for="lips">👄 Lips move with the voice (only if people in pictures are the ones speaking)</label></div>
  <label>🎬 Real AI moving clips (free, your Kaggle bot)</label>
  <select id="clipN"><option value="0">Off</option><option value="1">Hook only</option><option value="5" selected>Hook + 4 key moments</option><option value="9">Hook + 8 key moments</option></select>
@@ -377,6 +377,7 @@ let PE=+(load("hdm7_pe")||1), SPD=+(load("hdm7_spd")||1);
   fillVoices();
   SET_IDS.forEach(id=>{ const v=load("hdm7_"+id); if(v!==null) setV(id,v); });
   if(!$("channel").value) $("channel").value="MinuteVerse";
+  if(!load("hdm7_pup2")){ store("hdm7_pup2","1"); $("puppet").checked=false; store("hdm7_puppet","0"); }   /* v7.16: gestures off by default */
   document.querySelectorAll("#t_set input,#t_set select,#t_set textarea,#mins,#format,#topic").forEach(e=>e.addEventListener("change",saveSettings));
   if(load("hdm7_trPic")==null){ $("trPic").value="cut"; $("trScene").value="fade"; }
   document.querySelectorAll("#spSeg button").forEach(b=>{ b.classList.toggle("on",+b.dataset.v===SPD); b.onclick=()=>{ SPD=+b.dataset.v; store("hdm7_spd",String(SPD)); document.querySelectorAll("#spSeg button").forEach(x=>x.classList.toggle("on",x===b)); }; });
@@ -1169,7 +1170,7 @@ async function go(){
     RUNNING="plan"; drawSteps(); status("🧠 Planning pictures & camera moves…"); await planPictures(); if(STOP) throw new Error("paused"); drawAll();
     RUNNING="pics"; drawSteps(); await makePictures(); if(STOP) throw new Error("paused");
     if($("qc").checked&&!P.qcDone){ RUNNING="qc"; drawSteps(); await qualityCheck(); if(STOP) throw new Error("paused"); P.qcDone=true; await saveProj(); }
-    if($("puppet").checked&&!P.rigDone){ RUNNING="rig"; drawSteps(); await detectRigs(); if(STOP) throw new Error("paused"); P.rigDone=true; await saveProj(); }
+    if($("puppet").checked&&!P.rigDone&&(PUPPET_STYLES.has(P.style)||((allStyles()[P.style]||{}).guide))){ RUNNING="rig"; drawSteps(); await detectRigs(); if(STOP) throw new Error("paused"); P.rigDone=true; await saveProj(); }
     if(+$("clipN").value>0&&!P.clipsDone){ RUNNING="clips"; drawSteps();
       try{ await kaggleClips(); }catch(e){ if(String(e.message)==="paused") throw e; log("⚠️ Moving clips skipped: "+e.message+" — making the video with pictures (gestures still work)."); P.clipJob=null; }
       if(STOP) throw new Error("paused"); }
@@ -1301,8 +1302,11 @@ function warpRegion(dst,src,R,pv,tf){ if(R.w<4||R.h<4) return; if(!WARP) WARP=do
   t.drawImage(src,R.x-w*0.15,R.y-h*0.15,w*1.3,h*1.3,-w*0.15,-h*0.15,w*1.3,h*1.3); t.restore();
   t.globalCompositeOperation="destination-in"; t.save(); t.translate(w/2,h/2); t.scale(w/2,h/2); const gr=t.createRadialGradient(0,0,0.5,0,0,1); gr.addColorStop(0,"rgba(0,0,0,1)"); gr.addColorStop(1,"rgba(0,0,0,0)"); t.fillStyle=gr; t.fillRect(-1,-1,2,2); t.restore(); t.globalCompositeOperation="source-over";
   dst.drawImage(WARP,0,0,w,h,R.x,R.y,w,h); }
+const PUPPET_STYLES=new Set(["stickman","comic","clay","papercut","flat","watercolor","pixel","folk","chalk","anime"]);
+function puppetOK(styleKey,rig){ const st=allStyles()[styleKey]||{}; if(!PUPPET_STYLES.has(styleKey)&&!(st.guide&&/cartoon|2d|anime|stick|clay|flat/i.test(st.art))) return false;
+  return (rig||[]).some(p=>p.face&&(p.face[2]-p.face[0])<320); }   /* skip close-ups: faces taller than ~32% of the picture */
 function puppetFrame(x,bm,tt,env,lips){
-  const rig=x.b.rig; if(!rig||!rig.length) return bm;
+  const rig=(x.b.rig||[]).filter(p=>p.face&&(p.face[2]-p.face[0])<320); if(!rig.length) return bm;
   if(!x._pa){ const sc=Math.min(1,1280/bm.width); for(const k of ["_pa","_pc"]){ const c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); x[k]=c; } x._skin={}; }
   const A=x._pa, C=x._pc, a=A.getContext("2d",{willReadFrequently:true}), c=C.getContext("2d"), W=A.width, H=A.height;
   const B=b=>b&&{x:b[1]/1000*W,y:b[0]/1000*H,w:(b[3]-b[1])/1000*W,h:(b[2]-b[0])/1000*H};
@@ -1317,11 +1321,11 @@ function puppetFrame(x,bm,tt,env,lips){
   /* stage C: breathing body, nodding head, gesturing hands */
   c.drawImage(A,0,0);
   rig.forEach((p,i)=>{ const ph=i*1.9+(x.b.e?0.5:0), big=x.b.e?1.6:1;
-    if(p.body){ const b=B(p.body), R={x:b.x-b.w*0.1,y:b.y-b.h*0.1,w:b.w*1.2,h:b.h*1.2}; warpRegion(c,A,R,{x:b.x+b.w/2,y:b.y+b.h},{sy:1+0.012*Math.sin(tt*1.9+ph),sx:1+0.004*Math.sin(tt*1.9+ph)}); }
+    if(p.body){ const b=B(p.body), R={x:b.x-b.w*0.1,y:b.y-b.h*0.1,w:b.w*1.2,h:b.h*1.2}; warpRegion(c,A,R,{x:b.x+b.w/2,y:b.y+b.h},{sy:1+0.006*Math.sin(tt*1.9+ph),sx:1+0.002*Math.sin(tt*1.9+ph)}); }
     (p.hands||[]).forEach((hb,j)=>{ const h=B(hb), R={x:h.x-h.w*0.45,y:h.y-h.h*0.45,w:h.w*1.9,h:h.h*1.9}, cxb=p.body?B(p.body).x+B(p.body).w/2:W/2, pvx=h.x+h.w/2<cxb?h.x+h.w:h.x;
-      warpRegion(c,C,R,{x:pvx,y:h.y+h.h*0.8},{rot:0.07*big*Math.sin(tt*2.4+ph+j*1.7),dy:-h.h*0.04*big*Math.max(0,Math.sin(tt*1.2+j))}); });
+      warpRegion(c,C,R,{x:pvx,y:h.y+h.h*0.8},{rot:0.035*big*Math.sin(tt*1.6+ph+j*1.7),dy:-h.h*0.02*big*Math.max(0,Math.sin(tt*1.0+j))}); });
     if(p.face){ const f=B(p.face), R={x:f.x-f.w*0.35,y:f.y-f.h*0.55,w:f.w*1.7,h:f.h*1.85}; const talk=lips&&i===0?env*0.012:0;
-      warpRegion(c,C,R,{x:f.x+f.w/2,y:f.y+f.h*1.05},{rot:0.022*Math.sin(tt*0.85+ph)+0.01*Math.sin(tt*2.1+ph)+talk*Math.sin(tt*7),dy:f.h*0.012*Math.sin(tt*1.5+ph)}); } });
+      warpRegion(c,C,R,{x:f.x+f.w/2,y:f.y+f.h*1.05},{rot:0.009*Math.sin(tt*0.7+ph)+talk*Math.sin(tt*7),dy:f.h*0.005*Math.sin(tt*1.1+ph)}); } });
   return C; }
 /* ================= ✨ KINETIC ON-SCREEN TEXT ================= */
 const KINDS=["number","year","place","shock","quote","versus","list","secret","key","fact"];
@@ -1445,7 +1449,7 @@ async function renderVideo(PREV){
     let bm=cur._bm||(prev&&prev._bm)||lastBm;
     const camAt=x=>{ if(x.v) return {s:1.001,x:0,y:0,r:0}; const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
     if(cur.v&&cur.v.readyState>=2) bm=cur.v;
-    else if(PUP&&cur._bm&&cur.b.rig&&cur.b.rig.length){ const ei=Math.floor((tt-cur.s._st)*30), env=cur.s.env&&ei>=0&&ei<cur.s.env.length?cur.s.env[ei]:0; try{ bm=puppetFrame(cur,cur._bm,tt,env,LIPS); }catch(e){} }
+    else if(PUP&&cur._bm&&cur.b.rig&&cur.b.rig.length&&puppetOK(P.style,cur.b.rig)){ const ei=Math.floor((tt-cur.s._st)*30), env=cur.s.env&&ei>=0&&ei<cur.s.env.length?cur.s.env[ei]:0; try{ bm=puppetFrame(cur,cur._bm,tt,env,LIPS); }catch(e){} }
     if(bm){ if(!cur.v) lastBm=cur._bm||bm; const c=camAt(cur);
       const ty=prev&&prev._bm&&prev!==cur?(prev.s!==cur.s?TRS:TRP):"cut", p=(tt-cur.a)/TRL;
       try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){} }
