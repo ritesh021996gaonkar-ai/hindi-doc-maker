@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.16</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.17</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -142,7 +142,7 @@ details summary{cursor:pointer;font-weight:700}
 </div>
 
 <div class="card" id="scCard" style="display:none">
- <details><summary>📝 Script &amp; pictures (tap a picture to redo it)</summary><div id="scenes"></div></details>
+ <details><summary>📝 Edit script, 📍 on-screen text &amp; pictures (tap a picture to redo it)</summary><div id="scenes"></div></details>
 </div>
 </section>
 
@@ -1189,11 +1189,15 @@ function drawScenes(){ if(!P||!P.scenes||!P.scenes.length){ $("scCard").style.di
   $("scenes").innerHTML=P.scenes.map((s,i)=>`<div class="scene"><div class="muted">Scene ${i+1} · ${esc(s.mood)}${s.on?` · 📍 ${esc(s.on)}`:""}${s.voice?` · ${s.dur.toFixed(1)}s`:""}</div><div class="hi">${esc(s.hi)}</div><div class="muted">${esc(s.en)}</div>
    <div class="strip${v}">${(s.beats||[]).map((b,k)=>b.img?`<img src="${thumb(b)}" onclick="redoPic(${i},${k})" title="${esc(b.p)}">`:`<span onclick="redoPic(${i},${k})">${b.err?"⚠️":"…"}</span>`).join("")}</div>
    <div class="row" style="align-items:center;margin-top:6px"><span class="muted" style="flex:none">🎥</span><select onchange="P.scenes[${i}].cam=this.value;saveProj()">${[["","Auto (from the settings above)"],["push_in","Zoom in"],["pull_out","Zoom out"],["pan_left","Pan left"],["pan_right","Pan right"],["tilt_up","Tilt up"],["tilt_down","Tilt down"],["static","No movement"]].map(([v,l])=>`<option value="${v}"${(s.cam||"")===v?" selected":""}>${l}</option>`).join("")}</select></div>
+   <div class="row" style="align-items:center;margin-top:6px"><span class="muted" style="flex:none">📍</span><input value="${esc(s.on||"")}" placeholder="On-screen text (English, 2–6 words)" onchange="setOn(${i},'on',this.value)" style="padding:8px">
+    <select style="flex:none;width:auto;padding:8px" onchange="setOn(${i},'k',this.value)">${[["","✨ Auto"],["number","🔢 Counter"],["year","📅 Year flip"],["place","📍 Map pin"],["shock","💥 Impact"],["secret","⌨️ Typewriter"],["quote","❝ Quote card"],["versus","⚖️ A vs B"],["list","🔤 Word pop"],["key","✍️ Underline"],["fact","▭ Style box"],["none","🚫 None"]].map(([v,l])=>`<option value="${v}"${(s.k||"")===v?" selected":""}>${l}</option>`).join("")}</select></div>
+   <div class="row" style="align-items:center"><span class="muted" style="flex:none;font-size:12px">appears on word</span><input value="${esc(s.at||"")}" placeholder="Hindi word from the voice" onchange="setOn(${i},'at',this.value)" style="padding:6px;font-size:13px"></div>
    <button class="small sec" onclick="editScene(${i})">✏️ Edit words</button>${s.voice?`<button class="small sec" onclick="playScene(${i})">▶️ Hear</button>`:""}</div>`).join(""); }
 const TH=new WeakMap(); function thumb(b){ if(!TH.has(b.img)) TH.set(b.img,URL.createObjectURL(b.img)); return TH.get(b.img); }
 async function redoPic(i,k){ if(BUSY) return alert("Tap ⏸️ Pause first."); const b=P.scenes[i].beats[k];
   const p=prompt(`Picture ${k+1} of scene ${i+1} — says: "${b.text}"\n\nEdit what the picture should show, then OK to remake it:`,b.p); if(p==null) return;
   b.p=p.trim()||b.p; b.retry=(b.retry||0)+1; status("🖼️ Remaking picture…"); try{ ENG_DOWN={}; await makePicture(b,false); P.rendered=false; await saveProj(); status("✅ Picture remade — tap ▶️ Continue to render again."); }catch(e){ status("❌ "+e.message); } drawAll(); }
+function setOn(i,f,v){ const s=P.scenes[i]; s[f]=String(v||"").trim(); P.rendered=false; saveProj(); status("📍 Saved — tap 🚀 to make the video again with this text."); }
 async function editScene(i){ if(BUSY) return alert("Tap ⏸️ Pause first."); const s=P.scenes[i];
   const t=prompt("Edit the Hindi voiceover for this scene (voice and pictures for this scene will be remade):",s.hi); if(t==null||t.trim()===s.hi) return;
   s.hi=t.trim(); s.voice=null; s.beats.forEach(b=>DB.del("i_"+b.id)); s.beats=[]; DB.del("a_"+s.id); P.rendered=false; await saveProj(); drawAll(); status("✏️ Saved — tap ▶️ Continue to remake this scene."); }
@@ -1461,7 +1465,7 @@ async function renderVideo(PREV){
     /* title: fully visible on the very first frame (good thumbnail), fades out */
     if(TITLE_ON&&tt<5.2&&M.screen_title){ const out=clamp((5.2-tt)/0.5); g.save(); g.globalAlpha=out; const gr=g.createLinearGradient(0,H*0.25,0,H*0.75); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(0.5,"rgba(0,0,0,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H*0.25,W,H*0.5); g.restore();
       g.save(); g.globalAlpha=out; textBox(g,M.screen_title.toUpperCase(),W/2,H*0.46,Math.round((P.format==="9:16"?70:92)*U),T,1,"center"); if(M.screen_sub){ g.font=`600 ${Math.round(40*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.shadowColor="#000"; g.shadowBlur=12; g.fillText(M.screen_sub,W/2,H*0.46+110*U); } g.restore(); }
-    const s=cur.s, fs0=Math.max(s._onA||s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&tt>=fs0&&tt<s._end-0.12){ try{ drawKinetic(g,TXA==="auto"?textKind(s):TXA,s.on,tt-fs0,s._end-0.12-tt,W,H,U,T,P.format==="9:16"); }catch(e){} }
+    const s=cur.s, fs0=Math.max(s._onA||s._st,TITLE_ON&&M.screen_title?5.2:0); if(ON_TXT&&s.on&&s.k!=="none"&&tt>=fs0&&tt<s._end-0.12){ try{ drawKinetic(g,TXA==="auto"?textKind(s):TXA,s.on,tt-fs0,s._end-0.12-tt,W,H,U,T,P.format==="9:16"); }catch(e){} }
     const cp=(s._caps||[]).find(c=>tt>=c.a&&tt<c.b);
     if(cp&&tt<BODY){ const C=S.cap||{c:"#fff",bg:"rgba(0,0,0,.6)"}, fs=Math.round((CAPS==="hi"?58:50)*U); g.save(); g.font=`700 ${fs}px ${CAPS==="hi"?F.hind:F.pop}`; g.textBaseline="middle"; g.textAlign="left";
       const items=cp.ws||cp.text.split(" ").map(w=>({w})), sp=g.measureText(" ").width, maxW=W*0.84, lines=[[]]; let lw=0;
