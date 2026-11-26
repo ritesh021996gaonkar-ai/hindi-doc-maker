@@ -1062,6 +1062,7 @@ async function kaggleClips(){
   try{
     for(let t=0;;t++){
       if(STOP) return;
+      if(t>0&&t%5===0){ try{ await gh("POST","/actions/workflows/collect-clips.yml/dispatches",{json:{ref:"main"}}); }catch(e){} }   /* nudge the bot */
       let st=null; try{ const r=await gh("GET",`/contents/jobs/${J.id}/status.json?ref=job-${J.id}`,{raw:true}); if(r.ok) st=JSON.parse(r.data); }catch(e){ log("🎬 "+String(e.message).slice(0,90)); }
       let got=0;
       for(const n of (st&&st.done)||[]){ const b=P.scenes.flatMap(s=>s.beats).find(x=>x.id===J.map[n]); if(!b||b.clip) continue;
