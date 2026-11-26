@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.13</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.14</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -93,6 +93,11 @@ details summary{cursor:pointer;font-weight:700}
 
  <label>Text on the video</label>
  <select id="caps"><option value="en">💬 English captions</option><option value="hi">💬 Hindi captions (words light up with the voice)</option><option value="off">No captions</option></select>
+ <label>Movement in pictures</label>
+ <div class="chk"><input type="checkbox" id="puppet" checked><label for="puppet">🧍 Living people — eyes blink, body breathes, head nods, hands gesture (free)</label></div>
+ <div class="chk"><input type="checkbox" id="lips"><label for="lips">👄 Lips move with the voice (only if people in pictures are the ones speaking)</label></div>
+ <label>🎬 Real AI moving clips (free, your Kaggle bot)</label>
+ <select id="clipN"><option value="0">Off</option><option value="1">Hook only</option><option value="5" selected>Hook + 4 key moments</option><option value="9">Hook + 8 key moments</option></select>
  <label>On-screen text animation</label>
  <select id="txAnim"><option value="auto">✨ Auto — best animation for each text (counter, year flip, map pin, impact…)</option><option value="fact">Style box only</option><option value="secret">⌨️ Typewriter for all</option><option value="list">🔤 Word-by-word pop for all</option><option value="key">✍️ Big text + hand-drawn underline for all</option></select>
  <div class="chk"><input type="checkbox" id="onTxt" checked><label for="onTxt">📍 On-screen text (dates, numbers, places)</label></div>
@@ -125,6 +130,7 @@ details summary{cursor:pointer;font-weight:700}
  <div class="bar"><div id="bar"></div></div>
  <div id="stats" class="muted" style="margin-top:8px"></div>
  <details id="actBox" open style="margin-top:8px"><summary class="muted">📋 What's happening (details)</summary><div id="act"></div></details>
+ <button class="small" id="btnSkip" style="display:none" onclick="SKIPCLIPS=true;this.style.display='none'">⏩ Don't wait for Kaggle — render now (missing clips use pictures)</button>
  <div class="row"><button class="small sec" onclick="stopNow()">⏸️ Pause</button><button class="small sec" onclick="newProject()">🗑️ New video</button></div>
 </div>
 
@@ -206,6 +212,13 @@ details summary{cursor:pointer;font-weight:700}
   <div><label>Max paid spend per video (₹)</label><input id="falMax" type="number" value="150" min="0" step="10"></div></div>
  <div class="chk"><input type="checkbox" id="qc" checked><label for="qc">🔍 Quality check — Gemini looks at every picture and remakes bad ones (wrong person, floating body parts, text, wrong style). Free key works.</label></div>
  <div class="chk"><input type="checkbox" id="gemImg"><label for="gemImg">Use paid Gemini "Nano Banana" for the first picture of each scene (≈ ₹3.5 each, better detail)</label></div>
+</div>
+<div class="card">
+ <h2>🎬 Moving clips — your free Kaggle bot</h2>
+ <label>GitHub token (fine-grained: Contents + Actions read/write on the bot repo)</label><input id="ghToken" type="password" placeholder="github_pat_...">
+ <label>Bot repo</label><input id="ghRepo" value="Ritesh021996gaonkar-ai/doc-video-bot">
+ <label>Clip quality</label><select id="kgRes"><option value="fast">Fast (~3–5 min per clip, 6 s)</option><option value="best">Best (~10–25 min per clip, 5 s)</option></select>
+ <p class="muted">Uses your free Kaggle GPU hours. The bot makes clips while your phone waits or is closed.</p>
 </div>
 <div class="card">
  <h2>🎬 Video</h2>
@@ -350,7 +363,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -358,7 +371,7 @@ function setV(id,v){ const e=$(id); if(!e||v==null) return; if(e.type==="checkbo
 function saveSettings(){ SET_IDS.forEach(id=>store("hdm7_"+id,getV(id))); store("hdm7_pe",String(PE)); estimate(); }
 let PE=+(load("hdm7_pe")||1), SPD=+(load("hdm7_spd")||1);
 (function initSettings(){
-  const MIG={claudeKey:"claudeKey",gemKey:"key",elKey:"elKey",pronDict:"pronDict",cfAcct:"cfAcct",cfToken:"cfToken",channel:"channel"};
+  const MIG={ghToken:"ghToken",ghRepo:"ghRepo",claudeKey:"claudeKey",gemKey:"key",elKey:"elKey",pronDict:"pronDict",cfAcct:"cfAcct",cfToken:"cfToken",channel:"channel"};
   for(const [n,o] of Object.entries(MIG)) if(load("hdm7_"+n)==null&&load("hdm2_"+o)) store("hdm7_"+n,load("hdm2_"+o));
   if(!load("hdm7_elVoiceList")&&load("hdm2_elVoiceList")) store("hdm7_elVoiceList",load("hdm2_elVoiceList"));
   fillVoices();
@@ -420,13 +433,13 @@ async function clearProject(){ const ks=(await DB.keys())||[]; for(const k of ks
 
 /* project state: P = {topic,style,mins,format,pe, meta, scenes:[{id,hi,en,on,mood, voice?, beats:[{id,t0,t1,text,p,m,e,img?}]}]} */
 let P=null, BUSY=false, STOP=false;
-function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,at:s.at||"",k:s.k||"",mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,has:!!b.img}))}))}); }
+function saveProj(){ if(!P) return; return DB.put("proj",{...P,scenes:P.scenes.map(s=>({id:s.id,cam:s.cam||"",hi:s.hi,en:s.en,on:s.on,at:s.at||"",k:s.k||"",mood:s.mood,dur:s.dur||0,beats:(s.beats||[]).map(b=>({id:b.id,t0:b.t0,t1:b.t1,text:b.text,p:b.p,m:b.m,e:b.e,who:b.who||[],refs:b.refs||[],ok:b.ok||0,rig:b.rig||null,wantClip:b.wantClip||0,hasClip:!!b.clip,has:!!b.img}))}))}); }
 async function restore(){
   const p=await DB.get("proj"); if(!p||!p.scenes) { drawSteps(); return; }
   P=p;
   for(const s of P.scenes){
     try{ const a=await DB.get("a_"+s.id); if(a) await setVoice(s,a.blob,a.align,a.text,false); }catch(e){}
-    for(const b of s.beats||[]){ if(b.has){ const im=await DB.get("i_"+b.id); if(im) b.img=im; } delete b.has; }
+    for(const b of s.beats||[]){ if(b.has){ const im=await DB.get("i_"+b.id); if(im) b.img=im; } if(b.hasClip){ const c=await DB.get("c_"+b.id); if(c) b.clip=c; } delete b.has; delete b.hasClip; }
   }
   if(P.meta){ P.meta.description=cleanText(P.meta.description).replace(/\n?• [^\n]*(grounding-api-redirect|vertexaisearch)[^\n]*/g,""); }
   log(`Restored project "${P.topic}" (${P.scenes.length} scenes).`); drawAll();
@@ -985,6 +998,84 @@ Return ONLY JSON: {"bad":[{"n":2,"why":"short reason","fix":"improved English pi
     try{ await makePicture(x.b,false,false,false); x.b.ok=1; }catch(e){ x.b.img=old; log(`❌ Remake failed for ${n}.${i} — keeping the old picture`); }
     k++; status(`🔁 Remade ${k}/${bad.length}`); setBar(k/bad.length); });
   await saveProj(); drawScenes(); }
+/* ================= 🧍 LIVING PEOPLE: find face / eyes / mouth / hands / body ================= */
+const PEOPLE_RE=/\b(man|men|woman|women|people|person|boy|girl|child|children|kid|king|queen|farmer|worker|workers|soldier|priest|monk|crowd|family|villager|merchant|scientist|student|teacher|doctor|engineer|artisan|sculptor|craftsman|he|she|they|face|portrait|ruler|emperor|saint|sage|crew|traveller|traveler|guide|mother|father)\b/i;
+const okBox=b=>Array.isArray(b)&&b.length===4&&b.every(v=>typeof v==="number"&&v>=0&&v<=1000)&&b[2]>b[0]&&b[3]>b[1];
+async function detectRigs(){
+  const all=P.scenes.flatMap(s=>s.beats.map(b=>({b,s}))).filter(x=>x.b.img&&x.b.rig==null&&!x.b.clip&&((x.b.who||[]).length||PEOPLE_RE.test(x.b.p)||(x.b.refs||[]).some(id=>(projRefs().find(r=>r.id===id)||{}).kind==="person")));
+  P.scenes.flatMap(s=>s.beats).forEach(b=>{ if(b.rig==null&&!all.some(x=>x.b===b)) b.rig=[]; });
+  if(!all.length){ log("🧍 No pictures with people."); return; }
+  const groups=[]; for(let i=0;i<all.length;i+=8) groups.push(all.slice(i,i+8)); let done=0, found=0;
+  log(`🧍 Looking for people in ${all.length} pictures…`);
+  await pool(groups,2,async g=>{ if(STOP) return;
+    const parts_=[]; for(const [k,x] of g.entries()){ parts_.push({text:`Picture ${k+1}:`}); parts_.push({inline_data:{mime_type:"image/jpeg",data:await smallJpeg(x.b.img,512)}}); }
+    parts_.push({text:`For each picture, find up to 2 clearly visible people (or cartoon characters) whose face is at least 5% of the picture height and facing roughly towards the camera. Give boxes as [ymin, xmin, ymax, xmax] on a 0-1000 scale: "face", "eyes" (one box per visible eye, tight around the eye), "mouth" (tight), "hands" (only clearly visible hands), "body" (torso from shoulders to waist). Skip tiny, blurry, back-facing people and statues. If none, return an empty list.
+Return ONLY JSON: {"pics":[{"n":1,"people":[{"face":[0,0,0,0],"eyes":[[0,0,0,0],[0,0,0,0]],"mouth":[0,0,0,0],"hands":[[0,0,0,0]],"body":[0,0,0,0]}]}]}`});
+    try{ const j=await geminiAuto("text",{contents:[{parts:parts_}],generationConfig:{responseMimeType:"application/json",temperature:0}});
+      const r=parseJSON(parts(j).map(p=>p.text||"").join(""));
+      g.forEach((x,k)=>{ const e=(r.pics||[]).find(q=>+q.n===k+1); const ppl=((e&&e.people)||[]).filter(q=>okBox(q.face)&&q.face[2]-q.face[0]>40).slice(0,2).map(q=>({face:q.face,eyes:(q.eyes||[]).filter(okBox).slice(0,2),mouth:okBox(q.mouth)?q.mouth:null,hands:(q.hands||[]).filter(okBox).slice(0,2),body:okBox(q.body)?q.body:null}));
+        x.b.rig=ppl; if(ppl.length) found++; });
+    }catch(e){ log("🧍 Skipped a group: "+String(e.message).slice(0,80)); g.forEach(x=>{ if(x.b.rig==null) x.b.rig=[]; }); }
+    done+=g.length; status(`🧍 Finding people ${done}/${all.length} · ${found} pictures will move`); setBar(done/all.length); });
+  log(`🧍 ${found} pictures get living gestures`); await saveProj(); }
+
+/* ================= 🎬 KAGGLE MOVING CLIPS (doc-video-bot) ================= */
+let SKIPCLIPS=false;
+async function gh(method,path,{json,raw,blob}={}){
+  const tok=$("ghToken").value.trim(), repo=$("ghRepo").value.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\/+$/,"");
+  if(!tok||!repo.includes("/")) throw new Error("Add your GitHub token and bot repo in ⚙️ Settings → 🎬 Moving clips (or set Moving clips to Off).");
+  const r=await http(method,`https://api.github.com/repos/${repo}${path}`,{headers:{Authorization:"Bearer "+tok,Accept:raw||blob?"application/vnd.github.raw":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},json,text:!!raw,blob:!!blob,timeout:300000});
+  if(!r.ok&&r.status!==404) throw new Error(`GitHub ${r.status}: ${errMsg(r.data)}${r.status===401?" (token wrong or expired)":r.status===403?" (token needs Contents + Actions read/write on the bot repo)":""}`);
+  return r; }
+async function ghPut(job,name,b64){ const r=await gh("PUT",`/contents/jobs/${job}/${name}`,{json:{message:`job ${job}: ${name}`,content:b64,branch:"job-"+job}}); if(!r.ok) throw new Error(`Upload ${name}: GitHub ${r.status}`); }
+function pickClipBeats(){ const N=+$("clipN").value; if(!N) return [];
+  const sc=P.scenes, out=[], pr={shock:3,epic:3,tense:2,mystery:2,curious:1,sad:1,happy:1,calm:0};
+  if(sc[0]&&sc[0].beats[0]) out.push(sc[0].beats[0]);
+  const cand=sc.slice(1).map((s,i)=>({s,i:i+1,score:(pr[s.mood]||0)+(["shock","number","versus"].includes(textKind(s))?1:0)})).sort((a,b)=>b.score-a.score||a.i-b.i);
+  const chosen=[]; for(const c of cand){ if(chosen.length>=N-1) break; if(chosen.some(x=>Math.abs(x.i-c.i)<3)) continue; chosen.push(c); }
+  chosen.sort((a,b)=>a.i-b.i).forEach(c=>{ const b=c.s.beats.find(b=>b.e)||c.s.beats[0]; if(b) out.push(b); });
+  return out.filter(b=>b&&b.img); }
+async function kaggleClips(){
+  SKIPCLIPS=false;
+  if(!P.clipJob){
+    P.scenes.flatMap(s=>s.beats).forEach(b=>{ b.wantClip=0; });
+    const want=pickClipBeats(); if(!want.length){ P.clipsDone=true; return; }
+    want.forEach(b=>b.wantClip=1);
+    const best=$("kgRes").value==="best", maxS=best?5:6, p2=x=>String(x).padStart(2,"0"), d=new Date(), id=`${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}-${uid().slice(0,6)}`;
+    status("🎬 Connecting to your Kaggle bot on GitHub…");
+    const info=await gh("GET",""); if(!info.ok) throw new Error("Bot repo not found — check the repo name and that the token can see it.");
+    const main=info.data.default_branch||"main", ref=await gh("GET",`/git/ref/heads/${main}`); if(!ref.ok) throw new Error("Bot repo is empty — push the doc-video-bot files first.");
+    const mk=await gh("POST","/git/refs",{json:{ref:"refs/heads/job-"+id,sha:ref.data.object.sha}}); if(!mk.ok) throw new Error("Could not create the job branch");
+    const map={}, scenes=[];
+    for(const [k,b] of want.entries()){ const n=k+1, name=`scene_${p2(n)}.jpg`; map[n]=b.id; const s=P.scenes.find(s=>s.beats.includes(b));
+      status(`⬆️ Sending picture ${n}/${want.length} to the bot…`); await ghPut(id,name,await blobToB64(b.img));
+      const left=s.dur-(b.t0||0); b.clipSecs=Math.max(2,Math.min(maxS,Math.ceil(left)));
+      scenes.push({n,id:b.id,secs:b.clipSecs,prompt:`${b.p}. Subtle natural motion: people make small gestures, blink and breathe, gentle camera ${b.m==="pull_out"?"pull back":"push in"}, keep the art style exactly`,desc:String(b.p).slice(0,400),img:name}); }
+    const job={id,title:(P.meta&&P.meta.title)||P.topic,engine:"kaggle",res:$("kgRes").value,format:P.format,maxUSD:0,parallel:3,scenes};
+    await ghPut(id,"job.json",await blobToB64(new Blob([JSON.stringify(job,null,1)],{type:"application/json"})));
+    const go_=await gh("POST","/actions/workflows/make-clips.yml/dispatches",{json:{ref:main,inputs:{job:id}}});
+    if(!go_.ok) throw new Error("Could not start the bot — is .github/workflows/make-clips.yml in the bot repo?");
+    P.clipJob={id,map,n:want.length,at:Date.now()}; await saveProj();
+    log(`🎬 Kaggle job ${id} started — ${want.length} clips (${best?"best":"fast"}). You can close the app; tap ▶️ Continue later.`); }
+  const J=P.clipJob; $("btnSkip").style.display="";
+  try{
+    for(let t=0;;t++){
+      if(STOP) return;
+      let st=null; try{ const r=await gh("GET",`/contents/jobs/${J.id}/status.json?ref=job-${J.id}`,{raw:true}); if(r.ok) st=JSON.parse(r.data); }catch(e){ log("🎬 "+String(e.message).slice(0,90)); }
+      let got=0;
+      for(const n of (st&&st.done)||[]){ const b=P.scenes.flatMap(s=>s.beats).find(x=>x.id===J.map[n]); if(!b||b.clip) continue;
+        const c=await gh("GET",`/contents/jobs/${J.id}/clip_${String(n).padStart(2,"0")}.mp4?ref=job-${J.id}`,{blob:true});
+        if(c.ok&&c.data&&c.data.size>10000){ b.clip=new Blob([c.data],{type:"video/mp4"}); await DB.put("c_"+b.id,b.clip); got++; log(`🎬 Clip ${n}/${J.n} downloaded`); } }
+      if(got){ await saveProj(); drawScenes(); }
+      const have=P.scenes.flatMap(s=>s.beats).filter(b=>b.wantClip&&b.clip).length, failed=Object.keys((st&&st.failed)||{}).length;
+      setBar(have/J.n); drawSteps();
+      if(st&&st.state&&st.state!=="running"&&st.state!=="queued"||have+failed>=J.n){ if(failed) log(`🎬 ${failed} clip(s) failed on Kaggle — those moments use the picture instead.`); P.clipsDone=true; await saveProj(); return; }
+      if(SKIPCLIPS){ log("⏩ Rendering without waiting — missing clips use pictures. (Tap 🚀 later to add them.)"); return; }
+      const mins=Math.round((Date.now()-J.at)/60000);
+      status(`⏳ Kaggle is making moving clips: ${have}/${J.n} ready (${mins} min so far, ~${$("kgRes").value==="best"?"10–25":"3–5"} min each). You can close the app and tap ▶️ Continue later.`);
+      for(let w=0;w<60&&!STOP&&!SKIPCLIPS;w++) await sleep(1000); }
+  } finally { $("btnSkip").style.display="none"; } }
+
 function drawStats(done,total){ if(!STAT) return; drawSteps(); const el=(Date.now()-STAT.t0)/1000, made=done-STAT.start, rate=made>0?el/made:0, left=Math.max(0,total-done)*rate;
   $("stats").innerHTML=`🖼️ <b>${done}/${total}</b> pictures · ${Object.entries(STAT.ok).map(([k,v])=>`${k} ${v}`).join(" · ")||"starting…"}${STAT.retry?` · ${STAT.retry} retries`:""}${P.segSpent?` · 💰 Segmind ≈ ₹${Math.round(P.segSpent)}`:""}${P.falSpent?` · 💰 fal.ai ≈ ₹${Math.round(P.falSpent)}`:""}${STAT.fail?` · <span style="color:var(--bad)">${STAT.fail} still missing</span>`:""}${made>2?`<br>⏱️ ${rate.toFixed(1)} s per picture · about <b>${left<90?Math.round(left)+" s":Math.round(left/60)+" min"}</b> left`:""}`; }
 async function makePictures(){
@@ -1045,11 +1136,11 @@ async function makeMusic(mood){
 /* =====================================================================
    PIPELINE
    ===================================================================== */
-const STEPS=[["research","🔎","Research"],["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["qc","🔍","Picture quality check"],["render","🎬","Final video"]];
+const STEPS=[["research","🔎","Research"],["script","✍️","Script"],["voice","🎙️","Voiceover"],["plan","🧠","Picture plan & camera moves"],["pics","🖼️","Pictures"],["qc","🔍","Picture quality check"],["rig","🧍","Finding people for gestures"],["clips","🎬","Moving clips (Kaggle)"],["render","🎬","Final video"]];
 function stepState(){ if(!P) return {};
   const sc=P.scenes||[], beats=sc.flatMap(s=>s.beats||[]);
-  return {research:P.research?"ok":"",script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", qc:P.qcDone?"ok":"",pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
-    _d:{research:P.research?`${(P.research.sources||[]).length} sources`:"",script:sc.length?`${sc.length} scenes`:"",voice:sc.length?`${sc.filter(s=>s.voice).length}/${sc.length}`:"",plan:beats.length?`${beats.length} pictures planned`:"",pics:beats.length?`${beats.filter(b=>b.img).length}/${beats.length}`:"",render:P.rendered?"ready":""}}; }
+  return {research:P.research?"ok":"",script:sc.length?"ok":"", voice:sc.length&&sc.every(s=>s.voice)?"ok":"", plan:sc.length&&sc.every(s=>s.beats&&s.beats.length&&s.beats.every(b=>b.p))?"ok":"", qc:P.qcDone?"ok":"",rig:P.rigDone?"ok":"",clips:P.clipsDone?"ok":"",pics:beats.length&&beats.every(b=>b.img)?"ok":"", render:P.rendered?"ok":"",
+    _d:{research:P.research?`${(P.research.sources||[]).length} sources`:"",script:sc.length?`${sc.length} scenes`:"",voice:sc.length?`${sc.filter(s=>s.voice).length}/${sc.length}`:"",plan:beats.length?`${beats.length} pictures planned`:"",pics:beats.length?`${beats.filter(b=>b.img).length}/${beats.length}`:"",rig:P.rigDone?`${beats.filter(b=>b.rig&&b.rig.length).length} pictures with people`:"",clips:beats.some(b=>b.wantClip)?`${beats.filter(b=>b.clip).length}/${beats.filter(b=>b.wantClip).length}`:"",render:P.rendered?"ready":""}}; }
 let RUNNING="";
 function drawSteps(err){ const st=stepState();
   $("steps").innerHTML=STEPS.map(([k,ic,n])=>{ const s=RUNNING===k?(err?"bad":"run"):st[k]||""; return `<div class="step ${s}"><div class="ic">${s==="ok"?"✓":s==="bad"?"✕":ic}</div><div class="t">${n}</div><div class="d">${(st._d&&st._d[k])||""}</div></div>`; }).join("");
@@ -1077,6 +1168,8 @@ async function go(){
     RUNNING="plan"; drawSteps(); status("🧠 Planning pictures & camera moves…"); await planPictures(); if(STOP) throw new Error("paused"); drawAll();
     RUNNING="pics"; drawSteps(); await makePictures(); if(STOP) throw new Error("paused");
     if($("qc").checked&&!P.qcDone){ RUNNING="qc"; drawSteps(); await qualityCheck(); if(STOP) throw new Error("paused"); P.qcDone=true; await saveProj(); }
+    if($("puppet").checked&&!P.rigDone){ RUNNING="rig"; drawSteps(); await detectRigs(); if(STOP) throw new Error("paused"); P.rigDone=true; await saveProj(); }
+    if(+$("clipN").value>0&&!P.clipsDone){ RUNNING="clips"; drawSteps(); await kaggleClips(); if(STOP) throw new Error("paused"); }
     RUNNING="render"; drawSteps(); keepAlive(false); await renderVideo();
     P.rendered=true; await saveProj(); RUNNING=""; status("✅ Done! Save or share your video below."); setBar(1);
   }catch(e){
@@ -1146,7 +1239,7 @@ function drawTrans(g,W,H,type,p,pb,pc,cb,cc,filter){ const e=ease(p);
     case "whip": { const f=`blur(${Math.round(Math.sin(Math.PI*p)*18)}px)`; D(pb,pc,{x:-e,f}); D(cb,cc,{x:1-e,f}); break; }
     case "blur": D(pb,pc,{a:1-e,f:`blur(${Math.round(e*14)}px)`}); D(cb,cc,{a:e,f:`blur(${Math.round((1-e)*14)}px)`}); break;
     default: D(cb,cc); } }
-function drawPic(g,bm,W,H,c,filter){ if(!bm) return; const sc=Math.max(W/bm.width,H/bm.height)*c.s, w=bm.width*sc, h=bm.height*sc;
+function drawPic(g,bm,W,H,c,filter){ if(!bm) return; const iw=bm.videoWidth||bm.width, ih=bm.videoHeight||bm.height; if(!iw||!ih) return; const sc=Math.max(W/iw,H/ih)*c.s, w=iw*sc, h=ih*sc;
   g.save(); g.translate(W/2+c.x*W,H/2+c.y*H); if(c.r) g.rotate(c.r); if(filter&&filter!=="none") g.filter=filter; g.drawImage(bm,-w/2,-h/2,w,h); g.restore(); }
 /* living-picture particles */
 function makeParticles(kind,W,H){ const n=kind==="fog"?7:kind==="scan"||kind==="scratch"||kind==="paper"?0:kind==="none"?0:40; return Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,r:kind==="fog"?W*(0.25+Math.random()*0.3):1+Math.random()*(kind==="sparkle"?3:2.5),vx:(Math.random()-0.5)*(kind==="fog"?14:10),vy:kind==="chalk"?6+Math.random()*10:-(2+Math.random()*8),a:Math.random()*Math.PI*2})); }
@@ -1196,6 +1289,37 @@ async function pickVideoCodec(W,H){ for(const codec of ["avc1.640028","avc1.4d00
     try{ const r=await VideoEncoder.isConfigSupported(cfg); if(r.supported) return cfg; }catch(e){} } return null; }
 async function pickAudioCodec(sr){ for(const [codec,mux] of [["mp4a.40.2","aac"],["opus","opus"]]){ const cfg={codec,sampleRate:sr,numberOfChannels:1,bitrate:128000};
     try{ const r=await AudioEncoder.isConfigSupported(cfg); if(r.supported) return {cfg,mux}; }catch(e){} } return null; }
+/* ================= 🧍 PUPPET: small living gestures on still pictures ================= */
+let WARP=null;
+function warpRegion(dst,src,R,pv,tf){ if(R.w<4||R.h<4) return; if(!WARP) WARP=document.createElement("canvas");
+  const w=Math.ceil(R.w), h=Math.ceil(R.h); if(WARP.width<w||WARP.height<h){ WARP.width=Math.max(WARP.width,w); WARP.height=Math.max(WARP.height,h); }
+  const t=WARP.getContext("2d"); t.setTransform(1,0,0,1,0,0); t.globalCompositeOperation="source-over"; t.clearRect(0,0,w,h);
+  const px=pv.x-R.x, py=pv.y-R.y; t.save(); t.translate(px+(tf.dx||0),py+(tf.dy||0)); t.rotate(tf.rot||0); t.scale(tf.sx||1,tf.sy||1); t.translate(-px,-py);
+  t.drawImage(src,R.x-w*0.15,R.y-h*0.15,w*1.3,h*1.3,-w*0.15,-h*0.15,w*1.3,h*1.3); t.restore();
+  t.globalCompositeOperation="destination-in"; t.save(); t.translate(w/2,h/2); t.scale(w/2,h/2); const gr=t.createRadialGradient(0,0,0.5,0,0,1); gr.addColorStop(0,"rgba(0,0,0,1)"); gr.addColorStop(1,"rgba(0,0,0,0)"); t.fillStyle=gr; t.fillRect(-1,-1,2,2); t.restore(); t.globalCompositeOperation="source-over";
+  dst.drawImage(WARP,0,0,w,h,R.x,R.y,w,h); }
+function puppetFrame(x,bm,tt,env,lips){
+  const rig=x.b.rig; if(!rig||!rig.length) return bm;
+  if(!x._pa){ const sc=Math.min(1,1280/bm.width); for(const k of ["_pa","_pc"]){ const c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); x[k]=c; } x._skin={}; }
+  const A=x._pa, C=x._pc, a=A.getContext("2d",{willReadFrequently:true}), c=C.getContext("2d"), W=A.width, H=A.height;
+  const B=b=>b&&{x:b[1]/1000*W,y:b[0]/1000*H,w:(b[3]-b[1])/1000*W,h:(b[2]-b[0])/1000*H};
+  a.drawImage(bm,0,0,W,H);
+  /* stage A: blinks + lips drawn on the picture */
+  rig.forEach((p,i)=>{ const ph=(x.b.id.charCodeAt(0)%7)*0.37+i*1.3, per=3.1+i*0.8+(x.b.id.charCodeAt(1)%5)*0.2, q=(tt+ph*per)%per;
+    if(q<0.16){ const k=q<0.08?q/0.08:(0.16-q)/0.08;
+      (p.eyes||[]).forEach((eb,j)=>{ const e=B(eb), key=i+"_"+j; if(!x._skin[key]){ try{ const d=a.getImageData(Math.round(e.x+e.w/2),Math.round(Math.min(H-1,e.y+e.h*1.9)),1,1).data; x._skin[key]=`rgb(${d[0]},${d[1]},${d[2]})`; }catch(err){ x._skin[key]="#c99"; } }
+        a.fillStyle=x._skin[key]; a.beginPath(); a.ellipse(e.x+e.w/2,e.y+e.h*k*0.5,e.w*0.62,Math.max(1,e.h*0.62*k),0,0,Math.PI*2); a.fill();
+        a.strokeStyle="rgba(35,20,20,.75)"; a.lineWidth=Math.max(1,e.h*0.12); a.beginPath(); a.moveTo(e.x,e.y+e.h*k); a.quadraticCurveTo(e.x+e.w/2,e.y+e.h*k*1.12,e.x+e.w,e.y+e.h*k); a.stroke(); }); }
+    if(lips&&i===0&&p.mouth&&env>0.12){ const m=B(p.mouth); a.fillStyle="rgba(55,18,18,.85)"; a.beginPath(); a.ellipse(m.x+m.w/2,m.y+m.h*0.55,m.w*0.32,Math.max(1,m.h*0.42*Math.min(1,env*1.3)),0,0,Math.PI*2); a.fill(); } });
+  /* stage C: breathing body, nodding head, gesturing hands */
+  c.drawImage(A,0,0);
+  rig.forEach((p,i)=>{ const ph=i*1.9+(x.b.e?0.5:0), big=x.b.e?1.6:1;
+    if(p.body){ const b=B(p.body), R={x:b.x-b.w*0.1,y:b.y-b.h*0.1,w:b.w*1.2,h:b.h*1.2}; warpRegion(c,A,R,{x:b.x+b.w/2,y:b.y+b.h},{sy:1+0.012*Math.sin(tt*1.9+ph),sx:1+0.004*Math.sin(tt*1.9+ph)}); }
+    (p.hands||[]).forEach((hb,j)=>{ const h=B(hb), R={x:h.x-h.w*0.45,y:h.y-h.h*0.45,w:h.w*1.9,h:h.h*1.9}, cxb=p.body?B(p.body).x+B(p.body).w/2:W/2, pvx=h.x+h.w/2<cxb?h.x+h.w:h.x;
+      warpRegion(c,C,R,{x:pvx,y:h.y+h.h*0.8},{rot:0.07*big*Math.sin(tt*2.4+ph+j*1.7),dy:-h.h*0.04*big*Math.max(0,Math.sin(tt*1.2+j))}); });
+    if(p.face){ const f=B(p.face), R={x:f.x-f.w*0.35,y:f.y-f.h*0.55,w:f.w*1.7,h:f.h*1.85}; const talk=lips&&i===0?env*0.012:0;
+      warpRegion(c,C,R,{x:f.x+f.w/2,y:f.y+f.h*1.05},{rot:0.022*Math.sin(tt*0.85+ph)+0.01*Math.sin(tt*2.1+ph)+talk*Math.sin(tt*7),dy:f.h*0.012*Math.sin(tt*1.5+ph)}); } });
+  return C; }
 /* ================= ✨ KINETIC ON-SCREEN TEXT ================= */
 const KINDS=["number","year","place","shock","quote","versus","list","secret","key","fact"];
 function textKind(s){ const k=String(s.k||"").toLowerCase(), t=String(s.on||"");
@@ -1269,6 +1393,15 @@ async function renderVideo(PREV){
     s.beats.forEach((b,k)=>{ TL.push({s,b,k,a:k===0&&TL.length===0?0:st+b.t0,z:st+(k+1<s.beats.length?s.beats[k+1].t0:d+GAP)}); });
     s._st=st; s._end=st+d+GAP; s._words=words; s._onA=onAnchor(s,words,st,d); s._mv=sceneMove(s,TLi++,CMODE); t+=d+GAP; }
   const BODY=t, TOTAL=PREV?t:t+END;
+  /* 🎬 Kaggle clips replace the pictures they cover */
+  const VIDS=[];
+  for(let i=0;i<TL.length;i++){ const x=TL[i]; if(!x.b.clip) continue;
+    const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=URL.createObjectURL(x.b.clip);
+    await new Promise(r=>{ v.onloadeddata=r; v.onerror=r; setTimeout(r,8000); }); if(!v.videoWidth||!isFinite(v.duration)) continue;
+    const end=Math.min(x.s._end,x.a+v.duration-0.05); x.v=v; x.z=end; VIDS.push(v);
+    while(TL[i+1]&&TL[i+1].s===x.s&&TL[i+1].a<end-0.25) TL.splice(i+1,1); if(TL[i+1]&&TL[i+1].a<end) x.z=TL[i+1].a; }
+  if(VIDS.length) log(`🎬 Using ${VIDS.length} moving clip(s)`);
+  const PUP=$("puppet").checked, LIPS=$("lips").checked;
   let lastImg=null; for(const x of TL){ if(x.b.img) lastImg=x.b.img; x.blob=x.b.img||lastImg; }
   const first=TL.find(x=>x.blob); if(!first) throw new Error("No pictures yet.");
   TL.forEach(x=>{ if(!x.blob) x.blob=first.blob; });
@@ -1306,11 +1439,13 @@ async function renderVideo(PREV){
   function drawFrame(tt,dt){
     const cur=shown;
     g.fillStyle="#000"; g.fillRect(0,0,W,H);
-    const bm=cur._bm||(prev&&prev._bm)||lastBm;
-    const camAt=x=>{ const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
-    if(bm){ lastBm=bm; const c=camAt(cur);
+    let bm=cur._bm||(prev&&prev._bm)||lastBm;
+    const camAt=x=>{ if(x.v) return {s:1.001,x:0,y:0,r:0}; const sc_=x.s, d=Math.max(1,sc_._end-sc_._st); return camera(sc_._mv,(tt-sc_._st)/d,SPD,d); };
+    if(cur.v&&cur.v.readyState>=2) bm=cur.v;
+    else if(PUP&&cur._bm&&cur.b.rig&&cur.b.rig.length){ const ei=Math.floor((tt-cur.s._st)*30), env=cur.s.env&&ei>=0&&ei<cur.s.env.length?cur.s.env[ei]:0; try{ bm=puppetFrame(cur,cur._bm,tt,env,LIPS); }catch(e){} }
+    if(bm){ if(!cur.v) lastBm=cur._bm||bm; const c=camAt(cur);
       const ty=prev&&prev._bm&&prev!==cur?(prev.s!==cur.s?TRS:TRP):"cut", p=(tt-cur.a)/TRL;
-      try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),cur._bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){} }
+      try{ if(ty!=="cut"&&p>=0&&p<1&&cur._bm) drawTrans(g,W,H,ty,p,prev._bm,camAt(prev),bm,c,FX.grade); else drawPic(g,bm,W,H,c,FX.grade); }catch(e){} }
     if(liv&&FX.flick){ const f=(Math.sin(tt*17)+Math.sin(tt*29.3))*0.5; g.fillStyle=`rgba(0,0,0,${clamp(0.05*FX.flick+f*0.04*FX.flick,0,0.2)})`; g.fillRect(0,0,W,H); }
     drawParticles(g,parts_,liv?FX.p||"none":"none",W,H,dt,tt);
     vignette(g,W,H,/paper|chalk|highlight/.test(T.box)||S.music==="playful"?0.2:0.42);
@@ -1330,7 +1465,7 @@ async function renderVideo(PREV){
     if(tt>=BODY){ const u=clamp((tt-BODY)/0.6); g.fillStyle=`rgba(0,0,0,${0.55*u})`; g.fillRect(0,0,W,H);
       textBox(g,"SUBSCRIBE",W/2,H*0.45,Math.round(86*U),{...T,box:"pill",bg:"#e53935",c:"#fff"},u,"center");
       g.save(); g.globalAlpha=clamp((tt-BODY-0.5)/0.6); g.font=`800 ${Math.round(48*U)}px ${F.pop}`; g.textAlign="center"; g.fillStyle="#fff"; g.fillText($("channel").value||"",W/2,H*0.45+120*U); g.restore(); } }
-  const closeAll=()=>BM.forEach(p=>p.then(b=>b&&b.close&&b.close()));
+  const closeAll=()=>{ BM.forEach(p=>p.then(b=>b&&b.close&&b.close())); VIDS.forEach(v=>{ try{ v.pause(); URL.revokeObjectURL(v.src); }catch(e){} }); };
   $("cv").scrollIntoView({behavior:"smooth",block:"center"});
   const name=`${String(M.title||P.topic).replace(/[^\p{L}\p{N} _-]/gu,"").trim().slice(0,50).replace(/\s+/g,"_")||"video"}`;
 
@@ -1347,6 +1482,7 @@ async function renderVideo(PREV){
     let lastT=0;
     await new Promise(res=>{ const frame=()=>{ const tt=Math.max(0,a.currentTime-T0), dt=Math.min(0.1,Math.max(0,tt-lastT)); lastT=tt;
         const cur=advance(tt); if(!cur._bm&&BM.has(cur.blob)) BM.get(cur.blob).then(bm=>{ cur._bm=bm; });
+        if(cur.v&&cur.v.paused&&!cur._played){ cur._played=1; try{ cur.v.currentTime=Math.max(0,tt-cur.a); cur.v.play().catch(()=>{}); }catch(e){} }
         drawFrame(tt,dt); setBar(tt/TOTAL); if(Math.floor(tt)!==Math.floor(tt-dt)) status(`${PREV?"👁️ Preview":"🎬 Rendering"} ${Math.floor(tt)}s / ${Math.ceil(TOTAL)}s`);
         if((STOP&&tt>1)||tt>=TOTAL){ if(rec) rec.stop(); res(); return; } requestAnimationFrame(frame); }; requestAnimationFrame(frame); });
     if(PREV){ master.disconnect(); closeAll(); status("👁️ Preview finished — change camera/transitions and preview again, or tap 🚀."); return; }
@@ -1376,6 +1512,7 @@ async function renderVideo(PREV){
   for(let f=0;f<N;f++){
     if(STOP||encErr) break; const tt=f/FPS;
     const cur=advance(tt); if(!cur._bm) cur._bm=await want(cur); if(prev&&!prev._bm&&BM.has(prev.blob)) prev._bm=await BM.get(prev.blob);
+    if(cur.v){ const want_=Math.min(cur.v.duration-0.04,Math.max(0,tt-cur.a)); if(Math.abs(cur.v.currentTime-want_)>0.001){ await new Promise(r=>{ const done=()=>{ cur.v.removeEventListener("seeked",done); r(); }; cur.v.addEventListener("seeked",done); cur.v.currentTime=want_; setTimeout(done,600); }); } }
     drawFrame(tt,1/FPS);
     const vf=new VideoFrame(cv,{timestamp:Math.round(tt*1e6),duration:Math.round(1e6/FPS)}); venc.encode(vf,{keyFrame:f%(FPS*2)===0}); vf.close();
     while(venc.encodeQueueSize>4) await new Promise(r=>setTimeout(r,4));

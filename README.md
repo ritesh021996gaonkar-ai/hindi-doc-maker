@@ -26,6 +26,10 @@ Optional: add a **Claude API key** for the best Hindi storytelling (Gemini is us
 Each style sets the picture look, script tone, text design, music mood, voice type and effects.
 **🎨 Styles tab → Learn a style:** pick 1–3 example videos (or YouTube links) and Gemini makes a new style from them.
 
+## 🧍 Gestures & moving clips (v7.14) — free
+- **Living people:** Gemini (free key) marks face, eyes, mouth, hands and body in pictures with people; the app makes eyes blink, body breathe, head nod/tilt and hands gesture (bigger on key moments). Optional lips that move with the voice.
+- **Real AI moving clips:** the hook + 4 or 8 key moments are sent to your Kaggle bot (doc-video-bot) and come back as real moving clips (₹0, your free GPU hours). You can close the app while it works, or tap ⏩ to render without waiting.
+
 ## 🎥 Camera & transitions (v7.3)
 - Smooth, constant-speed moves — one move per scene while pictures change underneath (no pulsing or shaking)
 - Camera: Slow zoom (Ken Burns) · Follow the words · Slow pan · Mixed · No movement — speed Slow/Normal/Fast
