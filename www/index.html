@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.19</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.20</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -76,7 +76,9 @@ details summary{cursor:pointer;font-weight:700}
   <input id="srcFile" type="file" accept="video/*">
   <input id="srcLink" placeholder="or paste a YouTube link" style="margin-top:8px">
  </details>
- <label>💡 Need an idea? Pick a genre</label>
+ <label>💡 Need an idea? Type anything you're curious about (optional)</label>
+ <div class="row"><input id="ideaQ" onkeydown="if(event.key==='Enter')ideas()" placeholder="e.g. Mughal kitchens, Indian railways, Shiva's trident, Kohinoor"><button class="small" style="flex:none;width:auto;margin:0" onclick="ideas()">🔎</button></div>
+ <label>…or pick a genre</label>
  <div class="strip" id="genreBar" style="flex-wrap:wrap;overflow:visible"></div>
  <div class="chk"><input type="checkbox" id="famous"><label for="famous">⭐ Famous topics, hidden facts — very well-known subjects (works with every genre) with facts almost nobody knows</label></div>
  <button class="small sec" onclick="ideas()">💡 Find surprising ideas (deep research)</button>
@@ -366,7 +368,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["famous","puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["ideaQ","famous","puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -512,9 +514,11 @@ function drawGenres(){ $("genreBar").innerHTML=GENRES.map(([k,e,n])=>`<span oncl
 setTimeout(drawGenres,0);
 async function ideas(){
   const box=$("ideaBox"), G=GENRES.find(g=>g[0]===GENRE)||GENRES[0], FAMOUS=$("famous").checked||GENRE==="famous";
-  box.innerHTML=`<p class="muted">🔎 Researching ${esc(G[2])} for little-known facts…</p>`;
+  box.innerHTML=`<p class="muted">🔎 Researching ${esc($("ideaQ").value.trim()||G[2])} for the best topics and little-known facts…</p>`;
+  const Q=$("ideaQ").value.trim();
   const ask=`You are the research head of a top Hindi YouTube explainer channel for Indian viewers.
-GENRE: ${G[2]} — ${G[3]}.
+${Q?`THE CREATOR WANTS VIDEOS ABOUT: "${Q}". Research it deeply (history, science, people, controversies, latest news, records, myths vs facts) and find the 10 BEST, most clickable video topics within or closely connected to it. Every idea must be clearly about "${Q}".
+(Genre preference: ${GENRE==="surprise"?"any":G[2]})`:`GENRE: ${G[2]} — ${G[3]}.`}
 ${FAMOUS?`Find 10 video ideas about VERY FAMOUS subjects that every Indian already knows (household names in this genre — e.g. the Taj Mahal, Sholay, Lord Hanuman, Amul, Chandrayaan, Sachin Tendulkar), each revealing REAL hidden facts that almost nobody knows. The topic must be instantly familiar; the fact must be genuinely surprising ("You've seen it 100 times, but did you know…"). Prefer multiple surprising facts per subject.`:`Find 10 video ideas built around REAL, little-known, surprising facts that most Indians have never heard — not the usual overdone topics. Mix: a few connected to things trending or in the news recently, a few timeless "I never knew this!" stories.`}
 Each idea must be true and checkable. For mythology/religion, be respectful and name the scripture or tradition the story comes from.
 It must suit this visual style: ${(allStyles()[STYLE]||{}).n||""}.
