@@ -1069,6 +1069,7 @@ async function kaggleClips(){
       if(got){ await saveProj(); drawScenes(); }
       const have=P.scenes.flatMap(s=>s.beats).filter(b=>b.wantClip&&b.clip).length, failed=Object.keys((st&&st.failed)||{}).length;
       setBar(have/J.n); drawSteps();
+      if(st&&st.error) log("🎬 Bot: "+String(st.error).slice(0,300));
       if(st&&st.state&&st.state!=="running"&&st.state!=="queued"||have+failed>=J.n){ if(failed) log(`🎬 ${failed} clip(s) failed on Kaggle — those moments use the picture instead.`); P.clipsDone=true; await saveProj(); return; }
       if(SKIPCLIPS){ log("⏩ Rendering without waiting — missing clips use pictures. (Tap 🚀 later to add them.)"); return; }
       const mins=Math.round((Date.now()-J.at)/60000);
