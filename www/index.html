@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.17</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.18</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -76,7 +76,9 @@ details summary{cursor:pointer;font-weight:700}
   <input id="srcFile" type="file" accept="video/*">
   <input id="srcLink" placeholder="or paste a YouTube link" style="margin-top:8px">
  </details>
- <button class="small sec" onclick="ideas()">💡 Give me Indian topic ideas</button>
+ <label>💡 Need an idea? Pick a genre</label>
+ <div class="strip" id="genreBar" style="flex-wrap:wrap;overflow:visible"></div>
+ <button class="small sec" onclick="ideas()">💡 Find surprising ideas (deep research)</button>
  <div id="ideaBox"></div>
 
  <label>2. Video style</label>
@@ -484,11 +486,47 @@ async function askJSON(prompt,kind="text",temp=0.8){
   return parseJSON(parts(j).map(p=>p.text||"").join("")); }
 
 /* ---------- 💡 topic ideas ---------- */
+const GENRES=[
+ ["surprise","🎲","Surprise me","any genre — the most surprising, little-known stories about India"],
+ ["history","🏰","History","ancient, medieval and modern Indian history: rulers, battles, lost cities, turning points, forgotten heroes"],
+ ["gods","🕉️","Hindu gods & mythology","Hindu gods, goddesses, avatars, epics (Ramayana, Mahabharata), Puranas, legends behind festivals and rituals — told respectfully and accurately, naming the scripture or regional tradition"],
+ ["temples","🛕","Temples & architecture","temples, forts, stepwells, palaces: how they were built, engineering secrets, hidden chambers"],
+ ["bollywood","🎬","Bollywood","Bollywood and Indian cinema: behind-the-scenes stories, records, how iconic films and songs were made, box-office history, forgotten stars"],
+ ["science","🔬","Science","science explained with Indian context: physics, biology, chemistry, human body, weird natural phenomena, Indian scientists"],
+ ["tech","💻","Technology","technology and inventions: how things work, Indian tech success stories, UPI, ISRO tech, chips, AI, gadgets"],
+ ["space","🚀","Space & ISRO","space, planets, ISRO missions, Indian astronomy, cosmic mysteries"],
+ ["mystery","🕵️","Mysteries","unsolved Indian mysteries, strange places, unexplained events, lost treasures — fact-based, no fake claims"],
+ ["business","💼","Business & brands","how Indian companies and brands grew or failed: Tata, Amul, Reliance, Parle, startups, iconic ads"],
+ ["defence","🎖️","Defence & wars","Indian Army, Navy, Air Force, wars, special operations, weapons, bravery stories — factual and respectful"],
+ ["geography","🗺️","Geography & places","unique Indian places, borders, rivers, islands, villages, extreme climates"],
+ ["nature","🐅","Animals & nature","Indian wildlife, forests, strange animals, conservation stories"],
+ ["cricket","🏏","Cricket & sports","cricket and sports history, records, untold player stories, Olympics"],
+ ["food","🍛","Food & culture","origins of Indian foods, spices, festivals, traditions, languages and customs"],
+ ["economy","💰","Money & economy","economy and money explained simply: rupee, prices, GDP, budgets, scams and crashes in history"],
+ ["inventions","💡","Ancient Indian inventions","inventions and knowledge from ancient India: maths, zero, medicine, metallurgy, astronomy — accurate, no exaggeration"],
+ ["people","🧑‍🏫","Biographies","inspiring and surprising life stories of Indian people — famous and forgotten"]];
+let GENRE=load("hdm7_genre")||"surprise";
+function drawGenres(){ $("genreBar").innerHTML=GENRES.map(([k,e,n])=>`<span onclick="GENRE='${k}';store('hdm7_genre','${k}');drawGenres()" style="width:auto;height:auto;padding:7px 10px;border-radius:16px;cursor:pointer;font-size:12px;font-weight:600;border:1.5px solid ${k===GENRE?"var(--acc)":"var(--line)"};background:${k===GENRE?"#2a1d12":"#0c0e12"};color:var(--text);margin:0 4px 6px 0">${e} ${n}</span>`).join(""); }
+setTimeout(drawGenres,0);
 async function ideas(){
-  const box=$("ideaBox"); box.innerHTML=`<p class="muted">💡 Thinking…</p>`;
-  try{ const r=await askJSON(`Suggest 8 YouTube explainer video topics about INDIA (history, culture, science, economy, places, inventions, mysteries, how things work) that Indian viewers would love to click today. They must suit this visual style: ${ST().n} (${ST().d}). Mix famous and surprising topics. Return JSON {"ideas":[{"topic":"short English topic","hook":"one-line English hook"}]}`,"fast",1);
-    box.innerHTML=(r.ideas||[]).map((x,i)=>`<div class="scene" onclick="$('topic').value=${esc(JSON.stringify(x.topic))};saveSettings();$('ideaBox').innerHTML=''"><b>➕ ${esc(x.topic)}</b><div class="muted">${esc(x.hook||"")}</div></div>`).join("");
+  const box=$("ideaBox"), G=GENRES.find(g=>g[0]===GENRE)||GENRES[0];
+  box.innerHTML=`<p class="muted">🔎 Researching ${esc(G[2])} for little-known facts…</p>`;
+  const ask=`You are the research head of a top Hindi YouTube explainer channel for Indian viewers.
+GENRE: ${G[2]} — ${G[3]}.
+Find 10 video ideas built around REAL, little-known, surprising facts that most Indians have never heard — not the usual overdone topics. Mix: a few connected to things trending or in the news recently, a few timeless "I never knew this!" stories.
+Each idea must be true and checkable. For mythology/religion, be respectful and name the scripture or tradition the story comes from.
+It must suit this visual style: ${(allStyles()[STYLE]||{}).n||""}.
+Return ONLY JSON: {"ideas":[{"topic":"short English topic for the video","hook":"the surprising fact in one English sentence","why":"why Indian viewers will click (one short line)","source":"where the fact comes from (book, scripture, study, news site)"}]}`;
+  let r=null, grounded=false, src=[];
+  try{ const j=await geminiAuto("text",{contents:[{parts:[{text:ask}]}],tools:[{google_search:{}}],generationConfig:{temperature:0.9}});
+    r=parseJSON(parts(j).map(p=>p.text||"").join("")); grounded=true;
+    const gm=j.candidates&&j.candidates[0]&&j.candidates[0].groundingMetadata; src=((gm&&gm.groundingChunks)||[]).map(c=>c.web&&c.web.title).filter(Boolean); }
+  catch(e){ log("💡 Google research not available on this key — using Gemini's own knowledge"); }
+  try{ if(!r||!(r.ideas||[]).length) r=await askJSON(ask,"smart",1);
+    window._ideas=r.ideas||[];
+    box.innerHTML=`<p class="muted">${grounded?`🔎 Researched on Google${src.length?` (${[...new Set(src)].slice(0,4).map(esc).join(", ")}…)`:""}`:"🧠 From Gemini's knowledge"} — tap one to use it:</p>`+window._ideas.map((x,i)=>`<div class="scene" onclick="useIdea(${i})"><b>➕ ${esc(x.topic)}</b><div class="hi" style="font-size:14px">😮 ${esc(x.hook||"")}</div><div class="muted">${esc(x.why||"")}${x.source?` · 📚 ${esc(x.source)}`:""}</div></div>`).join("")+`<button class="small sec" onclick="ideas()">🔄 More ideas</button>`;
   }catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; } }
+function useIdea(i){ const x=window._ideas[i]; if(!x) return; $("topic").value=x.hook?`${x.topic} — ${x.hook}`:x.topic; saveSettings(); $("ideaBox").innerHTML=`<div class="info">✅ Topic set. The surprising fact is included so the research and script build the video around it. Tap 🚀 when ready.</div>`; window.scrollTo({top:0,behavior:"smooth"}); }
 
 /* =====================================================================
    STEP 1 — SCRIPT
