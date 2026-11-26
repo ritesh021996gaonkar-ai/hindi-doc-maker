@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.18</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.19</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -78,6 +78,7 @@ details summary{cursor:pointer;font-weight:700}
  </details>
  <label>💡 Need an idea? Pick a genre</label>
  <div class="strip" id="genreBar" style="flex-wrap:wrap;overflow:visible"></div>
+ <div class="chk"><input type="checkbox" id="famous"><label for="famous">⭐ Famous topics, hidden facts — very well-known subjects (works with every genre) with facts almost nobody knows</label></div>
  <button class="small sec" onclick="ideas()">💡 Find surprising ideas (deep research)</button>
  <div id="ideaBox"></div>
 
@@ -365,7 +366,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["famous","puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -488,6 +489,7 @@ async function askJSON(prompt,kind="text",temp=0.8){
 /* ---------- 💡 topic ideas ---------- */
 const GENRES=[
  ["surprise","🎲","Surprise me","any genre — the most surprising, little-known stories about India"],
+ ["famous","⭐","Famous but unknown","the MOST famous things in India across every genre — people, films, gods, monuments, brands, events, foods, inventions — each with hidden facts almost nobody knows"],
  ["history","🏰","History","ancient, medieval and modern Indian history: rulers, battles, lost cities, turning points, forgotten heroes"],
  ["gods","🕉️","Hindu gods & mythology","Hindu gods, goddesses, avatars, epics (Ramayana, Mahabharata), Puranas, legends behind festivals and rituals — told respectfully and accurately, naming the scripture or regional tradition"],
  ["temples","🛕","Temples & architecture","temples, forts, stepwells, palaces: how they were built, engineering secrets, hidden chambers"],
@@ -509,11 +511,11 @@ let GENRE=load("hdm7_genre")||"surprise";
 function drawGenres(){ $("genreBar").innerHTML=GENRES.map(([k,e,n])=>`<span onclick="GENRE='${k}';store('hdm7_genre','${k}');drawGenres()" style="width:auto;height:auto;padding:7px 10px;border-radius:16px;cursor:pointer;font-size:12px;font-weight:600;border:1.5px solid ${k===GENRE?"var(--acc)":"var(--line)"};background:${k===GENRE?"#2a1d12":"#0c0e12"};color:var(--text);margin:0 4px 6px 0">${e} ${n}</span>`).join(""); }
 setTimeout(drawGenres,0);
 async function ideas(){
-  const box=$("ideaBox"), G=GENRES.find(g=>g[0]===GENRE)||GENRES[0];
+  const box=$("ideaBox"), G=GENRES.find(g=>g[0]===GENRE)||GENRES[0], FAMOUS=$("famous").checked||GENRE==="famous";
   box.innerHTML=`<p class="muted">🔎 Researching ${esc(G[2])} for little-known facts…</p>`;
   const ask=`You are the research head of a top Hindi YouTube explainer channel for Indian viewers.
 GENRE: ${G[2]} — ${G[3]}.
-Find 10 video ideas built around REAL, little-known, surprising facts that most Indians have never heard — not the usual overdone topics. Mix: a few connected to things trending or in the news recently, a few timeless "I never knew this!" stories.
+${FAMOUS?`Find 10 video ideas about VERY FAMOUS subjects that every Indian already knows (household names in this genre — e.g. the Taj Mahal, Sholay, Lord Hanuman, Amul, Chandrayaan, Sachin Tendulkar), each revealing REAL hidden facts that almost nobody knows. The topic must be instantly familiar; the fact must be genuinely surprising ("You've seen it 100 times, but did you know…"). Prefer multiple surprising facts per subject.`:`Find 10 video ideas built around REAL, little-known, surprising facts that most Indians have never heard — not the usual overdone topics. Mix: a few connected to things trending or in the news recently, a few timeless "I never knew this!" stories.`}
 Each idea must be true and checkable. For mythology/religion, be respectful and name the scripture or tradition the story comes from.
 It must suit this visual style: ${(allStyles()[STYLE]||{}).n||""}.
 Return ONLY JSON: {"ideas":[{"topic":"short English topic for the video","hook":"the surprising fact in one English sentence","why":"why Indian viewers will click (one short line)","source":"where the fact comes from (book, scripture, study, news site)"}]}`;
