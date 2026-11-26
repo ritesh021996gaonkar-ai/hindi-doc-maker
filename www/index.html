@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.14</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.15</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -1169,7 +1169,9 @@ async function go(){
     RUNNING="pics"; drawSteps(); await makePictures(); if(STOP) throw new Error("paused");
     if($("qc").checked&&!P.qcDone){ RUNNING="qc"; drawSteps(); await qualityCheck(); if(STOP) throw new Error("paused"); P.qcDone=true; await saveProj(); }
     if($("puppet").checked&&!P.rigDone){ RUNNING="rig"; drawSteps(); await detectRigs(); if(STOP) throw new Error("paused"); P.rigDone=true; await saveProj(); }
-    if(+$("clipN").value>0&&!P.clipsDone){ RUNNING="clips"; drawSteps(); await kaggleClips(); if(STOP) throw new Error("paused"); }
+    if(+$("clipN").value>0&&!P.clipsDone){ RUNNING="clips"; drawSteps();
+      try{ await kaggleClips(); }catch(e){ if(String(e.message)==="paused") throw e; log("⚠️ Moving clips skipped: "+e.message+" — making the video with pictures (gestures still work)."); P.clipJob=null; }
+      if(STOP) throw new Error("paused"); }
     RUNNING="render"; drawSteps(); keepAlive(false); await renderVideo();
     P.rendered=true; await saveProj(); RUNNING=""; status("✅ Done! Save or share your video below."); setBar(1);
   }catch(e){
