@@ -63,7 +63,7 @@ details summary{cursor:pointer;font-weight:700}
 </style>
 </head>
 <body>
-<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.20</span></header>
+<header><h1>🎬 Hindi Doc Maker</h1><span class="muted">v7.21</span></header>
 <main>
 
 <!-- ======================= MAKE ======================= -->
@@ -176,6 +176,9 @@ details summary{cursor:pointer;font-weight:700}
  <input id="gemKey" type="password" placeholder="AIza...">
  <button class="small sec" onclick="openExt('https://console.cloud.google.com/billing')">💳 Top up Gemini (UPI ok)</button><button class="small sec" onclick="openExt('https://aistudio.google.com/apikey')">🔑 Get Gemini key</button>
  <p class="muted">Google Cloud billing accepts UPI in India — add it under Payment method, or buy prepaid Gemini API credits.</p>
+ <label>🆓 Backup Gemini key — FREE, from a different Google project with NO billing (used automatically when the paid key runs out)</label>
+ <input id="gemKey2" type="password" placeholder="AIza... (optional)">
+ <button class="small sec" onclick="openExt('https://aistudio.google.com/apikey')">🔑 Make a free key (Create API key → Create in new project)</button>
  <div class="chk"><input type="checkbox" id="deep" checked><label for="deep">🔎 Deep research with Google Search before writing (needs billing turned on for the key — 5,000 searches/month free; otherwise the app reads Wikipedia instead)</label></div>
  <label>✨ Claude API key (optional — best Hindi storytelling, ≈ ₹5–15 per script) — platform.claude.com</label>
  <input id="claudeKey" type="password" placeholder="sk-ant-... (leave empty to write with Gemini, free)">
@@ -368,7 +371,7 @@ const ST=()=>allStyles()[(typeof P!=="undefined"&&P&&P.style)||STYLE]||allStyles
 /* =====================================================================
    SETTINGS (keys from the old app carry over automatically)
    ===================================================================== */
-const SET_IDS=["ideaQ","famous","puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
+const SET_IDS=["gemKey2","ideaQ","famous","puppet","lips","clipN","ghToken","ghRepo","kgRes","segKey","falKey","falMode","falMax","refAI","refReal","qc","camMode","trPic","trScene","trLen","txAnim","onTxt","titleOn","deep","claudeKey","claudeModel","gemKey","elKey","elVoice","elModel","pronDict","polKey","cfAcct","cfToken","gemImg","channel","caps","music","musicVol","sfx","fx","mins","format","topic"];
 function store(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
 function load(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
 function getV(id){ const e=$(id); return e.type==="checkbox"?(e.checked?"1":"0"):e.value; }
@@ -456,13 +459,18 @@ function stopNow(){ if(BUSY){ STOP=true; status("⏸️ Pausing after the curren
 /* =====================================================================
    GEMINI (script + picture plan + style learning)
    ===================================================================== */
+let MAIN_OUT=false;   /* paid key's prepaid credit ran out this session → use the free backup key */
+function gemKeyNow(){ const m=$("gemKey").value.trim(), b=$("gemKey2").value.trim(); return (MAIN_OUT&&b)||m||b; }
 async function gemini(model,body,tries=4){
-  const key=$("gemKey").value.trim(); if(!key) throw new Error("Add your Gemini API key in ⚙️ Settings.");
+  let key=gemKeyNow(); if(!key) throw new Error("Add your Gemini API key in ⚙️ Settings.");
   for(let i=0;i<tries;i++){
     let r; try{ r=await http("POST",`${GBASE}/models/${encodeURIComponent(model)}:generateContent`,{headers:{"x-goog-api-key":key},json:body}); }
     catch(e){ if(i===tries-1) throw e; await sleep(3000*(i+1)); continue; }
     if(r.ok) return r.data;
     const msg=errMsg(r.data); const hard=r.status===429&&/limit: 0|per day/i.test(msg);
+    if(r.status===402||/prepayment credits are depleted|billing account|credits.*depleted/i.test(msg)){
+      if(!MAIN_OUT&&$("gemKey2").value.trim()&&key===$("gemKey").value.trim()){ MAIN_OUT=true; MODELS=null; key=gemKeyNow(); log("💳 Paid Gemini key is out of credit → switched to your free backup key."); i--; continue; }
+      const e=new Error("Your Gemini prepaid credit has run out. Top up (⚙️ Settings → 💳 Top up Gemini) or add a FREE backup key from a project without billing (⚙️ Settings → Backup Gemini key)."); e.status=402; e.hard=true; throw e; }
     if(!hard&&[429,500,502,503,504].includes(r.status)&&i<tries-1){ log(`${model} busy (${r.status}), retrying…`); await sleep(6000*(i+1)); continue; }
     const e=new Error(`${model}: ${r.status} ${msg}`); e.status=r.status; e.hard=hard; throw e;
   }
@@ -470,7 +478,7 @@ async function gemini(model,body,tries=4){
 const parts=j=>(j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[];
 let MODELS=null;
 async function listModels(){ if(MODELS) return MODELS;
-  try{ const r=await http("GET",`${GBASE}/models?pageSize=1000`,{headers:{"x-goog-api-key":$("gemKey").value.trim()}});
+  try{ const r=await http("GET",`${GBASE}/models?pageSize=1000`,{headers:{"x-goog-api-key":gemKeyNow()}});
     if(r.ok&&r.data.models) MODELS=r.data.models.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace(/^models\//,"")); }catch(e){}
   return MODELS||[]; }
 function ver(n){ const m=n.match(/gemini-(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):0; }
@@ -480,7 +488,7 @@ function rank(list,kind){ const bad=/embed|live|native-audio|computer|robotics|g
   return f.sort((a,b)=>sc(b)-sc(a)); }
 async function geminiAuto(kind,body){
   const c=rank(await listModels(),kind).slice(0,4); if(!c.length) c.push(kind==="image"?"gemini-2.5-flash-image":"gemini-2.5-flash");
-  let last; for(const m of c){ try{ return await gemini(m,body,3); }catch(e){ last=e; log(`${m} failed (${String(e.message).slice(0,90)}) → next model`); if(e.status===400&&/API key/i.test(e.message)) break; } }
+  let last; for(const m of c){ try{ return await gemini(m,body,3); }catch(e){ last=e; log(`${m} failed (${String(e.message).slice(0,90)}) → next model`); if(e.status===402||(e.status===400&&/API key/i.test(e.message))) break; } }
   throw last; }
 function parseJSON(t){ if(t&&typeof t==="object") return t; t=String(t||"").trim().replace(/^```(json)?/i,"").replace(/```\s*$/,"").trim();
   try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a){ try{ return JSON.parse(t.slice(a,b+1)); }catch(e2){} } throw new Error("Gemini's answer was not valid JSON — tap 🚀 again."); } }
@@ -866,7 +874,7 @@ async function addRef(){ const f=$("refPic").files[0], name=$("refNm").value.tri
   const bm=await createImageBitmap(f), sc=Math.min(1,1024/Math.max(bm.width,bm.height)), c=document.createElement("canvas"); c.width=Math.round(bm.width*sc); c.height=Math.round(bm.height*sc); c.getContext("2d").drawImage(bm,0,0,c.width,c.height); bm.close&&bm.close();
   const blob=await new Promise(res=>c.toBlob(res,"image/jpeg",0.9)); await DB.put("rf_"+r.id,blob); REF_IMG[r.id]=blob;
   REFS.push(r); saveRefs(); $("refNm").value=""; $("refPic").value=""; await drawRefs();
-  if($("gemKey").value.trim()){ status(`👀 Gemini is studying "${name}"…`);
+  if(gemKeyNow()){ status(`👀 Gemini is studying "${name}"…`);
     try{ const j=await geminiAuto("fast",{contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:await smallJpeg(blob,768)}},{text:`This photo shows the ${kind} "${name}". Describe ONLY its visual appearance so an image generator can recreate it in new scenes: ${kind==="person"?"gender, approximate age, face shape, skin tone, hair, facial hair, glasses, build, typical clothing with colours":kind==="place"?"architecture, shape, materials, colours, key landmarks/details, surroundings":"shape, colours, materials, size, distinctive parts and markings"}. 35-60 words, plain English, no opinions. Return only the description.`}]}],generationConfig:{temperature:0.2}});
       r.look=parts(j).map(p=>p.text||"").join("").trim().slice(0,500); saveRefs(); await drawRefs(); status(`✅ "${name}" added and described.`); }
     catch(e){ status(`Added "${name}" — type a short description of it (Gemini couldn't: ${String(e.message).slice(0,60)})`); } }
@@ -1199,7 +1207,7 @@ async function go(){
   if(P&&P.rendered&&topic&&topic!==P.topic){ if(!confirm(`Start a NEW video about "${topic}"? (The finished video stays saved on your phone.)`)) return; await clearProject(); P=null; $("outBox").innerHTML=""; }
   const vsrc=$("srcFile").files[0]||ytId($("srcLink").value);
   if(!P||!P.scenes||!P.scenes.length){ if(!topic&&!vsrc){ alert("Type a topic or add a video first (or tap 💡 for ideas)."); return; }
-    if(!$("gemKey").value.trim()||!$("elKey").value.trim()){ alert("Add your Gemini and ElevenLabs keys in ⚙️ Settings first."); showTab("set"); return; }
+    if(!gemKeyNow()||!$("elKey").value.trim()){ alert("Add your Gemini and ElevenLabs keys in ⚙️ Settings first."); showTab("set"); return; }
     if(!P||P.topic!==topic||(vsrc&&!P.research)) P={refs:REFS.map(r=>({...r})),topic,style:STYLE,mins:+$("mins").value,format:$("format").value,pe:PE,scenes:[]}; }
   else if(P.style!==STYLE){ if(!confirm(`This video was started in "${(allStyles()[P.style]||{}).n}". Continue in that style? (Cancel = keep going in the new style "${ST().n}" for the remaining pictures.)`)) P.style=STYLE; else { STYLE=P.style; drawStyleGrid(); } }
   STYLE=P.style||STYLE;
@@ -1665,7 +1673,7 @@ function applyCam(c,src){ if(!c) return;
 function showCamFrom(c){ const b=$("camFrom"); if(!b) return; b.style.display="";
   b.innerHTML=`🎥 <b>Set from ${esc(c.src||"your video")}</b>${c.notes?`<br>${esc(c.notes)}`:""}${c.spp?`<br>It changes picture about every ${(+c.spp).toFixed(1)} s.`:""}<br><span class="muted">You can change anything below.</span>`; }
 async function geminiUpload(file){
-  const key=$("gemKey").value.trim(), type=file.type||"video/mp4", up="https://generativelanguage.googleapis.com/upload/v1beta/files";
+  const key=gemKeyNow(), type=file.type||"video/mp4", up="https://generativelanguage.googleapis.com/upload/v1beta/files";
   const r=await fetch(up,{method:"POST",headers:{"x-goog-api-key":key,"X-Goog-Upload-Protocol":"resumable","X-Goog-Upload-Command":"start","X-Goog-Upload-Header-Content-Length":String(file.size),"X-Goog-Upload-Header-Content-Type":type,"Content-Type":"application/json"},body:JSON.stringify({file:{display_name:(file.name||"video").slice(0,100)}})});
   const url=r.headers.get("x-goog-upload-url"); if(!r.ok||!url) throw new Error(`Upload to Gemini failed (${r.status}) — try a YouTube link instead.`);
   const r2=await fetch(url,{method:"POST",headers:{"X-Goog-Upload-Command":"upload, finalize","X-Goog-Upload-Offset":"0"},body:file});
@@ -1690,7 +1698,7 @@ Cover, precisely: medium (photo, 2D, 3D, painting…), line work, shading/render
 Describe ONLY the style — no subjects, no story, no names of artists, brands, shows or characters.
 Return ONLY JSON: {"recipe":"60-90 word style prompt","checks":["5 short visual traits a matching picture MUST have"]}`;
 async function learnStyle(){
-  if(!$("gemKey").value.trim()){ alert("Add your Gemini key in ⚙️ Settings first."); return; }
+  if(!gemKeyNow()){ alert("Add your Gemini key in ⚙️ Settings first."); return; }
   const files=[...$("refFiles").files].slice(0,3), links=$("refLinks").value.split(/\s+/).map(x=>(x.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/)||[])[1]).filter(Boolean).slice(0,3);
   if(!files.length&&!links.length) return alert("Pick a video file or paste a YouTube link.");
   const btn=$("btnLearn"), box=$("learnBox"); btn.disabled=true; box.innerHTML="";
